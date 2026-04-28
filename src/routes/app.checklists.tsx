@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Check, Filter, Clock, Play, Pause, StopCircle, RotateCcw,
   TrendingUp, CheckCircle2, AlertTriangle, ListTodo, Activity,
@@ -17,6 +17,7 @@ import { CompanyTag } from "@/components/CompanyTag";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/lib/auth";
+import { usePonto, fmtTime } from "@/lib/ponto";
 
 export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
@@ -486,67 +487,15 @@ function HistoryTab() {
 
 /* =================== TAB: BATER PONTO =================== */
 
-type PontoStatus = "off" | "working" | "paused" | "ended";
-
 function PontoTab({ completionPct }: { completionPct: number }) {
   const { user } = useAuth();
-  const [status, setStatus] = useState<PontoStatus>("off");
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [workMs, setWorkMs] = useState(0); // tempo total trabalhado
-  const [pauseMs, setPauseMs] = useState(0);
-  const [pauseStart, setPauseStart] = useState<number | null>(null);
-  const [tick, setTick] = useState(0);
-  const intervalRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (status === "working" || status === "paused") {
-      intervalRef.current = window.setInterval(() => setTick((t) => t + 1), 1000);
-    }
-    return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
-    };
-  }, [status]);
-
-  const liveWork = (() => {
-    if (status === "working" && startedAt) {
-      return workMs + (Date.now() - startedAt) - pauseMs;
-    }
-    return workMs - pauseMs;
-  })();
-
-  const livePause = (() => {
-    if (status === "paused" && pauseStart) return pauseMs + (Date.now() - pauseStart);
-    return pauseMs;
-  })();
-
-  void tick;
-
-  const start = () => {
-    setStatus("working");
-    setStartedAt(Date.now());
-    setWorkMs(0);
-    setPauseMs(0);
-  };
-  const pause = () => {
-    setStatus("paused");
-    setPauseStart(Date.now());
-  };
-  const resume = () => {
-    if (pauseStart) setPauseMs((p) => p + (Date.now() - pauseStart));
-    setPauseStart(null);
-    setStatus("working");
-  };
-  const end = () => setStatus("ended");
-  const reset = () => {
-    setStatus("off");
-    setStartedAt(null);
-    setWorkMs(0);
-    setPauseMs(0);
-    setPauseStart(null);
-  };
-
-  const productiveMs = Math.max(0, liveWork - livePause);
-  const isLive = status === "working" || status === "paused";
+  const {
+    session, liveWorkMs: liveWork, livePauseMs: livePause, productiveMs, isLive,
+    start: startPonto, pause, resume, end, reset,
+  } = usePonto();
+  const status = session.status;
+  const start = () => startPonto(user?.name);
+  const startedAt = session.startedAt;
 
   const priorityTasks = DAILY_TASKS
     .filter((t) => t.priority === "Crítica" || t.priority === "Alta")
@@ -654,23 +603,34 @@ function PontoTab({ completionPct }: { completionPct: number }) {
             <StatCard label="Pausas" value={fmtTime(livePause)} icon={Pause} accent="warning" />
             <StatCard label="Tarefas concluídas" value={`${Math.round(completionPct / 100 * DAILY_TASKS.length)}/${DAILY_TASKS.length}`} icon={CheckCircle2} accent="info" />
           </div>
+          <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
+            <SummaryRow label="Entrada" value={startedAt ? new Date(startedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"} />
+            <SummaryRow label="Saída" value={session.endedAt ? new Date(session.endedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"} />
+            <SummaryRow label="Pausas" value={`${session.pauses.length}`} />
+          </div>
           <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
             Você completou <strong className="text-foreground">{completionPct}%</strong> das tarefas do dia
             em <strong className="text-foreground">{fmtTime(productiveMs)}</strong> de tempo produtivo.
             {completionPct >= 80 ? " Excelente performance — meta diária atingida." : " Algumas tarefas ficaram pendentes — considere revisar a priorização amanhã."}
           </p>
+          <div className="mt-4">
+            <button onClick={reset} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4">
+              Iniciar novo expediente
+            </button>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function fmtTime(ms: number) {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-surface/40 px-3 py-2">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="font-mono text-sm font-semibold tabular-nums mt-0.5">{value}</div>
+    </div>
+  );
 }
 
 function PontoBtn({
