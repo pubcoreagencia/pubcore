@@ -96,43 +96,55 @@ export const INITIAL_CARDS: KanbanCard[] = [
 export interface DailyTask {
   id: string;
   text: string;
+  category: string;
   company: Company;
   assignee: string;
   dueTime: string; // HH:MM
   priority: Priority;
+  recurrence: "Diária";
 }
 
 export const DAILY_TASKS: DailyTask[] = [
-  // Pub 3D
-  { id: "t1", text: "Verificar fila de renderização", company: "Pub 3D", assignee: "Lucas M.", dueTime: "09:00", priority: "Alta" },
-  { id: "t2", text: "Backup de projetos do dia anterior", company: "Pub 3D", assignee: "Lucas M.", dueTime: "09:30", priority: "Média" },
-  { id: "t3", text: "Reunião criativa rápida", company: "Pub 3D", assignee: "Pedro A.", dueTime: "10:00", priority: "Média" },
-  { id: "t4", text: "Revisar entregas pendentes", company: "Pub 3D", assignee: "Lucas M.", dueTime: "17:00", priority: "Alta" },
-  // Pub IA
-  { id: "t5", text: "Monitorar performance dos modelos", company: "Pub IA", assignee: "Marina S.", dueTime: "08:30", priority: "Crítica" },
-  { id: "t6", text: "Revisar logs de inferência", company: "Pub IA", assignee: "Marina S.", dueTime: "11:00", priority: "Alta" },
-  { id: "t7", text: "Validar pipeline de dados", company: "Pub IA", assignee: "Marina S.", dueTime: "14:00", priority: "Média" },
-  { id: "t8", text: "Atualizar dashboards de métrica", company: "Pub IA", assignee: "Marina S.", dueTime: "16:30", priority: "Baixa" },
-  // Pub RECORDS
-  { id: "t9", text: "Conferir agenda de estúdio", company: "Pub RECORDS", assignee: "Júlia R.", dueTime: "09:00", priority: "Alta" },
-  { id: "t10", text: "Backup de sessões", company: "Pub RECORDS", assignee: "Júlia R.", dueTime: "10:00", priority: "Crítica" },
-  { id: "t11", text: "Revisar masters pendentes", company: "Pub RECORDS", assignee: "Júlia R.", dueTime: "15:00", priority: "Alta" },
-  { id: "t12", text: "Reunião com artistas do dia", company: "Pub RECORDS", assignee: "Pedro A.", dueTime: "17:30", priority: "Média" },
-  // Pub Films
-  { id: "t13", text: "Checar equipamento de filmagem", company: "Pub Films", assignee: "Pedro A.", dueTime: "08:00", priority: "Crítica" },
-  { id: "t14", text: "Revisar cronograma de produção", company: "Pub Films", assignee: "Pedro A.", dueTime: "10:30", priority: "Alta" },
-  { id: "t15", text: "Backup de mídias brutas", company: "Pub Films", assignee: "Pedro A.", dueTime: "18:00", priority: "Alta" },
-  { id: "t16", text: "Alinhamento com diretor", company: "Pub Films", assignee: "Pedro A.", dueTime: "11:30", priority: "Média" },
-  // Bricks
-  { id: "t17", text: "Conferência de estoque", company: "Bricks", assignee: "Rafael T.", dueTime: "08:00", priority: "Alta" },
-  { id: "t18", text: "Checar pedidos em rota", company: "Bricks", assignee: "Rafael T.", dueTime: "10:00", priority: "Crítica" },
-  { id: "t19", text: "Validar entregas do dia", company: "Bricks", assignee: "Rafael T.", dueTime: "16:00", priority: "Alta" },
-  { id: "t20", text: "Reunião comercial", company: "Bricks", assignee: "Rafael T.", dueTime: "09:00", priority: "Média" },
-  // Têxtil
-  { id: "t21", text: "Inspecionar produção da manhã", company: "Têxtil", assignee: "Camila O.", dueTime: "08:30", priority: "Alta" },
-  { id: "t22", text: "Verificar qualidade — amostragem", company: "Têxtil", assignee: "Camila O.", dueTime: "11:00", priority: "Crítica" },
-  { id: "t23", text: "Conferir matéria-prima", company: "Têxtil", assignee: "Camila O.", dueTime: "14:00", priority: "Média" },
-  { id: "t24", text: "Atualizar planilha de produção", company: "Têxtil", assignee: "Camila O.", dueTime: "17:00", priority: "Baixa" },
+  // ===== Pub 3D =====
+  { id: "p3d-1", text: "Mineração Diária", category: "Mineração", company: "Pub 3D", assignee: "Lucas M.", dueTime: "08:30", priority: "Crítica", recurrence: "Diária" },
+  { id: "p3d-2", text: "Catalogação de arquivos e modelos", category: "Catalogação", company: "Pub 3D", assignee: "Lucas M.", dueTime: "10:00", priority: "Alta", recurrence: "Diária" },
+  { id: "p3d-3", text: "Revisão das máquinas (impressoras/render farm)", category: "Manutenção", company: "Pub 3D", assignee: "Lucas M.", dueTime: "11:00", priority: "Alta", recurrence: "Diária" },
+  { id: "p3d-4", text: "Revisão de estoque de insumos", category: "Estoque", company: "Pub 3D", assignee: "Rafael T.", dueTime: "14:00", priority: "Média", recurrence: "Diária" },
+  { id: "p3d-5", text: "Revisão de estoque de peças de reposição", category: "Estoque", company: "Pub 3D", assignee: "Rafael T.", dueTime: "14:30", priority: "Média", recurrence: "Diária" },
+  { id: "p3d-6", text: "Ações de marketing diárias", category: "Marketing", company: "Pub 3D", assignee: "Marina S.", dueTime: "15:00", priority: "Média", recurrence: "Diária" },
+  { id: "p3d-7", text: "Postagens em redes sociais", category: "Rede Social", company: "Pub 3D", assignee: "Marina S.", dueTime: "16:00", priority: "Alta", recurrence: "Diária" },
+
+  // ===== Pub IA =====
+  { id: "pia-1", text: "Desenvolvimento diário de produtos", category: "Desenvolvimento", company: "Pub IA", assignee: "Marina S.", dueTime: "09:00", priority: "Crítica", recurrence: "Diária" },
+  { id: "pia-2", text: "Prospecção ativa de clientes", category: "Prospecção", company: "Pub IA", assignee: "Pedro A.", dueTime: "10:30", priority: "Alta", recurrence: "Diária" },
+  { id: "pia-3", text: "Prospecção passiva (inbound)", category: "Prospecção", company: "Pub IA", assignee: "Pedro A.", dueTime: "11:30", priority: "Média", recurrence: "Diária" },
+  { id: "pia-4", text: "Ações de marketing diárias", category: "Marketing", company: "Pub IA", assignee: "Marina S.", dueTime: "14:00", priority: "Alta", recurrence: "Diária" },
+  { id: "pia-5", text: "Postagens em redes sociais", category: "Rede Social", company: "Pub IA", assignee: "Marina S.", dueTime: "16:00", priority: "Alta", recurrence: "Diária" },
+
+  // ===== Pub RECORDS =====
+  { id: "prc-1", text: "Ações de marketing diárias", category: "Marketing", company: "Pub RECORDS", assignee: "Marina S.", dueTime: "09:00", priority: "Alta", recurrence: "Diária" },
+  { id: "prc-2", text: "Postagens em redes sociais", category: "Rede Social", company: "Pub RECORDS", assignee: "Marina S.", dueTime: "10:00", priority: "Alta", recurrence: "Diária" },
+  { id: "prc-3", text: "Prospecção ativa/passiva", category: "Prospecção", company: "Pub RECORDS", assignee: "Pedro A.", dueTime: "11:00", priority: "Média", recurrence: "Diária" },
+  { id: "prc-4", text: "Produção musical (sessões do dia)", category: "Produção Musical", company: "Pub RECORDS", assignee: "Júlia R.", dueTime: "13:00", priority: "Crítica", recurrence: "Diária" },
+  { id: "prc-5", text: "Operação Rádio 24h — Peace Beats", category: "Rádio 24h", company: "Pub RECORDS", assignee: "Júlia R.", dueTime: "08:00", priority: "Alta", recurrence: "Diária" },
+  { id: "prc-6", text: "Produção e catalogação de beats e samples", category: "Beats & Samples", company: "Pub RECORDS", assignee: "Júlia R.", dueTime: "15:00", priority: "Alta", recurrence: "Diária" },
+
+  // ===== Pub Films =====
+  { id: "pfm-1", text: "Ações de marketing diárias", category: "Marketing", company: "Pub Films", assignee: "Marina S.", dueTime: "09:30", priority: "Alta", recurrence: "Diária" },
+  { id: "pfm-2", text: "Postagens em redes sociais", category: "Rede Social", company: "Pub Films", assignee: "Marina S.", dueTime: "10:30", priority: "Alta", recurrence: "Diária" },
+  { id: "pfm-3", text: "Prospecção ativa/passiva", category: "Prospecção", company: "Pub Films", assignee: "Pedro A.", dueTime: "14:00", priority: "Média", recurrence: "Diária" },
+
+  // ===== Bricks =====
+  { id: "brk-1", text: "Conferência de estoque", category: "Estoque", company: "Bricks", assignee: "Rafael T.", dueTime: "08:00", priority: "Alta", recurrence: "Diária" },
+  { id: "brk-2", text: "Checar pedidos em rota", category: "Logística", company: "Bricks", assignee: "Rafael T.", dueTime: "10:00", priority: "Crítica", recurrence: "Diária" },
+  { id: "brk-3", text: "Validar entregas do dia", category: "Logística", company: "Bricks", assignee: "Rafael T.", dueTime: "16:00", priority: "Alta", recurrence: "Diária" },
+  { id: "brk-4", text: "Reunião comercial", category: "Comercial", company: "Bricks", assignee: "Rafael T.", dueTime: "09:00", priority: "Média", recurrence: "Diária" },
+
+  // ===== Têxtil =====
+  { id: "txt-1", text: "Inspecionar produção da manhã", category: "Produção", company: "Têxtil", assignee: "Camila O.", dueTime: "08:30", priority: "Alta", recurrence: "Diária" },
+  { id: "txt-2", text: "Verificar qualidade — amostragem", category: "Qualidade", company: "Têxtil", assignee: "Camila O.", dueTime: "11:00", priority: "Crítica", recurrence: "Diária" },
+  { id: "txt-3", text: "Conferir matéria-prima", category: "Estoque", company: "Têxtil", assignee: "Camila O.", dueTime: "14:00", priority: "Média", recurrence: "Diária" },
+  { id: "txt-4", text: "Atualizar planilha de produção", category: "Produção", company: "Têxtil", assignee: "Camila O.", dueTime: "17:00", priority: "Baixa", recurrence: "Diária" },
 ];
 
 export const ASSIGNEES = [
