@@ -624,6 +624,14 @@ function PontoTab({ completionPct }: { completionPct: number }) {
   );
 }
 
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-surface/40 px-3 py-2">
+      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="font-mono text-sm font-semibold tabular-nums mt-0.5">{value}</div>
+    </div>
+  );
+}
 
 function PontoBtn({
   children, onClick, icon: Icon, variant,
