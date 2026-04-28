@@ -34,6 +34,7 @@ const TABS: { id: Tab; label: string; icon: typeof ListTodo }[] = [
 function ChecklistsPage() {
   const [tab, setTab] = useState<Tab>("diario");
   const [done, setDone] = useState<Record<string, boolean>>({});
+  const [doneAt, setDoneAt] = useState<Record<string, string>>({});
 
   const completionPct = Math.round(
     (Object.values(done).filter(Boolean).length / DAILY_TASKS.length) * 100
@@ -95,7 +96,7 @@ function ChecklistsPage() {
         })}
       </div>
 
-      {tab === "diario" && <DailyTab done={done} setDone={setDone} />}
+      {tab === "diario" && <DailyTab done={done} setDone={setDone} doneAt={doneAt} setDoneAt={setDoneAt} />}
       {tab === "historico" && <HistoryTab />}
       {tab === "ponto" && <PontoTab completionPct={completionPct} />}
       {tab === "metricas" && <MetricsTab done={done} />}
@@ -105,23 +106,30 @@ function ChecklistsPage() {
 
 /* =================== TAB: DIÁRIO =================== */
 
+type StatusFilter = "Todos" | "Concluído" | "Pendente";
+
 function DailyTab({
-  done, setDone,
+  done, setDone, doneAt, setDoneAt,
 }: {
   done: Record<string, boolean>;
   setDone: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  doneAt: Record<string, string>;
+  setDoneAt: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }) {
   const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
   const [assigneeFilter, setAssigneeFilter] = useState<string>("Todos");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("Todos");
 
   const filtered = useMemo(
     () =>
-      DAILY_TASKS.filter(
-        (t) =>
-          (companyFilter === "Todas" || t.company === companyFilter) &&
-          (assigneeFilter === "Todos" || t.assignee === assigneeFilter)
-      ),
-    [companyFilter, assigneeFilter]
+      DAILY_TASKS.filter((t) => {
+        if (companyFilter !== "Todas" && t.company !== companyFilter) return false;
+        if (assigneeFilter !== "Todos" && t.assignee !== assigneeFilter) return false;
+        if (statusFilter === "Concluído" && !done[t.id]) return false;
+        if (statusFilter === "Pendente" && done[t.id]) return false;
+        return true;
+      }),
+    [companyFilter, assigneeFilter, statusFilter, done]
   );
 
   const grouped = useMemo(() => {
@@ -133,7 +141,23 @@ function DailyTab({
     return Array.from(m.entries());
   }, [filtered]);
 
-  const toggle = (id: string) => setDone((s) => ({ ...s, [id]: !s[id] }));
+  const toggle = (id: string) => {
+    setDone((s) => {
+      const next = { ...s, [id]: !s[id] };
+      return next;
+    });
+    setDoneAt((s) => {
+      if (done[id]) {
+        const { [id]: _omit, ...rest } = s;
+        return rest;
+      }
+      const now = new Date();
+      return { ...s, [id]: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}` };
+    });
+  };
+
+  const totalDone = filtered.filter((t) => done[t.id]).length;
+  const overallPct = filtered.length ? Math.round((totalDone / filtered.length) * 100) : 0;
 
   return (
     <div className="space-y-5">
@@ -152,8 +176,15 @@ function DailyTab({
           onChange={setAssigneeFilter}
           options={["Todos", ...ASSIGNEES]}
         />
-        <div className="ml-auto text-xs text-muted-foreground font-mono">
-          {filtered.length} tarefas filtradas
+        <Select
+          label="Status"
+          value={statusFilter}
+          onChange={(v) => setStatusFilter(v as StatusFilter)}
+          options={["Todos", "Pendente", "Concluído"]}
+        />
+        <div className="ml-auto flex items-center gap-3 text-xs">
+          <span className="text-muted-foreground font-mono">{filtered.length} tarefas</span>
+          <span className="px-2 py-1 rounded-md bg-surface font-mono text-primary">{overallPct}% do filtro</span>
         </div>
       </div>
 
@@ -163,19 +194,29 @@ function DailyTab({
           const pct = Math.round((doneCount / tasks.length) * 100);
           const color = COMPANY_COLORS[company];
 
+          // group tasks by category
+          const byCategory = new Map<string, DailyTask[]>();
+          tasks.forEach((t) => {
+            if (!byCategory.has(t.category)) byCategory.set(t.category, []);
+            byCategory.get(t.category)!.push(t);
+          });
+
           return (
-            <div key={company} className="rounded-xl border border-border bg-card shadow-card overflow-hidden">
+            <div key={company} className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col">
               <div
                 className="p-5 border-b border-border"
                 style={{
-                  background: `linear-gradient(180deg, color-mix(in oklab, ${color} 10%, transparent), transparent)`,
+                  background: `linear-gradient(180deg, color-mix(in oklab, ${color} 12%, transparent), transparent)`,
                 }}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-2">
                   <CompanyTag company={company} />
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {doneCount}/{tasks.length}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-border bg-surface text-muted-foreground">
+                      <RotateCcw className="h-2.5 w-2.5" /> Diário
+                    </span>
+                    <span className="font-mono text-xs text-muted-foreground">{doneCount}/{tasks.length}</span>
+                  </div>
                 </div>
                 <div className="mt-3 flex items-center gap-3">
                   <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
@@ -184,46 +225,106 @@ function DailyTab({
                       style={{ width: `${pct}%`, backgroundColor: color }}
                     />
                   </div>
-                  <span className="text-xs font-mono" style={{ color }}>{pct}%</span>
+                  <span className="text-xs font-mono font-semibold" style={{ color }}>{pct}%</span>
                 </div>
+
+                {/* mini histórico — últimos 7 dias */}
+                <MiniHistory color={color} />
               </div>
 
-              <ul className="p-2.5 space-y-1">
-                {tasks.map((t) => {
-                  const checked = !!done[t.id];
+              <div className="p-3 space-y-3 flex-1">
+                {Array.from(byCategory.entries()).map(([cat, items]) => {
+                  const cdone = items.filter((t) => done[t.id]).length;
                   return (
-                    <li key={t.id}>
-                      <button
-                        onClick={() => toggle(t.id)}
-                        className={`w-full flex items-start gap-3 rounded-lg p-3 text-left transition group ${
-                          checked ? "bg-surface/40" : "hover:bg-surface/60"
-                        }`}
-                      >
-                        <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition ${
-                          checked ? "border-primary bg-gradient-primary" : "border-border bg-surface"
-                        }`}>
-                          {checked && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className={`text-sm ${checked ? "line-through text-muted-foreground" : "font-medium"}`}>
-                            {t.text}
-                          </div>
-                          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                            <PriorityBadge priority={t.priority} />
-                            <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-mono">
-                              <Clock className="h-3 w-3" />{t.dueTime}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground">· {t.assignee}</span>
-                          </div>
-                        </div>
-                      </button>
-                    </li>
+                    <div key={cat}>
+                      <div className="flex items-center justify-between px-2 mb-1">
+                        <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-muted-foreground">{cat}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground">{cdone}/{items.length}</span>
+                      </div>
+                      <ul className="space-y-0.5">
+                        {items.map((t) => {
+                          const checked = !!done[t.id];
+                          const at = doneAt[t.id];
+                          return (
+                            <li key={t.id}>
+                              <button
+                                onClick={() => toggle(t.id)}
+                                className={`w-full flex items-start gap-3 rounded-lg p-2.5 text-left transition group ${
+                                  checked ? "bg-surface/40" : "hover:bg-surface/60"
+                                }`}
+                              >
+                                <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition ${
+                                  checked ? "border-primary bg-gradient-primary" : "border-border bg-surface"
+                                }`}>
+                                  {checked && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <div className={`text-sm leading-snug ${checked ? "line-through text-muted-foreground" : "font-medium"}`}>
+                                    {t.text}
+                                  </div>
+                                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <PriorityBadge priority={t.priority} />
+                                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-mono">
+                                      <Clock className="h-3 w-3" />{t.dueTime}
+                                    </span>
+                                    <span className="text-[10px] text-muted-foreground">· {t.assignee}</span>
+                                    {checked && at && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] text-success font-mono ml-auto">
+                                        <CheckCircle2 className="h-3 w-3" /> {at}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
                   );
                 })}
-              </ul>
+              </div>
             </div>
           );
         })}
+        {grouped.length === 0 && (
+          <div className="md:col-span-2 xl:col-span-3 rounded-xl border border-dashed border-border bg-card/40 p-10 text-center text-sm text-muted-foreground">
+            Nenhuma tarefa corresponde aos filtros aplicados.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MiniHistory({ color }: { color: string }) {
+  // pequena visualização determinística dos últimos 7 dias
+  const bars = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, i) => {
+      const seed = (i * 37 + color.length * 13) % 100;
+      return 35 + (seed % 60);
+    });
+  }, [color]);
+  const labels = ["S", "T", "Q", "Q", "S", "S", "D"];
+  return (
+    <div className="mt-4">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground font-semibold">Histórico 7d</span>
+        <span className="text-[9px] text-muted-foreground font-mono">conclusão</span>
+      </div>
+      <div className="flex items-end gap-1 h-8">
+        {bars.map((h, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center gap-1">
+            <div
+              className="w-full rounded-sm transition-all"
+              style={{
+                height: `${h}%`,
+                backgroundColor: `color-mix(in oklab, ${color} ${30 + h / 2}%, transparent)`,
+              }}
+            />
+            <span className="text-[8px] text-muted-foreground/60 font-mono">{labels[i]}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
