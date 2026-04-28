@@ -96,7 +96,7 @@ function ChecklistsPage() {
         })}
       </div>
 
-      {tab === "diario" && <DailyTab done={done} setDone={setDone} />}
+      {tab === "diario" && <DailyTab done={done} setDone={setDone} doneAt={doneAt} setDoneAt={setDoneAt} />}
       {tab === "historico" && <HistoryTab />}
       {tab === "ponto" && <PontoTab completionPct={completionPct} />}
       {tab === "metricas" && <MetricsTab done={done} />}
