@@ -93,44 +93,106 @@ export const INITIAL_CARDS: KanbanCard[] = [
   },
 ];
 
-export const COMPANY_CHECKLISTS: Record<Company, string[]> = {
-  "Pub 3D": [
-    "Verificar fila de renderização",
-    "Backup de projetos do dia anterior",
-    "Reunião criativa rápida (15min)",
-    "Revisar entregas pendentes",
-  ],
-  "Pub IA": [
-    "Monitorar performance dos modelos",
-    "Revisar logs de inferência",
-    "Validar pipeline de dados",
-    "Atualizar dashboards de métrica",
-  ],
-  "Pub RECORDS": [
-    "Conferir agenda de estúdio",
-    "Backup de sessões",
-    "Revisar masters pendentes",
-    "Reunião com artistas do dia",
-  ],
-  "Pub Films": [
-    "Checar equipamento de filmagem",
-    "Revisar cronograma de produção",
-    "Backup de mídias brutas",
-    "Alinhamento com diretor",
-  ],
-  "Bricks": [
-    "Conferência de estoque",
-    "Checar pedidos em rota",
-    "Validar entregas do dia",
-    "Reunião comercial 9h",
-  ],
-  "Têxtil": [
-    "Inspecionar produção da manhã",
-    "Verificar qualidade — amostragem",
-    "Conferir matéria-prima recebida",
-    "Atualizar planilha de produção",
-  ],
-};
+export interface DailyTask {
+  id: string;
+  text: string;
+  company: Company;
+  assignee: string;
+  dueTime: string; // HH:MM
+  priority: Priority;
+}
+
+export const DAILY_TASKS: DailyTask[] = [
+  // Pub 3D
+  { id: "t1", text: "Verificar fila de renderização", company: "Pub 3D", assignee: "Lucas M.", dueTime: "09:00", priority: "Alta" },
+  { id: "t2", text: "Backup de projetos do dia anterior", company: "Pub 3D", assignee: "Lucas M.", dueTime: "09:30", priority: "Média" },
+  { id: "t3", text: "Reunião criativa rápida", company: "Pub 3D", assignee: "Pedro A.", dueTime: "10:00", priority: "Média" },
+  { id: "t4", text: "Revisar entregas pendentes", company: "Pub 3D", assignee: "Lucas M.", dueTime: "17:00", priority: "Alta" },
+  // Pub IA
+  { id: "t5", text: "Monitorar performance dos modelos", company: "Pub IA", assignee: "Marina S.", dueTime: "08:30", priority: "Crítica" },
+  { id: "t6", text: "Revisar logs de inferência", company: "Pub IA", assignee: "Marina S.", dueTime: "11:00", priority: "Alta" },
+  { id: "t7", text: "Validar pipeline de dados", company: "Pub IA", assignee: "Marina S.", dueTime: "14:00", priority: "Média" },
+  { id: "t8", text: "Atualizar dashboards de métrica", company: "Pub IA", assignee: "Marina S.", dueTime: "16:30", priority: "Baixa" },
+  // Pub RECORDS
+  { id: "t9", text: "Conferir agenda de estúdio", company: "Pub RECORDS", assignee: "Júlia R.", dueTime: "09:00", priority: "Alta" },
+  { id: "t10", text: "Backup de sessões", company: "Pub RECORDS", assignee: "Júlia R.", dueTime: "10:00", priority: "Crítica" },
+  { id: "t11", text: "Revisar masters pendentes", company: "Pub RECORDS", assignee: "Júlia R.", dueTime: "15:00", priority: "Alta" },
+  { id: "t12", text: "Reunião com artistas do dia", company: "Pub RECORDS", assignee: "Pedro A.", dueTime: "17:30", priority: "Média" },
+  // Pub Films
+  { id: "t13", text: "Checar equipamento de filmagem", company: "Pub Films", assignee: "Pedro A.", dueTime: "08:00", priority: "Crítica" },
+  { id: "t14", text: "Revisar cronograma de produção", company: "Pub Films", assignee: "Pedro A.", dueTime: "10:30", priority: "Alta" },
+  { id: "t15", text: "Backup de mídias brutas", company: "Pub Films", assignee: "Pedro A.", dueTime: "18:00", priority: "Alta" },
+  { id: "t16", text: "Alinhamento com diretor", company: "Pub Films", assignee: "Pedro A.", dueTime: "11:30", priority: "Média" },
+  // Bricks
+  { id: "t17", text: "Conferência de estoque", company: "Bricks", assignee: "Rafael T.", dueTime: "08:00", priority: "Alta" },
+  { id: "t18", text: "Checar pedidos em rota", company: "Bricks", assignee: "Rafael T.", dueTime: "10:00", priority: "Crítica" },
+  { id: "t19", text: "Validar entregas do dia", company: "Bricks", assignee: "Rafael T.", dueTime: "16:00", priority: "Alta" },
+  { id: "t20", text: "Reunião comercial", company: "Bricks", assignee: "Rafael T.", dueTime: "09:00", priority: "Média" },
+  // Têxtil
+  { id: "t21", text: "Inspecionar produção da manhã", company: "Têxtil", assignee: "Camila O.", dueTime: "08:30", priority: "Alta" },
+  { id: "t22", text: "Verificar qualidade — amostragem", company: "Têxtil", assignee: "Camila O.", dueTime: "11:00", priority: "Crítica" },
+  { id: "t23", text: "Conferir matéria-prima", company: "Têxtil", assignee: "Camila O.", dueTime: "14:00", priority: "Média" },
+  { id: "t24", text: "Atualizar planilha de produção", company: "Têxtil", assignee: "Camila O.", dueTime: "17:00", priority: "Baixa" },
+];
+
+export const ASSIGNEES = [
+  "Lucas M.", "Marina S.", "Pedro A.", "Júlia R.", "Rafael T.", "Camila O.",
+] as const;
+
+// Histórico operacional: últimos 14 dias
+export interface HistoryDay {
+  date: string; // ISO yyyy-mm-dd
+  label: string; // "Seg 21"
+  completed: number;
+  pending: number;
+  late: number;
+  productivity: number; // 0..100
+}
+
+function genHistory(): HistoryDay[] {
+  const days: HistoryDay[] = [];
+  const today = new Date();
+  const wd = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(today.getDate() - i);
+    const seed = d.getDate() + d.getMonth() * 31;
+    const completed = 14 + (seed % 9);
+    const late = (seed % 4);
+    const pending = 24 - completed - late;
+    const productivity = Math.round((completed / 24) * 100);
+    days.push({
+      date: d.toISOString().slice(0, 10),
+      label: `${wd[d.getDay()]} ${String(d.getDate()).padStart(2, "0")}`,
+      completed, pending: Math.max(0, pending), late, productivity,
+    });
+  }
+  return days;
+}
+
+export const OPERATIONAL_HISTORY: HistoryDay[] = genHistory();
+
+export interface TimelineEntry {
+  id: string;
+  time: string;
+  user: string;
+  company: Company;
+  action: string;
+  status: "completed" | "late" | "pending";
+}
+
+export const TIMELINE: TimelineEntry[] = [
+  { id: "h1", time: "08:32", user: "Marina S.", company: "Pub IA", action: "Concluiu monitoramento de modelos", status: "completed" },
+  { id: "h2", time: "09:05", user: "Rafael T.", company: "Bricks", action: "Conferência de estoque finalizada", status: "completed" },
+  { id: "h3", time: "09:48", user: "Pedro A.", company: "Pub Films", action: "Equipamento checado", status: "completed" },
+  { id: "h4", time: "10:22", user: "Júlia R.", company: "Pub RECORDS", action: "Backup de sessões", status: "late" },
+  { id: "h5", time: "11:10", user: "Camila O.", company: "Têxtil", action: "Amostragem de qualidade", status: "completed" },
+  { id: "h6", time: "11:55", user: "Lucas M.", company: "Pub 3D", action: "Render fila — pendente revisão", status: "pending" },
+  { id: "h7", time: "13:40", user: "Marina S.", company: "Pub IA", action: "Pipeline validado", status: "completed" },
+  { id: "h8", time: "15:18", user: "Júlia R.", company: "Pub RECORDS", action: "Master revisado", status: "completed" },
+  { id: "h9", time: "16:05", user: "Rafael T.", company: "Bricks", action: "Entregas do dia validadas", status: "completed" },
+  { id: "h10", time: "17:22", user: "Lucas M.", company: "Pub 3D", action: "Revisão de entregas atrasada", status: "late" },
+];
 
 export interface CalendarEvent {
   id: string;
