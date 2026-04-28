@@ -603,11 +603,21 @@ function PontoTab({ completionPct }: { completionPct: number }) {
             <StatCard label="Pausas" value={fmtTime(livePause)} icon={Pause} accent="warning" />
             <StatCard label="Tarefas concluídas" value={`${Math.round(completionPct / 100 * DAILY_TASKS.length)}/${DAILY_TASKS.length}`} icon={CheckCircle2} accent="info" />
           </div>
+          <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
+            <SummaryRow label="Entrada" value={startedAt ? new Date(startedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"} />
+            <SummaryRow label="Saída" value={session.endedAt ? new Date(session.endedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"} />
+            <SummaryRow label="Pausas" value={`${session.pauses.length}`} />
+          </div>
           <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
             Você completou <strong className="text-foreground">{completionPct}%</strong> das tarefas do dia
             em <strong className="text-foreground">{fmtTime(productiveMs)}</strong> de tempo produtivo.
             {completionPct >= 80 ? " Excelente performance — meta diária atingida." : " Algumas tarefas ficaram pendentes — considere revisar a priorização amanhã."}
           </p>
+          <div className="mt-4">
+            <button onClick={reset} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4">
+              Iniciar novo expediente
+            </button>
+          </div>
         </div>
       )}
     </div>
