@@ -12,6 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppKanbanRouteImport } from './routes/app.kanban'
+import { Route as AppCrmRouteImport } from './routes/app.crm'
+import { Route as AppChecklistsRouteImport } from './routes/app.checklists'
+import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -28,34 +34,108 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppKanbanRoute = AppKanbanRouteImport.update({
+  id: '/kanban',
+  path: '/kanban',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCrmRoute = AppCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChecklistsRoute = AppChecklistsRouteImport.update({
+  id: '/checklists',
+  path: '/checklists',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCalendarRoute = AppCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/calendar': typeof AppCalendarRoute
+  '/app/checklists': typeof AppChecklistsRoute
+  '/app/crm': typeof AppCrmRoute
+  '/app/kanban': typeof AppKanbanRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
   '/login': typeof LoginRoute
+  '/app/calendar': typeof AppCalendarRoute
+  '/app/checklists': typeof AppChecklistsRoute
+  '/app/crm': typeof AppCrmRoute
+  '/app/kanban': typeof AppKanbanRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/calendar': typeof AppCalendarRoute
+  '/app/checklists': typeof AppChecklistsRoute
+  '/app/crm': typeof AppCrmRoute
+  '/app/kanban': typeof AppKanbanRoute
+  '/app/settings': typeof AppSettingsRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/login'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/login'
+    | '/app/calendar'
+    | '/app/checklists'
+    | '/app/crm'
+    | '/app/kanban'
+    | '/app/settings'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app' | '/login'
-  id: '__root__' | '/' | '/app' | '/login'
+  to:
+    | '/'
+    | '/login'
+    | '/app/calendar'
+    | '/app/checklists'
+    | '/app/crm'
+    | '/app/kanban'
+    | '/app/settings'
+    | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/login'
+    | '/app/calendar'
+    | '/app/checklists'
+    | '/app/crm'
+    | '/app/kanban'
+    | '/app/settings'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRoute
+  AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
 }
 
@@ -82,12 +162,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/kanban': {
+      id: '/app/kanban'
+      path: '/kanban'
+      fullPath: '/app/kanban'
+      preLoaderRoute: typeof AppKanbanRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/crm': {
+      id: '/app/crm'
+      path: '/crm'
+      fullPath: '/app/crm'
+      preLoaderRoute: typeof AppCrmRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/checklists': {
+      id: '/app/checklists'
+      path: '/checklists'
+      fullPath: '/app/checklists'
+      preLoaderRoute: typeof AppChecklistsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/calendar': {
+      id: '/app/calendar'
+      path: '/calendar'
+      fullPath: '/app/calendar'
+      preLoaderRoute: typeof AppCalendarRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppCalendarRoute: typeof AppCalendarRoute
+  AppChecklistsRoute: typeof AppChecklistsRoute
+  AppCrmRoute: typeof AppCrmRoute
+  AppKanbanRoute: typeof AppKanbanRoute
+  AppSettingsRoute: typeof AppSettingsRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppCalendarRoute: AppCalendarRoute,
+  AppChecklistsRoute: AppChecklistsRoute,
+  AppCrmRoute: AppCrmRoute,
+  AppKanbanRoute: AppKanbanRoute,
+  AppSettingsRoute: AppSettingsRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AppRoute: AppRoute,
+  AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
 }
 export const routeTree = rootRouteImport
