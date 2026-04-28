@@ -1,69 +1,45 @@
-import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-
+import { Outlet, createRootRoute, HeadContent, Scripts, redirect } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
-
-function NotFoundComponent() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
-        </p>
-        <div className="mt-6">
-          <Link
-            to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Go home
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { AuthProvider } from "@/lib/auth";
 
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "PUB CORE — Central Operacional Executiva" },
+      { name: "description", content: "Plataforma de gestão operacional da holding PUB. Kanban, checklists, calendário, CRM e KPIs em um só lugar." },
+      { name: "theme-color", content: "#0e1118" },
+      { property: "og:title", content: "PUB CORE — Holding OS" },
+      { property: "og:description", content: "Central operacional executiva da holding PUB." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
-    links: [
-      {
-        rel: "stylesheet",
-        href: appCss,
-      },
-    ],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   shellComponent: RootShell,
-  component: RootComponent,
-  notFoundComponent: NotFoundComponent,
+  component: () => <AuthProvider><Outlet /></AuthProvider>,
+  notFoundComponent: NotFound,
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
+    <html lang="pt-BR">
+      <head><HeadContent /></head>
+      <body>{children}<Scripts /></body>
     </html>
   );
 }
 
-function RootComponent() {
-  return <Outlet />;
+function NotFound() {
+  return (
+    <div className="min-h-screen grid place-items-center bg-background">
+      <div className="text-center">
+        <h1 className="font-display text-7xl text-gradient">404</h1>
+        <p className="mt-2 text-muted-foreground">Rota não encontrada</p>
+        <a href="/" className="mt-6 inline-block rounded-lg bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground">Voltar</a>
+      </div>
+    </div>
+  );
 }
+
+export { redirect };
