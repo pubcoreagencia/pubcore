@@ -17,6 +17,7 @@ import { CompanyTag } from "@/components/CompanyTag";
 import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/lib/auth";
+import { usePonto, fmtTime } from "@/lib/ponto";
 
 export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
@@ -486,67 +487,15 @@ function HistoryTab() {
 
 /* =================== TAB: BATER PONTO =================== */
 
-type PontoStatus = "off" | "working" | "paused" | "ended";
-
 function PontoTab({ completionPct }: { completionPct: number }) {
   const { user } = useAuth();
-  const [status, setStatus] = useState<PontoStatus>("off");
-  const [startedAt, setStartedAt] = useState<number | null>(null);
-  const [workMs, setWorkMs] = useState(0); // tempo total trabalhado
-  const [pauseMs, setPauseMs] = useState(0);
-  const [pauseStart, setPauseStart] = useState<number | null>(null);
-  const [tick, setTick] = useState(0);
-  const intervalRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (status === "working" || status === "paused") {
-      intervalRef.current = window.setInterval(() => setTick((t) => t + 1), 1000);
-    }
-    return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
-    };
-  }, [status]);
-
-  const liveWork = (() => {
-    if (status === "working" && startedAt) {
-      return workMs + (Date.now() - startedAt) - pauseMs;
-    }
-    return workMs - pauseMs;
-  })();
-
-  const livePause = (() => {
-    if (status === "paused" && pauseStart) return pauseMs + (Date.now() - pauseStart);
-    return pauseMs;
-  })();
-
-  void tick;
-
-  const start = () => {
-    setStatus("working");
-    setStartedAt(Date.now());
-    setWorkMs(0);
-    setPauseMs(0);
-  };
-  const pause = () => {
-    setStatus("paused");
-    setPauseStart(Date.now());
-  };
-  const resume = () => {
-    if (pauseStart) setPauseMs((p) => p + (Date.now() - pauseStart));
-    setPauseStart(null);
-    setStatus("working");
-  };
-  const end = () => setStatus("ended");
-  const reset = () => {
-    setStatus("off");
-    setStartedAt(null);
-    setWorkMs(0);
-    setPauseMs(0);
-    setPauseStart(null);
-  };
-
-  const productiveMs = Math.max(0, liveWork - livePause);
-  const isLive = status === "working" || status === "paused";
+  const {
+    session, liveWorkMs: liveWork, livePauseMs: livePause, productiveMs, isLive,
+    start: startPonto, pause, resume, end, reset,
+  } = usePonto();
+  const status = session.status;
+  const start = () => startPonto(user?.name);
+  const startedAt = session.startedAt;
 
   const priorityTasks = DAILY_TASKS
     .filter((t) => t.priority === "Crítica" || t.priority === "Alta")
