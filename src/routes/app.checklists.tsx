@@ -34,6 +34,7 @@ const TABS: { id: Tab; label: string; icon: typeof ListTodo }[] = [
 function ChecklistsPage() {
   const [tab, setTab] = useState<Tab>("diario");
   const [done, setDone] = useState<Record<string, boolean>>({});
+  const [doneAt, setDoneAt] = useState<Record<string, string>>({});
 
   const completionPct = Math.round(
     (Object.values(done).filter(Boolean).length / DAILY_TASKS.length) * 100
