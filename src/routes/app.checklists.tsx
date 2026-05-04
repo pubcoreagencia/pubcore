@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState } from "react";
 import {
   Check, Filter, Plus, Trash2, Pencil, GripVertical, X,
   Play, Pause, StopCircle, RotateCcw,
