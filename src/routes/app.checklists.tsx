@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import {
-  Check, Filter, Clock, Play, Pause, StopCircle, RotateCcw,
+  Check, Filter, Plus, Trash2, Pencil, GripVertical, X,
+  Play, Pause, StopCircle, RotateCcw,
   TrendingUp, CheckCircle2, AlertTriangle, ListTodo, Activity,
   Target, Sparkles, History, Timer, BarChart3, Users,
 } from "lucide-react";
@@ -10,14 +11,14 @@ import {
   BarChart, Bar, RadialBarChart, RadialBar, PolarAngleAxis,
 } from "recharts";
 import {
-  COMPANIES, COMPANY_COLORS, DAILY_TASKS, ASSIGNEES,
-  OPERATIONAL_HISTORY, TIMELINE, type Company, type DailyTask,
+  COMPANIES, COMPANY_COLORS, ASSIGNEES,
+  OPERATIONAL_HISTORY, TIMELINE, type Company,
 } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
-import { PriorityBadge } from "@/components/PriorityBadge";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/lib/auth";
 import { usePonto, fmtTime } from "@/lib/ponto";
+import { useChecklist, type UserTask } from "@/lib/checklist-store";
 
 export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
@@ -34,12 +35,8 @@ const TABS: { id: Tab; label: string; icon: typeof ListTodo }[] = [
 
 function ChecklistsPage() {
   const [tab, setTab] = useState<Tab>("diario");
-  const [done, setDone] = useState<Record<string, boolean>>({});
-  const [doneAt, setDoneAt] = useState<Record<string, string>>({});
-
-  const completionPct = Math.round(
-    (Object.values(done).filter(Boolean).length / DAILY_TASKS.length) * 100
-  );
+  const { totals } = useChecklist();
+  const completionPct = totals.pct;
 
   return (
     <div className="p-6 lg:p-10 max-w-[1600px] mx-auto">
@@ -48,7 +45,7 @@ function ChecklistsPage() {
           <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Operação diária</div>
           <h1 className="font-display text-4xl font-bold tracking-tight mt-1">Centro Operacional</h1>
           <p className="text-muted-foreground mt-1">
-            Checklists, histórico, ponto e métricas — tudo em um só lugar.
+            Crie, organize e acompanhe suas próprias tarefas por empresa.
           </p>
         </div>
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-card">
@@ -71,7 +68,7 @@ function ChecklistsPage() {
           </div>
           <div>
             <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Hoje</div>
-            <div className="text-sm font-semibold">{Object.values(done).filter(Boolean).length}/{DAILY_TASKS.length} tarefas</div>
+            <div className="text-sm font-semibold">{totals.done}/{totals.total} tarefas</div>
           </div>
         </div>
       </header>
@@ -97,10 +94,10 @@ function ChecklistsPage() {
         })}
       </div>
 
-      {tab === "diario" && <DailyTab done={done} setDone={setDone} doneAt={doneAt} setDoneAt={setDoneAt} />}
+      {tab === "diario" && <DailyTab />}
       {tab === "historico" && <HistoryTab />}
       {tab === "ponto" && <PontoTab completionPct={completionPct} />}
-      {tab === "metricas" && <MetricsTab done={done} />}
+      {tab === "metricas" && <MetricsTab />}
     </div>
   );
 }
@@ -109,56 +106,25 @@ function ChecklistsPage() {
 
 type StatusFilter = "Todos" | "Concluído" | "Pendente";
 
-function DailyTab({
-  done, setDone, doneAt, setDoneAt,
-}: {
-  done: Record<string, boolean>;
-  setDone: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  doneAt: Record<string, string>;
-  setDoneAt: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-}) {
+function DailyTab() {
+  const { state } = useChecklist();
   const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
-  const [assigneeFilter, setAssigneeFilter] = useState<string>("Todos");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Todos");
 
-  const filtered = useMemo(
-    () =>
-      DAILY_TASKS.filter((t) => {
-        if (companyFilter !== "Todas" && t.company !== companyFilter) return false;
-        if (assigneeFilter !== "Todos" && t.assignee !== assigneeFilter) return false;
-        if (statusFilter === "Concluído" && !done[t.id]) return false;
-        if (statusFilter === "Pendente" && done[t.id]) return false;
-        return true;
-      }),
-    [companyFilter, assigneeFilter, statusFilter, done]
+  const visibleCompanies = useMemo(
+    () => (companyFilter === "Todas" ? [...COMPANIES] : [companyFilter]),
+    [companyFilter]
   );
 
-  const grouped = useMemo(() => {
-    const m = new Map<Company, DailyTask[]>();
-    filtered.forEach((t) => {
-      if (!m.has(t.company)) m.set(t.company, []);
-      m.get(t.company)!.push(t);
-    });
-    return Array.from(m.entries());
-  }, [filtered]);
-
-  const toggle = (id: string) => {
-    setDone((s) => {
-      const next = { ...s, [id]: !s[id] };
-      return next;
-    });
-    setDoneAt((s) => {
-      if (done[id]) {
-        const { [id]: _omit, ...rest } = s;
-        return rest;
-      }
-      const now = new Date();
-      return { ...s, [id]: `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}` };
-    });
-  };
-
-  const totalDone = filtered.filter((t) => done[t.id]).length;
-  const overallPct = filtered.length ? Math.round((totalDone / filtered.length) * 100) : 0;
+  const totals = useMemo(() => {
+    let total = 0, done = 0;
+    for (const c of visibleCompanies) {
+      const list = state[c];
+      total += list.length;
+      done += list.filter((t) => t.done).length;
+    }
+    return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
+  }, [state, visibleCompanies]);
 
   return (
     <div className="space-y-5">
@@ -172,160 +138,266 @@ function DailyTab({
           options={["Todas", ...COMPANIES]}
         />
         <Select
-          label="Responsável"
-          value={assigneeFilter}
-          onChange={setAssigneeFilter}
-          options={["Todos", ...ASSIGNEES]}
-        />
-        <Select
           label="Status"
           value={statusFilter}
           onChange={(v) => setStatusFilter(v as StatusFilter)}
           options={["Todos", "Pendente", "Concluído"]}
         />
         <div className="ml-auto flex items-center gap-3 text-xs">
-          <span className="text-muted-foreground font-mono">{filtered.length} tarefas</span>
-          <span className="px-2 py-1 rounded-md bg-surface font-mono text-primary">{overallPct}% do filtro</span>
+          <span className="text-muted-foreground font-mono">{totals.done}/{totals.total} concluídas</span>
+          <span className="px-2 py-1 rounded-md bg-surface font-mono text-primary">{totals.pct}%</span>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {grouped.map(([company, tasks]) => {
-          const doneCount = tasks.filter((t) => done[t.id]).length;
-          const pct = Math.round((doneCount / tasks.length) * 100);
-          const color = COMPANY_COLORS[company];
-
-          // group tasks by category
-          const byCategory = new Map<string, DailyTask[]>();
-          tasks.forEach((t) => {
-            if (!byCategory.has(t.category)) byCategory.set(t.category, []);
-            byCategory.get(t.category)!.push(t);
-          });
-
-          return (
-            <div key={company} className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col">
-              <div
-                className="p-5 border-b border-border"
-                style={{
-                  background: `linear-gradient(180deg, color-mix(in oklab, ${color} 12%, transparent), transparent)`,
-                }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <CompanyTag company={company} />
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border border-border bg-surface text-muted-foreground">
-                      <RotateCcw className="h-2.5 w-2.5" /> Diário
-                    </span>
-                    <span className="font-mono text-xs text-muted-foreground">{doneCount}/{tasks.length}</span>
-                  </div>
-                </div>
-                <div className="mt-3 flex items-center gap-3">
-                  <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
-                    <div
-                      className="h-full transition-all rounded-full"
-                      style={{ width: `${pct}%`, backgroundColor: color }}
-                    />
-                  </div>
-                  <span className="text-xs font-mono font-semibold" style={{ color }}>{pct}%</span>
-                </div>
-
-                {/* mini histórico — últimos 7 dias */}
-                <MiniHistory color={color} />
-              </div>
-
-              <div className="p-3 space-y-3 flex-1">
-                {Array.from(byCategory.entries()).map(([cat, items]) => {
-                  const cdone = items.filter((t) => done[t.id]).length;
-                  return (
-                    <div key={cat}>
-                      <div className="flex items-center justify-between px-2 mb-1">
-                        <span className="text-[10px] uppercase tracking-[0.15em] font-bold text-muted-foreground">{cat}</span>
-                        <span className="text-[10px] font-mono text-muted-foreground">{cdone}/{items.length}</span>
-                      </div>
-                      <ul className="space-y-0.5">
-                        {items.map((t) => {
-                          const checked = !!done[t.id];
-                          const at = doneAt[t.id];
-                          return (
-                            <li key={t.id}>
-                              <button
-                                onClick={() => toggle(t.id)}
-                                className={`w-full flex items-start gap-3 rounded-lg p-2.5 text-left transition group ${
-                                  checked ? "bg-surface/40" : "hover:bg-surface/60"
-                                }`}
-                              >
-                                <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition ${
-                                  checked ? "border-primary bg-gradient-primary" : "border-border bg-surface"
-                                }`}>
-                                  {checked && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
-                                </span>
-                                <div className="flex-1 min-w-0">
-                                  <div className={`text-sm leading-snug ${checked ? "line-through text-muted-foreground" : "font-medium"}`}>
-                                    {t.text}
-                                  </div>
-                                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                                    <PriorityBadge priority={t.priority} />
-                                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground font-mono">
-                                      <Clock className="h-3 w-3" />{t.dueTime}
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground">· {t.assignee}</span>
-                                    {checked && at && (
-                                      <span className="inline-flex items-center gap-1 text-[10px] text-success font-mono ml-auto">
-                                        <CheckCircle2 className="h-3 w-3" /> {at}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-        {grouped.length === 0 && (
-          <div className="md:col-span-2 xl:col-span-3 rounded-xl border border-dashed border-border bg-card/40 p-10 text-center text-sm text-muted-foreground">
-            Nenhuma tarefa corresponde aos filtros aplicados.
-          </div>
-        )}
+        {visibleCompanies.map((company) => (
+          <CompanyChecklistCard
+            key={company}
+            company={company}
+            statusFilter={statusFilter}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
-function MiniHistory({ color }: { color: string }) {
-  // pequena visualização determinística dos últimos 7 dias
-  const bars = useMemo(() => {
-    return Array.from({ length: 7 }).map((_, i) => {
-      const seed = (i * 37 + color.length * 13) % 100;
-      return 35 + (seed % 60);
-    });
-  }, [color]);
-  const labels = ["S", "T", "Q", "Q", "S", "S", "D"];
+function CompanyChecklistCard({
+  company, statusFilter,
+}: { company: Company; statusFilter: StatusFilter }) {
+  const { state, add, edit, remove, toggle, reorder, clearCompany } = useChecklist();
+  const tasks = state[company];
+  const [draft, setDraft] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  const color = COMPANY_COLORS[company];
+
+  const filtered = tasks.filter((t) => {
+    if (statusFilter === "Concluído") return t.done;
+    if (statusFilter === "Pendente") return !t.done;
+    return true;
+  });
+
+  const doneCount = tasks.filter((t) => t.done).length;
+  const pct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
+
+  const submitNew = () => {
+    if (!draft.trim()) return;
+    add(company, draft);
+    setDraft("");
+  };
+
+  const startEdit = (t: UserTask) => {
+    setEditingId(t.id);
+    setEditingText(t.text);
+  };
+  const saveEdit = () => {
+    if (editingId) edit(company, editingId, editingText);
+    setEditingId(null);
+    setEditingText("");
+  };
+
   return (
-    <div className="mt-4">
-      <div className="flex items-center justify-between mb-1.5">
-        <span className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground font-semibold">Histórico 7d</span>
-        <span className="text-[9px] text-muted-foreground font-mono">conclusão</span>
-      </div>
-      <div className="flex items-end gap-1 h-8">
-        {bars.map((h, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <div
-              className="w-full rounded-sm transition-all"
-              style={{
-                height: `${h}%`,
-                backgroundColor: `color-mix(in oklab, ${color} ${30 + h / 2}%, transparent)`,
-              }}
-            />
-            <span className="text-[8px] text-muted-foreground/60 font-mono">{labels[i]}</span>
+    <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col">
+      <div
+        className="p-5 border-b border-border"
+        style={{
+          background: `linear-gradient(180deg, color-mix(in oklab, ${color} 12%, transparent), transparent)`,
+        }}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <CompanyTag company={company} />
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-muted-foreground">{doneCount}/{tasks.length}</span>
+            {tasks.length > 0 && (
+              <button
+                onClick={() => {
+                  if (confirm(`Limpar todas as tarefas de ${company}?`)) clearCompany(company);
+                }}
+                className="text-[10px] text-muted-foreground hover:text-destructive transition"
+                title="Limpar tudo"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-        ))}
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <div className="flex-1 h-1.5 rounded-full bg-surface overflow-hidden">
+            <div
+              className="h-full transition-all rounded-full"
+              style={{ width: `${pct}%`, backgroundColor: color }}
+            />
+          </div>
+          <span className="text-xs font-mono font-semibold" style={{ color }}>{pct}%</span>
+        </div>
+      </div>
+
+      <div className="p-3 flex-1 flex flex-col">
+        {/* Add input */}
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitNew();
+            }}
+            placeholder="Nova tarefa…"
+            className="flex-1 rounded-lg bg-surface border border-border px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <button
+            onClick={submitNew}
+            disabled={!draft.trim()}
+            className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-primary text-primary-foreground shadow-glow disabled:opacity-40 disabled:shadow-none transition"
+            aria-label="Adicionar tarefa"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* List */}
+        {filtered.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center text-center px-3 py-8">
+            <div className="text-xs text-muted-foreground">
+              {tasks.length === 0
+                ? "Nenhuma tarefa ainda. Adicione a primeira acima."
+                : "Nenhuma tarefa neste filtro."}
+            </div>
+          </div>
+        ) : (
+          <ul className="space-y-0.5">
+            {filtered.map((t) => {
+              const isEditing = editingId === t.id;
+              const isDragging = dragId === t.id;
+              const isOver = overId === t.id && dragId && dragId !== t.id;
+              return (
+                <li
+                  key={t.id}
+                  draggable={!isEditing}
+                  onDragStart={(e) => {
+                    setDragId(t.id);
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragEnter={() => setOverId(t.id)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragId) reorder(company, dragId, t.id);
+                    setDragId(null);
+                    setOverId(null);
+                  }}
+                  onDragEnd={() => {
+                    setDragId(null);
+                    setOverId(null);
+                  }}
+                  className={`group flex items-start gap-2 rounded-lg p-2.5 transition ${
+                    t.done ? "bg-surface/40" : "hover:bg-surface/60"
+                  } ${isDragging ? "opacity-40" : ""} ${
+                    isOver ? "ring-2 ring-primary/50" : ""
+                  }`}
+                >
+                  <span
+                    className="mt-1 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition shrink-0"
+                    aria-label="Arrastar"
+                  >
+                    <GripVertical className="h-4 w-4" />
+                  </span>
+
+                  <button
+                    onClick={() => toggle(company, t.id)}
+                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition ${
+                      t.done ? "border-primary bg-gradient-primary" : "border-border bg-surface hover:border-primary/50"
+                    }`}
+                    aria-label={t.done ? "Desmarcar" : "Concluir"}
+                  >
+                    {t.done && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
+                  </button>
+
+                  <div className="flex-1 min-w-0">
+                    {isEditing ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          autoFocus
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveEdit();
+                            if (e.key === "Escape") {
+                              setEditingId(null);
+                              setEditingText("");
+                            }
+                          }}
+                          onBlur={saveEdit}
+                          className="flex-1 rounded-md bg-background border border-border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                        <button
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={saveEdit}
+                          className="text-success hover:text-success/80"
+                          aria-label="Salvar"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setEditingId(null);
+                            setEditingText("");
+                          }}
+                          className="text-muted-foreground hover:text-foreground"
+                          aria-label="Cancelar"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => toggle(company, t.id)}
+                          className={`block text-left text-sm leading-snug w-full ${
+                            t.done ? "line-through text-muted-foreground" : "font-medium"
+                          }`}
+                        >
+                          {t.text}
+                        </button>
+                        {t.done && t.doneAt && (
+                          <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-success font-mono">
+                            <CheckCircle2 className="h-3 w-3" /> Concluída às {t.doneAt}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {!isEditing && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
+                      <button
+                        onClick={() => startEdit(t)}
+                        className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-surface"
+                        aria-label="Editar"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => remove(company, t.id)}
+                        className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        aria-label="Excluir"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
     </div>
   );
@@ -493,13 +565,20 @@ function PontoTab({ completionPct }: { completionPct: number }) {
     session, liveWorkMs: liveWork, livePauseMs: livePause, productiveMs, isLive,
     start: startPonto, pause, resume, end, reset,
   } = usePonto();
+  const { state, totals } = useChecklist();
   const status = session.status;
   const start = () => startPonto(user?.name);
   const startedAt = session.startedAt;
 
-  const priorityTasks = DAILY_TASKS
-    .filter((t) => t.priority === "Crítica" || t.priority === "Alta")
-    .slice(0, 5);
+  const pendingTasks = useMemo(() => {
+    const out: { company: Company; task: UserTask }[] = [];
+    for (const c of COMPANIES) {
+      for (const t of state[c]) {
+        if (!t.done) out.push({ company: c, task: t });
+      }
+    }
+    return out.slice(0, 6);
+  }, [state]);
 
   return (
     <div className="space-y-5">
@@ -559,7 +638,7 @@ function PontoTab({ completionPct }: { completionPct: number }) {
           <div className="mt-4 space-y-4">
             <Goal label="Conclusão de tarefas" value={completionPct} target={90} />
             <Goal label="Tempo produtivo" value={Math.min(100, Math.round((productiveMs / (8 * 3600 * 1000)) * 100))} target={100} />
-            <Goal label="Tarefas críticas" value={50} target={100} />
+            <Goal label="Tarefas pendentes" value={Math.max(0, totals.total - totals.done)} target={Math.max(1, totals.total)} />
           </div>
         </div>
       </div>
@@ -569,24 +648,24 @@ function PontoTab({ completionPct }: { completionPct: number }) {
         <div className="rounded-xl border border-border bg-card p-5 shadow-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-display font-semibold flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" /> Tarefas prioritárias do dia
+              <Sparkles className="h-4 w-4 text-primary" /> Próximas tarefas pendentes
             </h3>
-            <span className="text-xs text-muted-foreground">{priorityTasks.length} itens</span>
+            <span className="text-xs text-muted-foreground">{pendingTasks.length} itens</span>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {priorityTasks.map((t) => (
-              <div key={t.id} className="rounded-lg border border-border bg-surface/40 p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <CompanyTag company={t.company} />
-                  <PriorityBadge priority={t.priority} />
+          {pendingTasks.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-6">
+              Nenhuma tarefa pendente. Adicione itens na aba Checklist Diário.
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {pendingTasks.map(({ company, task }) => (
+                <div key={task.id} className="rounded-lg border border-border bg-surface/40 p-4">
+                  <CompanyTag company={company} />
+                  <div className="mt-2 text-sm font-medium">{task.text}</div>
                 </div>
-                <div className="mt-2 text-sm font-medium">{t.text}</div>
-                <div className="mt-2 flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
-                  <Clock className="h-3 w-3" />{t.dueTime} · {t.assignee}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -601,7 +680,7 @@ function PontoTab({ completionPct }: { completionPct: number }) {
             <StatCard label="Tempo total" value={fmtTime(liveWork)} icon={Timer} accent="primary" />
             <StatCard label="Tempo produtivo" value={fmtTime(productiveMs)} icon={TrendingUp} accent="success" />
             <StatCard label="Pausas" value={fmtTime(livePause)} icon={Pause} accent="warning" />
-            <StatCard label="Tarefas concluídas" value={`${Math.round(completionPct / 100 * DAILY_TASKS.length)}/${DAILY_TASKS.length}`} icon={CheckCircle2} accent="info" />
+            <StatCard label="Tarefas concluídas" value={`${totals.done}/${totals.total}`} icon={CheckCircle2} accent="info" />
           </div>
           <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
             <SummaryRow label="Entrada" value={startedAt ? new Date(startedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"} />
@@ -661,7 +740,7 @@ function Goal({ label, value, target }: { label: string; value: number; target: 
     <div>
       <div className="flex items-center justify-between text-xs mb-1.5">
         <span className="text-muted-foreground">{label}</span>
-        <span className="font-mono">{value}<span className="text-muted-foreground">/{target}%</span></span>
+        <span className="font-mono">{value}<span className="text-muted-foreground">/{target}</span></span>
       </div>
       <div className="h-1.5 rounded-full bg-surface overflow-hidden">
         <div className="h-full bg-gradient-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
@@ -672,56 +751,57 @@ function Goal({ label, value, target }: { label: string; value: number; target: 
 
 /* =================== TAB: MÉTRICAS =================== */
 
-function MetricsTab({ done }: { done: Record<string, boolean> }) {
-  const completionPct = Math.round(
-    (Object.values(done).filter(Boolean).length / DAILY_TASKS.length) * 100
-  );
+function MetricsTab() {
+  const { state, totals } = useChecklist();
+  const completionPct = totals.pct;
 
   const byCompany = COMPANIES.map((c) => {
-    const tasks = DAILY_TASKS.filter((t) => t.company === c);
-    const completed = tasks.filter((t) => done[t.id]).length;
+    const list = state[c];
+    const completed = list.filter((t) => t.done).length;
     return {
       company: c,
-      total: tasks.length,
+      total: list.length,
       completed,
-      pct: Math.round((completed / Math.max(1, tasks.length)) * 100),
+      pct: list.length ? Math.round((completed / list.length) * 100) : 0,
     };
-  });
-
-  const byUser = ASSIGNEES.map((u) => {
-    const tasks = DAILY_TASKS.filter((t) => t.assignee === u);
-    const completed = tasks.filter((t) => done[t.id]).length;
-    return { user: u, total: tasks.length, completed };
   });
 
   const efficiency = Math.round(
     OPERATIONAL_HISTORY.slice(-7).reduce((s, d) => s + d.productivity, 0) / 7
   );
 
+  const activeCompanies = byCompany.filter((b) => b.total > 0).length;
+
   return (
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Produtividade" value={`${completionPct}%`} icon={TrendingUp} accent="primary" hint="hoje" />
-        <StatCard label="Taxa de conclusão" value={`${completionPct}%`} icon={CheckCircle2} accent="success" hint="tarefas/total" />
+        <StatCard label="Taxa de conclusão" value={`${totals.done}/${totals.total}`} icon={CheckCircle2} accent="success" hint="tarefas/total" />
         <StatCard label="Eficiência operacional" value={`${efficiency}%`} icon={Activity} accent="info" hint="média 7 dias" />
-        <StatCard label="Usuários ativos" value={ASSIGNEES.length} icon={Users} accent="warning" hint="hoje" />
+        <StatCard label="Empresas ativas" value={`${activeCompanies}/${COMPANIES.length}`} icon={Users} accent="warning" hint="com tarefas" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5 shadow-card">
           <h3 className="font-display font-semibold mb-4">Tarefas por empresa</h3>
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byCompany} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis dataKey="company" type="category" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} width={90} />
-                <Tooltip contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }} />
-                <Bar dataKey="completed" fill="oklch(0.78 0.16 65)" radius={[0, 4, 4, 0]} name="Concluídas" />
-                <Bar dataKey="total" fill="oklch(0.32 0.04 230)" radius={[0, 4, 4, 0]} name="Total" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {totals.total === 0 ? (
+            <div className="h-72 flex items-center justify-center text-sm text-muted-foreground">
+              Sem dados ainda. Crie tarefas para visualizar métricas.
+            </div>
+          ) : (
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={byCompany} layout="vertical" margin={{ left: 20 }}>
+                  <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <YAxis dataKey="company" type="category" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} width={90} />
+                  <Tooltip contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }} />
+                  <Bar dataKey="completed" fill="oklch(0.78 0.16 65)" radius={[0, 4, 4, 0]} name="Concluídas" />
+                  <Bar dataKey="total" fill="oklch(0.32 0.04 230)" radius={[0, 4, 4, 0]} name="Total" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5 shadow-card">
@@ -744,27 +824,27 @@ function MetricsTab({ done }: { done: Record<string, boolean> }) {
       </div>
 
       <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-        <h3 className="font-display font-semibold mb-4">Tarefas por usuário</h3>
+        <h3 className="font-display font-semibold mb-4">Progresso por empresa</h3>
         <div className="space-y-3">
-          {byUser.map((u) => {
-            const pct = Math.round((u.completed / Math.max(1, u.total)) * 100);
-            return (
-              <div key={u.user} className="flex items-center gap-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground font-bold text-sm shrink-0">
-                  {u.user[0]}
+          {byCompany.map((b) => (
+            <div key={b.company} className="flex items-center gap-4">
+              <div className="w-28 shrink-0">
+                <CompanyTag company={b.company} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between text-sm mb-1.5">
+                  <span className="font-mono text-xs text-muted-foreground">{b.completed}/{b.total} tarefas</span>
+                  <span className="font-mono text-xs">{b.pct}%</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between text-sm mb-1.5">
-                    <span className="font-medium">{u.user}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{u.completed}/{u.total} · {pct}%</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-surface overflow-hidden">
-                    <div className="h-full bg-gradient-primary rounded-full" style={{ width: `${pct}%` }} />
-                  </div>
+                <div className="h-1.5 rounded-full bg-surface overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${b.pct}%`, backgroundColor: COMPANY_COLORS[b.company] }}
+                  />
                 </div>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
     </div>
