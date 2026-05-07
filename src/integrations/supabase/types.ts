@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      checklist_tasks: {
+        Row: {
+          assignee: string | null
+          company: string
+          created_at: string
+          done_at: string | null
+          id: string
+          notes: string | null
+          owner_email: string
+          position: number
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assignee?: string | null
+          company: string
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          notes?: string | null
+          owner_email: string
+          position?: number
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assignee?: string | null
+          company?: string
+          created_at?: string
+          done_at?: string | null
+          id?: string
+          notes?: string | null
+          owner_email?: string
+          position?: number
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
