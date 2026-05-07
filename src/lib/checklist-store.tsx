@@ -2,19 +2,37 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from "react";
 import { COMPANIES, type Company } from "./mock-data";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "./auth";
 
 export interface UserTask {
   id: string;
   text: string;
   done: boolean;
-  doneAt?: string; // HH:MM
+  doneAt?: string; // HH:MM (derived from done_at timestamp)
   createdAt: number;
+  assignee?: string;
+  priority?: "low" | "medium" | "high";
+  notes?: string;
+  position: number;
 }
 
 export type ChecklistState = Record<Company, UserTask[]>;
 
-const STORAGE_KEY = "pubcore_checklist_v1";
-const CHANNEL = "pubcore_checklist_sync";
+interface DbRow {
+  id: string;
+  owner_email: string;
+  company: string;
+  title: string;
+  assignee: string | null;
+  status: string;
+  priority: string;
+  notes: string | null;
+  done_at: string | null;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
 
 const emptyState = (): ChecklistState =>
   COMPANIES.reduce((acc, c) => {
@@ -22,133 +40,254 @@ const emptyState = (): ChecklistState =>
     return acc;
   }, {} as ChecklistState);
 
-function load(): ChecklistState {
-  if (typeof window === "undefined") return emptyState();
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return emptyState();
-    const parsed = JSON.parse(raw) as Partial<ChecklistState>;
-    const base = emptyState();
-    for (const c of COMPANIES) {
-      if (Array.isArray(parsed[c])) base[c] = parsed[c] as UserTask[];
-    }
-    return base;
-  } catch {
-    return emptyState();
+function fmtHHMM(iso: string | null): string | undefined {
+  if (!iso) return undefined;
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function rowToTask(r: DbRow): UserTask {
+  return {
+    id: r.id,
+    text: r.title,
+    done: r.status === "done",
+    doneAt: fmtHHMM(r.done_at),
+    createdAt: new Date(r.created_at).getTime(),
+    assignee: r.assignee ?? undefined,
+    priority: (r.priority as UserTask["priority"]) ?? "medium",
+    notes: r.notes ?? undefined,
+    position: r.position,
+  };
+}
+
+function groupByCompany(rows: DbRow[]): ChecklistState {
+  const base = emptyState();
+  for (const r of rows) {
+    const c = r.company as Company;
+    if (!base[c]) continue;
+    base[c].push(rowToTask(r));
   }
+  for (const c of COMPANIES) base[c].sort((a, b) => a.position - b.position);
+  return base;
 }
 
 interface Ctx {
   state: ChecklistState;
-  add: (company: Company, text: string) => void;
-  edit: (company: Company, id: string, text: string) => void;
-  remove: (company: Company, id: string) => void;
-  toggle: (company: Company, id: string) => void;
-  reorder: (company: Company, fromId: string, toId: string) => void;
-  clearCompany: (company: Company) => void;
+  loading: boolean;
+  add: (company: Company, text: string) => Promise<void>;
+  edit: (company: Company, id: string, text: string) => Promise<void>;
+  remove: (company: Company, id: string) => Promise<void>;
+  toggle: (company: Company, id: string) => Promise<void>;
+  reorder: (company: Company, fromId: string, toId: string) => Promise<void>;
+  clearCompany: (company: Company) => Promise<void>;
   totals: { total: number; done: number; pct: number };
 }
 
 const ChecklistCtx = createContext<Ctx | null>(null);
 
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<ChecklistState>(() => load());
-  const channelRef = useRef<BroadcastChannel | null>(null);
-  const skipBroadcast = useRef(false);
+  const { user } = useAuth();
+  const ownerEmail = user?.email ?? "guest@pubcore.local";
+  const [state, setState] = useState<ChecklistState>(() => emptyState());
+  const [loading, setLoading] = useState(true);
+  const ownerRef = useRef(ownerEmail);
+  ownerRef.current = ownerEmail;
 
-  // persist + broadcast
+  // Initial load + realtime subscription scoped per ownerEmail
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch { /* ignore */ }
-    if (!skipBroadcast.current && channelRef.current) {
-      channelRef.current.postMessage({ type: "sync", state });
-    }
-    skipBroadcast.current = false;
-  }, [state]);
+    let cancelled = false;
+    setLoading(true);
 
-  // cross-tab sync
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") return;
-    const ch = new BroadcastChannel(CHANNEL);
-    channelRef.current = ch;
-    ch.onmessage = (e) => {
-      if (e.data?.type === "sync" && e.data.state) {
-        skipBroadcast.current = true;
-        setState(e.data.state as ChecklistState);
+    (async () => {
+      const { data, error } = await supabase
+        .from("checklist_tasks")
+        .select("*")
+        .eq("owner_email", ownerEmail)
+        .order("position", { ascending: true });
+      if (cancelled) return;
+      if (error) {
+        console.error("[checklist] load error", error);
+        setState(emptyState());
+      } else {
+        setState(groupByCompany((data ?? []) as DbRow[]));
       }
-    };
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY && e.newValue) {
-        try {
-          skipBroadcast.current = true;
-          setState(JSON.parse(e.newValue));
-        } catch { /* ignore */ }
-      }
-    };
-    window.addEventListener("storage", onStorage);
+      setLoading(false);
+    })();
+
+    const channel = supabase
+      .channel(`checklist_tasks:${ownerEmail}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "checklist_tasks",
+          filter: `owner_email=eq.${ownerEmail}`,
+        },
+        (payload) => {
+          setState((prev) => {
+            const next: ChecklistState = { ...prev };
+            for (const c of COMPANIES) next[c] = [...prev[c]];
+
+            if (payload.eventType === "INSERT") {
+              const row = payload.new as DbRow;
+              const c = row.company as Company;
+              if (!next[c]) return prev;
+              if (next[c].some((t) => t.id === row.id)) return prev;
+              next[c] = [...next[c], rowToTask(row)].sort((a, b) => a.position - b.position);
+            } else if (payload.eventType === "UPDATE") {
+              const row = payload.new as DbRow;
+              const c = row.company as Company;
+              const oldC = (payload.old as DbRow).company as Company;
+              if (oldC && oldC !== c && next[oldC]) {
+                next[oldC] = next[oldC].filter((t) => t.id !== row.id);
+              }
+              if (!next[c]) return next;
+              const idx = next[c].findIndex((t) => t.id === row.id);
+              if (idx === -1) next[c] = [...next[c], rowToTask(row)];
+              else next[c][idx] = rowToTask(row);
+              next[c] = [...next[c]].sort((a, b) => a.position - b.position);
+            } else if (payload.eventType === "DELETE") {
+              const row = payload.old as DbRow;
+              const c = row.company as Company;
+              if (!next[c]) return next;
+              next[c] = next[c].filter((t) => t.id !== row.id);
+            }
+            return next;
+          });
+        }
+      )
+      .subscribe();
+
     return () => {
-      ch.close();
-      window.removeEventListener("storage", onStorage);
+      cancelled = true;
+      supabase.removeChannel(channel);
     };
+  }, [ownerEmail]);
+
+  const applyLocal = useCallback((updater: (s: ChecklistState) => ChecklistState) => {
+    setState((s) => updater(s));
   }, []);
 
-  const add = useCallback((company: Company, text: string) => {
+  const add = useCallback(async (company: Company, text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    setState((s) => ({
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const position = (state[company]?.length ?? 0);
+    // optimistic
+    applyLocal((s) => ({
       ...s,
       [company]: [
         ...s[company],
-        { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, text: trimmed, done: false, createdAt: Date.now() },
+        {
+          id: tempId, text: trimmed, done: false, createdAt: Date.now(),
+          position, priority: "medium",
+        },
       ],
     }));
-  }, []);
+    const { data, error } = await supabase
+      .from("checklist_tasks")
+      .insert({
+        owner_email: ownerRef.current,
+        company,
+        title: trimmed,
+        position,
+        status: "pending",
+        priority: "medium",
+      })
+      .select()
+      .single();
+    if (error) {
+      console.error("[checklist] add error", error);
+      // rollback
+      applyLocal((s) => ({ ...s, [company]: s[company].filter((t) => t.id !== tempId) }));
+      return;
+    }
+    const row = data as DbRow;
+    applyLocal((s) => ({
+      ...s,
+      [company]: s[company].map((t) => (t.id === tempId ? rowToTask(row) : t)),
+    }));
+  }, [state, applyLocal]);
 
-  const edit = useCallback((company: Company, id: string, text: string) => {
+  const edit = useCallback(async (company: Company, id: string, text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    setState((s) => ({
+    applyLocal((s) => ({
       ...s,
       [company]: s[company].map((t) => (t.id === id ? { ...t, text: trimmed } : t)),
     }));
-  }, []);
+    const { error } = await supabase
+      .from("checklist_tasks")
+      .update({ title: trimmed })
+      .eq("id", id);
+    if (error) console.error("[checklist] edit error", error);
+  }, [applyLocal]);
 
-  const remove = useCallback((company: Company, id: string) => {
-    setState((s) => ({ ...s, [company]: s[company].filter((t) => t.id !== id) }));
-  }, []);
+  const remove = useCallback(async (company: Company, id: string) => {
+    const prev = state[company];
+    applyLocal((s) => ({ ...s, [company]: s[company].filter((t) => t.id !== id) }));
+    const { error } = await supabase.from("checklist_tasks").delete().eq("id", id);
+    if (error) {
+      console.error("[checklist] remove error", error);
+      applyLocal((s) => ({ ...s, [company]: prev }));
+    }
+  }, [state, applyLocal]);
 
-  const toggle = useCallback((company: Company, id: string) => {
-    setState((s) => ({
+  const toggle = useCallback(async (company: Company, id: string) => {
+    const task = state[company]?.find((t) => t.id === id);
+    if (!task) return;
+    const willDone = !task.done;
+    const nowIso = new Date().toISOString();
+    applyLocal((s) => ({
       ...s,
       [company]: s[company].map((t) => {
         if (t.id !== id) return t;
-        if (t.done) return { ...t, done: false, doneAt: undefined };
-        const now = new Date();
-        const hh = String(now.getHours()).padStart(2, "0");
-        const mm = String(now.getMinutes()).padStart(2, "0");
-        return { ...t, done: true, doneAt: `${hh}:${mm}` };
+        if (!willDone) return { ...t, done: false, doneAt: undefined };
+        return { ...t, done: true, doneAt: fmtHHMM(nowIso) };
       }),
     }));
-  }, []);
+    const { error } = await supabase
+      .from("checklist_tasks")
+      .update({
+        status: willDone ? "done" : "pending",
+        done_at: willDone ? nowIso : null,
+      })
+      .eq("id", id);
+    if (error) console.error("[checklist] toggle error", error);
+  }, [state, applyLocal]);
 
-  const reorder = useCallback((company: Company, fromId: string, toId: string) => {
+  const reorder = useCallback(async (company: Company, fromId: string, toId: string) => {
     if (fromId === toId) return;
-    setState((s) => {
-      const list = [...s[company]];
-      const fromIdx = list.findIndex((t) => t.id === fromId);
-      const toIdx = list.findIndex((t) => t.id === toId);
-      if (fromIdx === -1 || toIdx === -1) return s;
-      const [moved] = list.splice(fromIdx, 1);
-      list.splice(toIdx, 0, moved);
-      return { ...s, [company]: list };
-    });
-  }, []);
+    const list = [...state[company]];
+    const fromIdx = list.findIndex((t) => t.id === fromId);
+    const toIdx = list.findIndex((t) => t.id === toId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const [moved] = list.splice(fromIdx, 1);
+    list.splice(toIdx, 0, moved);
+    const reindexed = list.map((t, i) => ({ ...t, position: i }));
+    applyLocal((s) => ({ ...s, [company]: reindexed }));
+    // persist new positions
+    await Promise.all(
+      reindexed.map((t) =>
+        supabase.from("checklist_tasks").update({ position: t.position }).eq("id", t.id)
+      )
+    );
+  }, [state, applyLocal]);
 
-  const clearCompany = useCallback((company: Company) => {
-    setState((s) => ({ ...s, [company]: [] }));
-  }, []);
+  const clearCompany = useCallback(async (company: Company) => {
+    const prev = state[company];
+    applyLocal((s) => ({ ...s, [company]: [] }));
+    const { error } = await supabase
+      .from("checklist_tasks")
+      .delete()
+      .eq("owner_email", ownerRef.current)
+      .eq("company", company);
+    if (error) {
+      console.error("[checklist] clear error", error);
+      applyLocal((s) => ({ ...s, [company]: prev }));
+    }
+  }, [state, applyLocal]);
 
   const totals = useMemo(() => {
     let total = 0, done = 0;
@@ -159,7 +298,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
   }, [state]);
 
-  const value: Ctx = { state, add, edit, remove, toggle, reorder, clearCompany, totals };
+  const value: Ctx = { state, loading, add, edit, remove, toggle, reorder, clearCompany, totals };
   return <ChecklistCtx.Provider value={value}>{children}</ChecklistCtx.Provider>;
 }
 
