@@ -97,7 +97,7 @@ function ChecklistsPage() {
 
       {tab === "diario" && <DailyTab />}
       {tab === "historico" && <HistoryTab />}
-      {tab === "ponto" && <PontoTab completionPct={completionPct} />}
+      {tab === "ponto" && <PontoTab />}
       {tab === "metricas" && <MetricsTab />}
     </div>
   );
