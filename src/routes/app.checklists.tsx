@@ -560,20 +560,32 @@ function HistoryTab() {
 
 /* =================== TAB: BATER PONTO =================== */
 
-function PontoTab({ completionPct }: { completionPct: number }) {
+interface PastSession {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  status: string;
+  total_ms: number | null;
+  productive_ms: number | null;
+  pause_ms: number | null;
+  user_name: string | null;
+  task_count?: number;
+  companies?: Company[];
+}
+
+function PontoTab() {
   const { user } = useAuth();
   const {
     session, liveWorkMs: liveWork, livePauseMs: livePause, productiveMs, isLive,
     start: startPonto, pause, resume, end, reset,
   } = usePonto();
-  const { state, totals } = useChecklist();
   const status = session.status;
   const start = () => startPonto(user?.name, user?.email);
   const startedAt = session.startedAt;
 
-  // Tarefas concluídas vinculadas à sessão atual (histórico permanente)
+  // Tarefas concluídas vinculadas à sessão atual
   const [sessionTasks, setSessionTasks] = useState<
-    { id: string; company: Company; title: string; completed_at: string; user_name: string | null }[]
+    { id: string; company: Company; title: string; completed_at: string }[]
   >([]);
 
   useEffect(() => {
@@ -583,7 +595,7 @@ function PontoTab({ completionPct }: { completionPct: number }) {
     const load = async () => {
       const { data, error } = await supabase
         .from("ponto_session_tasks")
-        .select("id, company, title, completed_at, user_name")
+        .select("id, company, title, completed_at")
         .eq("session_id", sid)
         .order("completed_at", { ascending: true });
       if (!cancelled && !error && data) {
@@ -602,148 +614,161 @@ function PontoTab({ completionPct }: { completionPct: number }) {
     return () => { cancelled = true; supabase.removeChannel(ch); };
   }, [session.sessionId]);
 
-  const sessionCompaniesOperated = useMemo(
+  const companiesOperated = useMemo(
     () => Array.from(new Set(sessionTasks.map((t) => t.company))) as Company[],
     [sessionTasks]
   );
 
-  const pendingTasks = useMemo(() => {
-    const out: { company: Company; task: UserTask }[] = [];
-    for (const c of COMPANIES) {
-      for (const t of state[c]) {
-        if (!t.done) out.push({ company: c, task: t });
+  // Histórico de sessões anteriores
+  const [history, setHistory] = useState<PastSession[]>([]);
+  useEffect(() => {
+    if (!user?.email) return;
+    let cancelled = false;
+    const load = async () => {
+      const { data: sessions } = await supabase
+        .from("ponto_sessions")
+        .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name")
+        .eq("owner_email", user.email)
+        .eq("status", "ended")
+        .order("started_at", { ascending: false })
+        .limit(10);
+      if (!sessions || cancelled) return;
+      const ids = sessions.map((s) => s.id);
+      let counts: Record<string, { count: number; companies: Set<string> }> = {};
+      if (ids.length > 0) {
+        const { data: tasks } = await supabase
+          .from("ponto_session_tasks")
+          .select("session_id, company")
+          .in("session_id", ids);
+        if (tasks) {
+          for (const t of tasks) {
+            const k = t.session_id as string;
+            if (!counts[k]) counts[k] = { count: 0, companies: new Set() };
+            counts[k].count++;
+            counts[k].companies.add(t.company as string);
+          }
+        }
       }
-    }
-    return out.slice(0, 6);
-  }, [state]);
+      if (!cancelled) {
+        setHistory(
+          sessions.map((s) => ({
+            ...s,
+            task_count: counts[s.id]?.count ?? 0,
+            companies: Array.from(counts[s.id]?.companies ?? []) as Company[],
+          }))
+        );
+      }
+    };
+    load();
+    const ch = supabase
+      .channel(`ponto_sessions_history:${user.email}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ponto_sessions", filter: `owner_email=eq.${user.email}` },
+        () => load()
+      )
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [user?.email, session.status]);
+
+  const fmtClock = (ts: number | string | null) =>
+    ts ? new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
+
+  const statusLabel =
+    status === "working" ? "Em expediente" :
+    status === "paused" ? "Pausado" :
+    status === "ended" ? "Encerrado" : "Offline";
+
+  const statusColor =
+    status === "working" ? "border-success/30 bg-success/10 text-success" :
+    status === "paused" ? "border-warning/30 bg-warning/10 text-warning" :
+    status === "ended" ? "border-primary/30 bg-primary/10 text-primary" :
+    "border-border bg-surface text-muted-foreground";
 
   return (
     <div className="space-y-5">
-      {/* Top: Timer + status */}
-      <div className="grid lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2 rounded-2xl border border-border bg-card p-8 shadow-card relative overflow-hidden">
-          <div className="absolute inset-0 bg-glow opacity-50 pointer-events-none" />
-          <div className="relative">
-            <div className="flex items-center gap-3">
-              <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
-                isLive ? "border-success/30 bg-success/10 text-success" : "border-border bg-surface text-muted-foreground"
-              }`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${isLive ? "bg-success animate-pulse" : "bg-muted-foreground"}`} />
-                {status === "working" ? "Online" : status === "paused" ? "Em pausa" : status === "ended" ? "Encerrado" : "Offline"}
-              </span>
-              <span className="text-xs text-muted-foreground">{user?.name} · {user?.role}</span>
-            </div>
+      {/* 1 + 2: Status + Timer Operacional */}
+      <div className="rounded-2xl border border-border bg-card p-8 shadow-card relative overflow-hidden">
+        <div className="absolute inset-0 bg-glow opacity-50 pointer-events-none" />
+        <div className="relative">
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${statusColor}`}>
+              <span className={`h-1.5 w-1.5 rounded-full ${isLive ? "bg-current animate-pulse" : "bg-current opacity-60"}`} />
+              {statusLabel}
+            </span>
+            {user && <span className="text-xs text-muted-foreground">{user.name} · {user.role}</span>}
+          </div>
 
-            <div className="mt-6">
-              <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Tempo de expediente</div>
-              <div className="font-display text-6xl md:text-7xl font-bold tracking-tight tabular-nums mt-1">
-                {fmtTime(liveWork)}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-x-6 gap-y-1 text-sm text-muted-foreground">
-                <span>Produtivo: <span className="text-success font-mono">{fmtTime(productiveMs)}</span></span>
-                <span>Pausa: <span className="text-warning font-mono">{fmtTime(livePause)}</span></span>
-              </div>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              {status === "off" && (
-                <PontoBtn onClick={start} icon={Play} variant="primary">Iniciar expediente</PontoBtn>
-              )}
-              {status === "working" && (
-                <>
-                  <PontoBtn onClick={pause} icon={Pause} variant="warning">Pausar</PontoBtn>
-                  <PontoBtn onClick={end} icon={StopCircle} variant="destructive">Encerrar</PontoBtn>
-                </>
-              )}
-              {status === "paused" && (
-                <>
-                  <PontoBtn onClick={resume} icon={Play} variant="primary">Retornar</PontoBtn>
-                  <PontoBtn onClick={end} icon={StopCircle} variant="destructive">Encerrar</PontoBtn>
-                </>
-              )}
-              {status === "ended" && (
-                <PontoBtn onClick={reset} icon={RotateCcw} variant="ghost">Novo expediente</PontoBtn>
-              )}
+          <div className="mt-6">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Tempo de expediente</div>
+            <div className="font-display text-6xl md:text-7xl font-bold tracking-tight tabular-nums mt-1">
+              {fmtTime(liveWork)}
             </div>
           </div>
-        </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
-          <h3 className="font-display font-semibold flex items-center gap-2">
-            <Target className="h-4 w-4 text-primary" /> Metas do dia
-          </h3>
-          <div className="mt-4 space-y-4">
-            <Goal label="Conclusão de tarefas" value={completionPct} target={90} />
-            <Goal label="Tempo produtivo" value={Math.min(100, Math.round((productiveMs / (8 * 3600 * 1000)) * 100))} target={100} />
-            <Goal label="Tarefas pendentes" value={Math.max(0, totals.total - totals.done)} target={Math.max(1, totals.total)} />
+          <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <SummaryRow label="Entrada" value={fmtClock(startedAt)} />
+            <SummaryRow label="Tempo ativo" value={fmtTime(productiveMs)} />
+            <SummaryRow label="Tempo pausado" value={fmtTime(livePause)} />
+            <SummaryRow label="Saída" value={fmtClock(session.endedAt)} />
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            {status === "off" && (
+              <PontoBtn onClick={start} icon={Play} variant="primary">Iniciar expediente</PontoBtn>
+            )}
+            {status === "working" && (
+              <>
+                <PontoBtn onClick={pause} icon={Pause} variant="warning">Pausar</PontoBtn>
+                <PontoBtn onClick={end} icon={StopCircle} variant="destructive">Encerrar</PontoBtn>
+              </>
+            )}
+            {status === "paused" && (
+              <>
+                <PontoBtn onClick={resume} icon={Play} variant="primary">Retornar</PontoBtn>
+                <PontoBtn onClick={end} icon={StopCircle} variant="destructive">Encerrar</PontoBtn>
+              </>
+            )}
+            {status === "ended" && (
+              <PontoBtn onClick={reset} icon={RotateCcw} variant="ghost">Novo expediente</PontoBtn>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Painel diário ao iniciar */}
-      {(status === "working" || status === "paused") && (
-        <div className="rounded-xl border border-border bg-card p-5 shadow-card">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-display font-semibold flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" /> Próximas tarefas pendentes
-            </h3>
-            <span className="text-xs text-muted-foreground">{pendingTasks.length} itens</span>
-          </div>
-          {pendingTasks.length === 0 ? (
-            <div className="text-sm text-muted-foreground text-center py-6">
-              Nenhuma tarefa pendente. Adicione itens na aba Checklist Diário.
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {pendingTasks.map(({ company, task }) => (
-                <div key={task.id} className="rounded-lg border border-border bg-surface/40 p-4">
-                  <CompanyTag company={company} />
-                  <div className="mt-2 text-sm font-medium">{task.text}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Resumo automático ao encerrar */}
-      {status === "ended" && (
-        <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-6 shadow-card">
+      {/* 3: Resumo Operacional do Dia */}
+      {(isLive || status === "ended") && (
+        <div className="rounded-xl border border-border bg-card p-6 shadow-card">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="h-4 w-4 text-primary" />
-            <h3 className="font-display font-semibold">Resumo automático do expediente</h3>
+            <h3 className="font-display font-semibold">
+              {status === "ended" ? "Resumo operacional do dia" : "Resumo operacional"}
+            </h3>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Tempo total" value={fmtTime(liveWork)} icon={Timer} accent="primary" />
-            <StatCard label="Tempo produtivo" value={fmtTime(productiveMs)} icon={TrendingUp} accent="success" />
-            <StatCard label="Pausas" value={fmtTime(livePause)} icon={Pause} accent="warning" />
-            <StatCard label="Tarefas concluídas" value={`${sessionTasks.length}`} icon={CheckCircle2} accent="info" hint="durante o expediente" />
-          </div>
-          <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
-            <SummaryRow label="Entrada" value={startedAt ? new Date(startedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"} />
-            <SummaryRow label="Saída" value={session.endedAt ? new Date(session.endedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"} />
-            <SummaryRow label="Pausas" value={`${session.pauses.length}`} />
+            <StatCard label="Tarefas concluídas" value={`${sessionTasks.length}`} icon={CheckCircle2} accent="success" />
+            <StatCard label="Empresas operadas" value={`${companiesOperated.length}`} icon={Users} accent="info" hint={`${COMPANIES.length} possíveis`} />
+            <StatCard label="Tempo trabalhado" value={fmtTime(liveWork)} icon={Timer} accent="primary" />
+            <StatCard label="Tempo produtivo" value={fmtTime(productiveMs)} icon={TrendingUp} accent="warning" />
           </div>
 
-          {/* Empresas operadas */}
-          {sessionCompaniesOperated.length > 0 && (
+          {companiesOperated.length > 0 && (
             <div className="mt-5">
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Empresas operadas</div>
               <div className="flex flex-wrap gap-2">
-                {sessionCompaniesOperated.map((c) => <CompanyTag key={c} company={c} />)}
+                {companiesOperated.map((c) => <CompanyTag key={c} company={c} />)}
               </div>
             </div>
           )}
 
-          {/* Tarefas concluídas durante o expediente */}
           <div className="mt-5">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Tarefas concluídas no expediente</div>
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Tarefas realizadas</div>
               <span className="text-xs text-muted-foreground">{sessionTasks.length} itens</span>
             </div>
             {sessionTasks.length === 0 ? (
               <div className="text-sm text-muted-foreground py-4 text-center rounded-lg bg-surface/40 border border-border">
-                Nenhuma tarefa foi concluída durante este expediente.
+                Nenhuma tarefa concluída {status === "ended" ? "neste expediente." : "ainda."}
               </div>
             ) : (
               <ul className="divide-y divide-border rounded-lg border border-border bg-surface/40 overflow-hidden">
@@ -755,26 +780,58 @@ function PontoTab({ completionPct }: { completionPct: number }) {
                     </span>
                     <CompanyTag company={t.company} />
                     <span className="flex-1 truncate">{t.title}</span>
-                    {t.user_name && <span className="text-xs text-muted-foreground hidden sm:inline">{t.user_name}</span>}
                   </li>
                 ))}
               </ul>
             )}
           </div>
-
-          <p className="mt-5 text-sm text-muted-foreground leading-relaxed">
-            Você concluiu <strong className="text-foreground">{sessionTasks.length}</strong> tarefa(s)
-            em <strong className="text-foreground">{fmtTime(productiveMs)}</strong> de tempo produtivo
-            {sessionCompaniesOperated.length > 0 && <> em <strong className="text-foreground">{sessionCompaniesOperated.length}</strong> empresa(s)</>}.
-            {completionPct >= 80 ? " Excelente performance — meta diária atingida." : " O checklist foi reiniciado para o próximo expediente; o histórico permanece salvo."}
-          </p>
-          <div className="mt-4">
-            <button onClick={reset} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4">
-              Iniciar novo expediente
-            </button>
-          </div>
         </div>
       )}
+
+      {/* 4: Histórico de Sessões */}
+      <div className="rounded-xl border border-border bg-card p-6 shadow-card">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-display font-semibold flex items-center gap-2">
+            <History className="h-4 w-4 text-primary" /> Histórico de sessões
+          </h3>
+          <span className="text-xs text-muted-foreground">{history.length} sessões</span>
+        </div>
+        {history.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-8 text-center">
+            Nenhuma sessão encerrada ainda.
+          </div>
+        ) : (
+          <ul className="divide-y divide-border rounded-lg border border-border bg-surface/40 overflow-hidden">
+            {history.map((s) => {
+              const date = new Date(s.started_at);
+              const dur = s.total_ms ?? 0;
+              return (
+                <li key={s.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
+                  <div className="min-w-[120px]">
+                    <div className="text-xs text-muted-foreground">
+                      {date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                    </div>
+                    <div className="font-mono text-xs">
+                      {fmtClock(s.started_at)} → {fmtClock(s.ended_at)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="font-mono text-xs tabular-nums">{fmtTime(dur)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                    <span className="text-xs">{s.task_count ?? 0} tarefas</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1 ml-auto">
+                    {(s.companies ?? []).map((c) => <CompanyTag key={c} company={c} />)}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -807,21 +864,6 @@ function PontoBtn({
       <Icon className="h-4 w-4" />
       {children}
     </button>
-  );
-}
-
-function Goal({ label, value, target }: { label: string; value: number; target: number }) {
-  const pct = Math.min(100, Math.round((value / target) * 100));
-  return (
-    <div>
-      <div className="flex items-center justify-between text-xs mb-1.5">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="font-mono">{value}<span className="text-muted-foreground">/{target}</span></span>
-      </div>
-      <div className="h-1.5 rounded-full bg-surface overflow-hidden">
-        <div className="h-full bg-gradient-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
-      </div>
-    </div>
   );
 }
 
