@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type PontoStatus = "off" | "working" | "paused" | "ended";
 
@@ -9,13 +10,15 @@ export interface PontoPause {
 
 export interface PontoSession {
   status: PontoStatus;
-  startedAt: number | null; // epoch ms — quando o expediente começou
+  startedAt: number | null;
   endedAt: number | null;
-  pauses: PontoPause[];     // todas as pausas (algumas podem estar abertas)
+  pauses: PontoPause[];
   user?: string;
+  ownerEmail?: string;
+  sessionId?: string | null; // id da linha em ponto_sessions
 }
 
-const STORAGE_KEY = "pubcore_ponto_session_v1";
+const STORAGE_KEY = "pubcore_ponto_session_v2";
 const CHANNEL_NAME = "pubcore_ponto_sync";
 
 const initial: PontoSession = {
@@ -23,7 +26,32 @@ const initial: PontoSession = {
   startedAt: null,
   endedAt: null,
   pauses: [],
+  sessionId: null,
 };
+
+// ---- Event bus para integrações (ex.: checklist) ----
+type PontoEvent =
+  | { type: "started"; sessionId: string; ownerEmail: string }
+  | { type: "ended"; sessionId: string; ownerEmail: string };
+type Listener = (e: PontoEvent) => void;
+const listeners = new Set<Listener>();
+export function onPontoEvent(cb: Listener) {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+function emit(e: PontoEvent) {
+  listeners.forEach((l) => {
+    try { l(e); } catch {}
+  });
+}
+
+// ---- Helper global para outras stores lerem a sessão ativa ----
+let _activeSessionId: string | null = null;
+let _activeOwner: string | null = null;
+let _activeUser: string | null = null;
+export function getActivePontoSession() {
+  return { sessionId: _activeSessionId, ownerEmail: _activeOwner, userName: _activeUser };
+}
 
 interface PontoCtx {
   session: PontoSession;
@@ -31,10 +59,10 @@ interface PontoCtx {
   livePauseMs: number;
   productiveMs: number;
   isLive: boolean;
-  start: (user?: string) => void;
+  start: (user?: string, ownerEmail?: string) => Promise<void>;
   pause: () => void;
   resume: () => void;
-  end: () => void;
+  end: () => Promise<void>;
   reset: () => void;
 }
 
@@ -46,7 +74,6 @@ function load(): PontoSession {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return initial;
     const s = JSON.parse(raw) as PontoSession;
-    if (!s || typeof s !== "object") return initial;
     return { ...initial, ...s, pauses: Array.isArray(s.pauses) ? s.pauses : [] };
   } catch {
     return initial;
@@ -59,9 +86,7 @@ function save(s: PontoSession) {
 }
 
 function compute(session: PontoSession, now: number) {
-  if (!session.startedAt) {
-    return { liveWorkMs: 0, livePauseMs: 0, productiveMs: 0 };
-  }
+  if (!session.startedAt) return { liveWorkMs: 0, livePauseMs: 0, productiveMs: 0 };
   const endRef = session.status === "ended" && session.endedAt ? session.endedAt : now;
   const liveWorkMs = Math.max(0, endRef - session.startedAt);
   const livePauseMs = session.pauses.reduce((acc, p) => {
@@ -78,19 +103,20 @@ export function PontoProvider({ children }: { children: ReactNode }) {
   const channelRef = useRef<BroadcastChannel | null>(null);
   const ignoreNextSaveRef = useRef(false);
 
-  // hidrata após mount (evita SSR mismatch)
   useEffect(() => {
-    setSession(load());
+    const loaded = load();
+    setSession(loaded);
+    _activeSessionId = loaded.status === "working" || loaded.status === "paused" ? (loaded.sessionId ?? null) : null;
+    _activeOwner = loaded.ownerEmail ?? null;
+    _activeUser = loaded.user ?? null;
   }, []);
 
-  // tick global de 1s — só roda quando ativo (mas o tempo é calculado por epoch, não acumulado)
   useEffect(() => {
     if (session.status !== "working" && session.status !== "paused") return;
     const id = window.setInterval(() => setTick((t) => t + 1), 1000);
     return () => window.clearInterval(id);
   }, [session.status]);
 
-  // persiste em cada mudança + transmite para outras abas
   useEffect(() => {
     if (ignoreNextSaveRef.current) {
       ignoreNextSaveRef.current = false;
@@ -98,9 +124,11 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     }
     save(session);
     channelRef.current?.postMessage(session);
+    _activeSessionId = session.status === "working" || session.status === "paused" ? (session.sessionId ?? null) : null;
+    _activeOwner = session.ownerEmail ?? null;
+    _activeUser = session.user ?? null;
   }, [session]);
 
-  // sincronização entre abas
   useEffect(() => {
     if (typeof window === "undefined") return;
     const onStorage = (e: StorageEvent) => {
@@ -126,7 +154,6 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       channelRef.current = bc;
     }
 
-    // re-render ao voltar para a aba — garante UI atualizada após longo tempo oculto
     const onVis = () => setTick((t) => t + 1);
     document.addEventListener("visibilitychange", onVis);
 
@@ -138,20 +165,60 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const start = (user?: string) => {
-    setSession({
+  const start = async (user?: string, ownerEmail?: string) => {
+    const owner = ownerEmail ?? "guest@pubcore.local";
+    const startedAt = Date.now();
+    // Insere a sessão no Supabase
+    const { data, error } = await supabase
+      .from("ponto_sessions")
+      .insert({
+        owner_email: owner,
+        user_name: user ?? null,
+        started_at: new Date(startedAt).toISOString(),
+        status: "working",
+        pauses: [],
+      })
+      .select("id")
+      .single();
+    if (error) {
+      console.error("[ponto] start error", error);
+    }
+    const sessionId = (data?.id as string | undefined) ?? null;
+    const next: PontoSession = {
       status: "working",
-      startedAt: Date.now(),
+      startedAt,
       endedAt: null,
       pauses: [],
       user,
-    });
+      ownerEmail: owner,
+      sessionId,
+    };
+    setSession(next);
+    if (sessionId) emit({ type: "started", sessionId, ownerEmail: owner });
+  };
+
+  const persistUpdate = (s: PontoSession, extra: Record<string, unknown> = {}) => {
+    if (!s.sessionId) return;
+    supabase
+      .from("ponto_sessions")
+      .update({
+        status: s.status,
+        pauses: s.pauses,
+        ended_at: s.endedAt ? new Date(s.endedAt).toISOString() : null,
+        ...extra,
+      })
+      .eq("id", s.sessionId)
+      .then(({ error }) => {
+        if (error) console.error("[ponto] update error", error);
+      });
   };
 
   const pause = () => {
     setSession((s) => {
       if (s.status !== "working") return s;
-      return { ...s, status: "paused", pauses: [...s.pauses, { start: Date.now() }] };
+      const next = { ...s, status: "paused" as PontoStatus, pauses: [...s.pauses, { start: Date.now() }] };
+      persistUpdate(next);
+      return next;
     });
   };
 
@@ -161,19 +228,36 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       const pauses = [...s.pauses];
       const last = pauses[pauses.length - 1];
       if (last && !last.end) pauses[pauses.length - 1] = { ...last, end: Date.now() };
-      return { ...s, status: "working", pauses };
+      const next = { ...s, status: "working" as PontoStatus, pauses };
+      persistUpdate(next);
+      return next;
     });
   };
 
-  const end = () => {
+  const end = async () => {
+    const now = Date.now();
+    let ended: PontoSession | null = null;
     setSession((s) => {
       if (s.status === "off" || s.status === "ended") return s;
-      const now = Date.now();
       const pauses = [...s.pauses];
       const last = pauses[pauses.length - 1];
       if (last && !last.end) pauses[pauses.length - 1] = { ...last, end: now };
-      return { ...s, status: "ended", endedAt: now, pauses };
+      const next: PontoSession = { ...s, status: "ended", endedAt: now, pauses };
+      ended = next;
+      return next;
     });
+    if (ended) {
+      const e = ended as PontoSession;
+      const { liveWorkMs, livePauseMs, productiveMs } = compute(e, now);
+      persistUpdate(e, {
+        total_ms: liveWorkMs,
+        productive_ms: productiveMs,
+        pause_ms: livePauseMs,
+      });
+      if (e.sessionId && e.ownerEmail) {
+        emit({ type: "ended", sessionId: e.sessionId, ownerEmail: e.ownerEmail });
+      }
+    }
   };
 
   const reset = () => setSession(initial);
