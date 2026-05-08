@@ -5,7 +5,7 @@ import {
   Check, Filter, Plus, Trash2, Pencil, GripVertical, X,
   Play, Pause, StopCircle, RotateCcw,
   TrendingUp, CheckCircle2, AlertTriangle, ListTodo, Activity,
-  Target, Sparkles, History, Timer, BarChart3, Users,
+  Sparkles, History, Timer, BarChart3, Users,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
