@@ -203,7 +203,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       .from("ponto_sessions")
       .update({
         status: s.status,
-        pauses: s.pauses,
+        pauses: s.pauses as unknown as never,
         ended_at: s.endedAt ? new Date(s.endedAt).toISOString() : null,
         ...extra,
       })
