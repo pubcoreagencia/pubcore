@@ -567,8 +567,44 @@ function PontoTab({ completionPct }: { completionPct: number }) {
   } = usePonto();
   const { state, totals } = useChecklist();
   const status = session.status;
-  const start = () => startPonto(user?.name);
+  const start = () => startPonto(user?.name, user?.email);
   const startedAt = session.startedAt;
+
+  // Tarefas concluídas vinculadas à sessão atual (histórico permanente)
+  const [sessionTasks, setSessionTasks] = useState<
+    { id: string; company: Company; title: string; completed_at: string; user_name: string | null }[]
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const sid = session.sessionId;
+    if (!sid) { setSessionTasks([]); return; }
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("ponto_session_tasks")
+        .select("id, company, title, completed_at, user_name")
+        .eq("session_id", sid)
+        .order("completed_at", { ascending: true });
+      if (!cancelled && !error && data) {
+        setSessionTasks(data as typeof sessionTasks);
+      }
+    };
+    load();
+    const ch = supabase
+      .channel(`ponto_session_tasks:${sid}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ponto_session_tasks", filter: `session_id=eq.${sid}` },
+        () => load()
+      )
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [session.sessionId]);
+
+  const sessionCompaniesOperated = useMemo(
+    () => Array.from(new Set(sessionTasks.map((t) => t.company))) as Company[],
+    [sessionTasks]
+  );
 
   const pendingTasks = useMemo(() => {
     const out: { company: Company; task: UserTask }[] = [];
