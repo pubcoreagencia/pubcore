@@ -4,6 +4,7 @@ import {
 import { COMPANIES, type Company } from "./mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./auth";
+import { getActivePontoSession, onPontoEvent } from "./ponto";
 
 export interface UserTask {
   id: string;
