@@ -59,6 +59,98 @@ export type Database = {
         }
         Relationships: []
       }
+      ponto_session_tasks: {
+        Row: {
+          company: string
+          completed_at: string
+          created_at: string
+          id: string
+          owner_email: string
+          session_id: string
+          task_id: string | null
+          title: string
+          user_name: string | null
+        }
+        Insert: {
+          company: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          owner_email: string
+          session_id: string
+          task_id?: string | null
+          title: string
+          user_name?: string | null
+        }
+        Update: {
+          company?: string
+          completed_at?: string
+          created_at?: string
+          id?: string
+          owner_email?: string
+          session_id?: string
+          task_id?: string | null
+          title?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ponto_session_tasks_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ponto_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ponto_sessions: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          id: string
+          owner_email: string
+          pause_ms: number
+          pauses: Json
+          productive_ms: number
+          started_at: string
+          status: string
+          summary: Json | null
+          total_ms: number
+          updated_at: string
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          owner_email: string
+          pause_ms?: number
+          pauses?: Json
+          productive_ms?: number
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          total_ms?: number
+          updated_at?: string
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          id?: string
+          owner_email?: string
+          pause_ms?: number
+          pauses?: Json
+          productive_ms?: number
+          started_at?: string
+          status?: string
+          summary?: Json | null
+          total_ms?: number
+          updated_at?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
