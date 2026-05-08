@@ -4,6 +4,7 @@ import {
 import { COMPANIES, type Company } from "./mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./auth";
+import { getActivePontoSession, onPontoEvent } from "./ponto";
 
 export interface UserTask {
   id: string;
@@ -255,7 +256,49 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       })
       .eq("id", id);
     if (error) console.error("[checklist] toggle error", error);
+
+    // Vincular conclusão à sessão de ponto ativa (histórico permanente)
+    const active = getActivePontoSession();
+    if (willDone && active.sessionId && active.ownerEmail) {
+      const { error: logErr } = await supabase.from("ponto_session_tasks").insert({
+        session_id: active.sessionId,
+        task_id: id,
+        owner_email: active.ownerEmail,
+        user_name: active.userName,
+        company,
+        title: task.text,
+        completed_at: nowIso,
+      });
+      if (logErr) console.error("[checklist] ponto log error", logErr);
+    } else if (!willDone && active.sessionId) {
+      // Desmarcou manualmente durante o expediente -> remove do log da sessão
+      await supabase
+        .from("ponto_session_tasks")
+        .delete()
+        .eq("session_id", active.sessionId)
+        .eq("task_id", id);
+    }
   }, [state, applyLocal]);
+
+  // Resetar checklist (done -> pending) ao encerrar o expediente.
+  // O histórico permanece em ponto_session_tasks.
+  const resetAllDone = useCallback(async (owner: string) => {
+    const { error } = await supabase
+      .from("checklist_tasks")
+      .update({ status: "pending", done_at: null })
+      .eq("owner_email", owner)
+      .eq("status", "done");
+    if (error) console.error("[checklist] reset error", error);
+  }, []);
+
+  useEffect(() => {
+    const off = onPontoEvent((e) => {
+      if (e.type === "ended" && e.ownerEmail === ownerRef.current) {
+        resetAllDone(e.ownerEmail);
+      }
+    });
+    return () => { off; };
+  }, [resetAllDone]);
 
   const reorder = useCallback(async (company: Company, fromId: string, toId: string) => {
     if (fromId === toId) return;

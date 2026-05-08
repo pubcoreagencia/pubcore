@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Check, Filter, Plus, Trash2, Pencil, GripVertical, X,
   Play, Pause, StopCircle, RotateCcw,
@@ -567,8 +568,44 @@ function PontoTab({ completionPct }: { completionPct: number }) {
   } = usePonto();
   const { state, totals } = useChecklist();
   const status = session.status;
-  const start = () => startPonto(user?.name);
+  const start = () => startPonto(user?.name, user?.email);
   const startedAt = session.startedAt;
+
+  // Tarefas concluídas vinculadas à sessão atual (histórico permanente)
+  const [sessionTasks, setSessionTasks] = useState<
+    { id: string; company: Company; title: string; completed_at: string; user_name: string | null }[]
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const sid = session.sessionId;
+    if (!sid) { setSessionTasks([]); return; }
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("ponto_session_tasks")
+        .select("id, company, title, completed_at, user_name")
+        .eq("session_id", sid)
+        .order("completed_at", { ascending: true });
+      if (!cancelled && !error && data) {
+        setSessionTasks(data as typeof sessionTasks);
+      }
+    };
+    load();
+    const ch = supabase
+      .channel(`ponto_session_tasks:${sid}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ponto_session_tasks", filter: `session_id=eq.${sid}` },
+        () => load()
+      )
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [session.sessionId]);
+
+  const sessionCompaniesOperated = useMemo(
+    () => Array.from(new Set(sessionTasks.map((t) => t.company))) as Company[],
+    [sessionTasks]
+  );
 
   const pendingTasks = useMemo(() => {
     const out: { company: Company; task: UserTask }[] = [];
@@ -680,17 +717,56 @@ function PontoTab({ completionPct }: { completionPct: number }) {
             <StatCard label="Tempo total" value={fmtTime(liveWork)} icon={Timer} accent="primary" />
             <StatCard label="Tempo produtivo" value={fmtTime(productiveMs)} icon={TrendingUp} accent="success" />
             <StatCard label="Pausas" value={fmtTime(livePause)} icon={Pause} accent="warning" />
-            <StatCard label="Tarefas concluídas" value={`${totals.done}/${totals.total}`} icon={CheckCircle2} accent="info" />
+            <StatCard label="Tarefas concluídas" value={`${sessionTasks.length}`} icon={CheckCircle2} accent="info" hint="durante o expediente" />
           </div>
           <div className="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
             <SummaryRow label="Entrada" value={startedAt ? new Date(startedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"} />
             <SummaryRow label="Saída" value={session.endedAt ? new Date(session.endedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"} />
             <SummaryRow label="Pausas" value={`${session.pauses.length}`} />
           </div>
-          <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-            Você completou <strong className="text-foreground">{completionPct}%</strong> das tarefas do dia
-            em <strong className="text-foreground">{fmtTime(productiveMs)}</strong> de tempo produtivo.
-            {completionPct >= 80 ? " Excelente performance — meta diária atingida." : " Algumas tarefas ficaram pendentes — considere revisar a priorização amanhã."}
+
+          {/* Empresas operadas */}
+          {sessionCompaniesOperated.length > 0 && (
+            <div className="mt-5">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Empresas operadas</div>
+              <div className="flex flex-wrap gap-2">
+                {sessionCompaniesOperated.map((c) => <CompanyTag key={c} company={c} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Tarefas concluídas durante o expediente */}
+          <div className="mt-5">
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Tarefas concluídas no expediente</div>
+              <span className="text-xs text-muted-foreground">{sessionTasks.length} itens</span>
+            </div>
+            {sessionTasks.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-4 text-center rounded-lg bg-surface/40 border border-border">
+                Nenhuma tarefa foi concluída durante este expediente.
+              </div>
+            ) : (
+              <ul className="divide-y divide-border rounded-lg border border-border bg-surface/40 overflow-hidden">
+                {sessionTasks.map((t) => (
+                  <li key={t.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
+                    <span className="font-mono text-[10px] text-muted-foreground tabular-nums w-12 shrink-0">
+                      {new Date(t.completed_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                    <CompanyTag company={t.company} />
+                    <span className="flex-1 truncate">{t.title}</span>
+                    {t.user_name && <span className="text-xs text-muted-foreground hidden sm:inline">{t.user_name}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <p className="mt-5 text-sm text-muted-foreground leading-relaxed">
+            Você concluiu <strong className="text-foreground">{sessionTasks.length}</strong> tarefa(s)
+            em <strong className="text-foreground">{fmtTime(productiveMs)}</strong> de tempo produtivo
+            {sessionCompaniesOperated.length > 0 && <> em <strong className="text-foreground">{sessionCompaniesOperated.length}</strong> empresa(s)</>}.
+            {completionPct >= 80 ? " Excelente performance — meta diária atingida." : " O checklist foi reiniciado para o próximo expediente; o histórico permanece salvo."}
           </p>
           <div className="mt-4">
             <button onClick={reset} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4">
