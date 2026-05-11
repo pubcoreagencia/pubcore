@@ -962,70 +962,114 @@ function PontoBtn({
 /* =================== TAB: MÉTRICAS =================== */
 
 function MetricsTab() {
-  const { state, totals } = useChecklist();
-  const completionPct = totals.pct;
+  const { sessions, sessionTasks, checklist, loading } = useOperationalData();
+  const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">("semanal");
+  const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
+  const cutoff = useMemo(() => {
+    const d = new Date(); d.setHours(0,0,0,0);
+    return d.getTime() - (days - 1) * 86400000;
+  }, [days]);
 
-  const byCompany = COMPANIES.map((c) => {
-    const list = state[c];
-    const completed = list.filter((t) => t.done).length;
-    return {
-      company: c,
-      total: list.length,
-      completed,
-      pct: list.length ? Math.round((completed / list.length) * 100) : 0,
-    };
-  });
-
-  const efficiency = Math.round(
-    OPERATIONAL_HISTORY.slice(-7).reduce((s, d) => s + d.productivity, 0) / 7
+  const periodSessions = useMemo(
+    () => sessions.filter((s) => new Date(s.started_at).getTime() >= cutoff),
+    [sessions, cutoff]
+  );
+  const periodTasks = useMemo(
+    () => sessionTasks.filter((t) => new Date(t.completed_at).getTime() >= cutoff),
+    [sessionTasks, cutoff]
   );
 
-  const activeCompanies = byCompany.filter((b) => b.total > 0).length;
+  const totalMs = periodSessions.reduce((a, s) => a + (s.total_ms ?? 0), 0);
+  const productiveMs = periodSessions.reduce((a, s) => a + (s.productive_ms ?? 0), 0);
+  const productivity = totalMs > 0 ? Math.round((productiveMs / totalMs) * 100) : 0;
+  const tasksCount = periodTasks.length;
+  const avgPerTaskMs = tasksCount > 0 ? Math.round(productiveMs / tasksCount) : 0;
+  const hours = totalMs / 3600000;
+
+  const checklistDone = checklist.filter((t) => t.status === "done").length;
+  const checklistTotal = checklist.length;
+  const completionRate = checklistTotal > 0 ? Math.round((checklistDone / checklistTotal) * 100) : 0;
+
+  const series = useMemo(() => buildDailySeries(periodSessions, periodTasks, days), [periodSessions, periodTasks, days]);
+  const byCompany = useMemo(() => tasksByCompany(periodTasks), [periodTasks]);
+  const byUser = useMemo(() => tasksByUser(periodTasks), [periodTasks]);
+
+  // Heatmap: tasks por dia da semana × hora
+  const heatmap = useMemo(() => {
+    const grid: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+    let max = 0;
+    for (const t of periodTasks) {
+      const d = new Date(t.completed_at);
+      const dow = d.getDay();
+      const h = d.getHours();
+      grid[dow][h]++;
+      if (grid[dow][h] > max) max = grid[dow][h];
+    }
+    return { grid, max };
+  }, [periodTasks]);
+
+  const activeCompanies = byCompany.filter((b) => b.completed > 0).length;
 
   return (
     <div className="space-y-5">
+      <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card shadow-card">
+        <div className="flex gap-1 p-1 rounded-lg bg-surface">
+          {(["diario","semanal","mensal"] as const).map((p) => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md capitalize transition ${
+                period === p ? "bg-card text-foreground shadow-card" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >{p}</button>
+          ))}
+        </div>
+        <span className="ml-auto text-xs text-muted-foreground font-mono">
+          {loading ? "Carregando…" : `${tasksCount} tarefas · ${hours.toFixed(1)}h trabalhadas`}
+        </span>
+      </div>
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Produtividade" value={`${completionPct}%`} icon={TrendingUp} accent="primary" hint="hoje" />
-        <StatCard label="Taxa de conclusão" value={`${totals.done}/${totals.total}`} icon={CheckCircle2} accent="success" hint="tarefas/total" />
-        <StatCard label="Eficiência operacional" value={`${efficiency}%`} icon={Activity} accent="info" hint="média 7 dias" />
-        <StatCard label="Empresas ativas" value={`${activeCompanies}/${COMPANIES.length}`} icon={Users} accent="warning" hint="com tarefas" />
+        <StatCard label="Produtividade" value={`${productivity}%`} icon={TrendingUp} accent="primary" hint={`período: ${period}`} />
+        <StatCard label="Taxa de conclusão" value={`${completionRate}%`} icon={CheckCircle2} accent="success" hint={`${checklistDone}/${checklistTotal} checklist`} />
+        <StatCard label="Tempo médio / tarefa" value={fmtTime(avgPerTaskMs)} icon={Timer} accent="info" hint="por execução" />
+        <StatCard label="Empresas ativas" value={`${activeCompanies}/${COMPANIES.length}`} icon={Users} accent="warning" hint="com produção" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5 shadow-card">
-          <h3 className="font-display font-semibold mb-4">Tarefas por empresa</h3>
-          {totals.total === 0 ? (
-            <div className="h-72 flex items-center justify-center text-sm text-muted-foreground">
-              Sem dados ainda. Crie tarefas para visualizar métricas.
-            </div>
-          ) : (
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byCompany} layout="vertical" margin={{ left: 20 }}>
-                  <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <YAxis dataKey="company" type="category" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} width={90} />
-                  <Tooltip contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }} />
-                  <Bar dataKey="completed" fill="oklch(0.78 0.16 65)" radius={[0, 4, 4, 0]} name="Concluídas" />
-                  <Bar dataKey="total" fill="oklch(0.32 0.04 230)" radius={[0, 4, 4, 0]} name="Total" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
+          <h3 className="font-display font-semibold mb-4">Produtividade ao longo do período</h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={series}>
+                <defs>
+                  <linearGradient id="metG" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="oklch(0.78 0.16 65)" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="oklch(0.78 0.16 65)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="label" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} />
+                <YAxis stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }} />
+                <Area type="monotone" dataKey="productivity" stroke="oklch(0.78 0.16 65)" strokeWidth={2} fill="url(#metG)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5 shadow-card">
           <h3 className="font-display font-semibold mb-4">Eficiência geral</h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <RadialBarChart innerRadius="60%" outerRadius="100%" data={[{ name: "ef", value: efficiency, fill: "oklch(0.78 0.16 65)" }]} startAngle={90} endAngle={-270}>
+              <RadialBarChart innerRadius="60%" outerRadius="100%" data={[{ name: "ef", value: productivity, fill: "oklch(0.78 0.16 65)" }]} startAngle={90} endAngle={-270}>
                 <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
                 <RadialBar background={{ fill: "oklch(0.28 0.014 240)" }} dataKey="value" cornerRadius={10} />
                 <text x="50%" y="48%" textAnchor="middle" fontSize="32" fontWeight="700" fill="oklch(0.97 0.005 240)" fontFamily="Space Grotesk">
-                  {efficiency}%
+                  {productivity}%
                 </text>
                 <text x="50%" y="62%" textAnchor="middle" fontSize="11" fill="oklch(0.68 0.02 240)">
-                  EFICIÊNCIA 7D
+                  EFICIÊNCIA
                 </text>
               </RadialBarChart>
             </ResponsiveContainer>
@@ -1033,28 +1077,124 @@ function MetricsTab() {
         </div>
       </div>
 
+      <div className="grid lg:grid-cols-2 gap-5">
+        <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+          <h3 className="font-display font-semibold mb-4">Tarefas por empresa</h3>
+          {byCompany.every((b) => b.completed === 0) ? (
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
+              Sem tarefas concluídas no período.
+            </div>
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={byCompany} layout="vertical" margin={{ left: 20 }}>
+                  <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <YAxis dataKey="company" type="category" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} width={90} />
+                  <Tooltip contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }} />
+                  <Bar dataKey="completed" fill="oklch(0.78 0.16 65)" radius={[0, 4, 4, 0]} name="Concluídas" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+          <h3 className="font-display font-semibold mb-4">Tarefas por usuário</h3>
+          {byUser.length === 0 ? (
+            <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">
+              Sem registros de usuários no período.
+            </div>
+          ) : (
+            <ul className="space-y-2.5">
+              {byUser.slice(0, 8).map((u, i) => {
+                const max = byUser[0].count;
+                const pct = Math.round((u.count / max) * 100);
+                return (
+                  <li key={u.user}>
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="font-medium truncate">{i + 1}. {u.user}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{u.count}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-surface overflow-hidden">
+                      <div className="h-full rounded-full bg-gradient-primary transition-all" style={{ width: `${pct}%` }} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Heatmap */}
+      <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+        <h3 className="font-display font-semibold mb-1">Heatmap de produção</h3>
+        <p className="text-xs text-muted-foreground mb-4">Tarefas concluídas por dia da semana × hora</p>
+        {heatmap.max === 0 ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            Sem dados suficientes para gerar o heatmap.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="min-w-[640px]">
+              <div className="grid grid-cols-[40px_repeat(24,1fr)] gap-0.5 text-[9px] text-muted-foreground mb-1">
+                <div />
+                {Array.from({ length: 24 }, (_, h) => (
+                  <div key={h} className="text-center font-mono">{h % 3 === 0 ? String(h).padStart(2,"0") : ""}</div>
+                ))}
+              </div>
+              {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((label, dow) => (
+                <div key={label} className="grid grid-cols-[40px_repeat(24,1fr)] gap-0.5 mb-0.5">
+                  <div className="text-[10px] text-muted-foreground font-mono flex items-center">{label}</div>
+                  {heatmap.grid[dow].map((v, h) => {
+                    const intensity = v / heatmap.max;
+                    return (
+                      <div
+                        key={h}
+                        title={`${label} ${String(h).padStart(2,"0")}h: ${v} tarefa(s)`}
+                        className="h-5 rounded-sm border border-border/30"
+                        style={{
+                          background: v === 0
+                            ? "oklch(0.22 0.014 240)"
+                            : `color-mix(in oklab, oklch(0.78 0.16 65) ${20 + intensity * 80}%, transparent)`,
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="rounded-xl border border-border bg-card p-5 shadow-card">
         <h3 className="font-display font-semibold mb-4">Progresso por empresa</h3>
         <div className="space-y-3">
-          {byCompany.map((b) => (
-            <div key={b.company} className="flex items-center gap-4">
-              <div className="w-28 shrink-0">
-                <CompanyTag company={b.company} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between text-sm mb-1.5">
-                  <span className="font-mono text-xs text-muted-foreground">{b.completed}/{b.total} tarefas</span>
-                  <span className="font-mono text-xs">{b.pct}%</span>
+          {byCompany.map((b) => {
+            const max = Math.max(1, ...byCompany.map((x) => x.completed));
+            const pct = Math.round((b.completed / max) * 100);
+            return (
+              <div key={b.company} className="flex items-center gap-4">
+                <div className="w-28 shrink-0">
+                  <CompanyTag company={b.company} />
                 </div>
-                <div className="h-1.5 rounded-full bg-surface overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{ width: `${b.pct}%`, backgroundColor: COMPANY_COLORS[b.company] }}
-                  />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between text-sm mb-1.5">
+                    <span className="font-mono text-xs text-muted-foreground">{b.completed} tarefas</span>
+                    <span className="font-mono text-xs">{pct}%</span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-surface overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${pct}%`, backgroundColor: COMPANY_COLORS[b.company] }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
