@@ -10,7 +10,7 @@ export interface UserTask {
   id: string;
   text: string;
   done: boolean;
-  doneAt?: string; // HH:MM (derived from done_at timestamp)
+  doneAt?: string;
   createdAt: number;
   assignee?: string;
   priority?: "low" | "medium" | "high";
@@ -22,6 +22,7 @@ export type ChecklistState = Record<Company, UserTask[]>;
 
 interface DbRow {
   id: string;
+  user_id: string | null;
   owner_email: string;
   company: string;
   title: string;
@@ -36,10 +37,7 @@ interface DbRow {
 }
 
 const emptyState = (): ChecklistState =>
-  COMPANIES.reduce((acc, c) => {
-    acc[c] = [];
-    return acc;
-  }, {} as ChecklistState);
+  COMPANIES.reduce((acc, c) => { acc[c] = []; return acc; }, {} as ChecklistState);
 
 function fmtHHMM(iso: string | null): string | undefined {
   if (!iso) return undefined;
@@ -88,14 +86,17 @@ const ChecklistCtx = createContext<Ctx | null>(null);
 
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
   const ownerEmail = user?.email ?? "guest@pubcore.local";
   const [state, setState] = useState<ChecklistState>(() => emptyState());
   const [loading, setLoading] = useState(true);
+  const userIdRef = useRef(userId);
   const ownerRef = useRef(ownerEmail);
+  userIdRef.current = userId;
   ownerRef.current = ownerEmail;
 
-  // Initial load + realtime subscription scoped per ownerEmail
   useEffect(() => {
+    if (!userId) { setState(emptyState()); setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
 
@@ -103,33 +104,22 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("checklist_tasks")
         .select("*")
-        .eq("owner_email", ownerEmail)
+        .eq("user_id", userId)
         .order("position", { ascending: true });
       if (cancelled) return;
-      if (error) {
-        console.error("[checklist] load error", error);
-        setState(emptyState());
-      } else {
-        setState(groupByCompany((data ?? []) as DbRow[]));
-      }
+      if (error) { console.error("[checklist] load error", error); setState(emptyState()); }
+      else setState(groupByCompany((data ?? []) as DbRow[]));
       setLoading(false);
     })();
 
     const channel = supabase
-      .channel(`checklist_tasks:${ownerEmail}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "checklist_tasks",
-          filter: `owner_email=eq.${ownerEmail}`,
-        },
+      .channel(`checklist_tasks:${userId}`)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "checklist_tasks", filter: `user_id=eq.${userId}` },
         (payload) => {
           setState((prev) => {
             const next: ChecklistState = { ...prev };
             for (const c of COMPANIES) next[c] = [...prev[c]];
-
             if (payload.eventType === "INSERT") {
               const row = payload.new as DbRow;
               const c = row.company as Company;
@@ -140,9 +130,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
               const row = payload.new as DbRow;
               const c = row.company as Company;
               const oldC = (payload.old as DbRow).company as Company;
-              if (oldC && oldC !== c && next[oldC]) {
-                next[oldC] = next[oldC].filter((t) => t.id !== row.id);
-              }
+              if (oldC && oldC !== c && next[oldC]) next[oldC] = next[oldC].filter((t) => t.id !== row.id);
               if (!next[c]) return next;
               const idx = next[c].findIndex((t) => t.id === row.id);
               if (idx === -1) next[c] = [...next[c], rowToTask(row)];
@@ -156,72 +144,38 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
             }
             return next;
           });
-        }
-      )
+        })
       .subscribe();
 
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, [ownerEmail]);
+    return () => { cancelled = true; supabase.removeChannel(channel); };
+  }, [userId]);
 
-  const applyLocal = useCallback((updater: (s: ChecklistState) => ChecklistState) => {
-    setState((s) => updater(s));
-  }, []);
+  const applyLocal = useCallback((u: (s: ChecklistState) => ChecklistState) => setState((s) => u(s)), []);
 
   const add = useCallback(async (company: Company, text: string) => {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed || !userIdRef.current) return;
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const position = (state[company]?.length ?? 0);
-    // optimistic
-    applyLocal((s) => ({
-      ...s,
-      [company]: [
-        ...s[company],
-        {
-          id: tempId, text: trimmed, done: false, createdAt: Date.now(),
-          position, priority: "medium",
-        },
-      ],
-    }));
-    const { data, error } = await supabase
-      .from("checklist_tasks")
-      .insert({
-        owner_email: ownerRef.current,
-        company,
-        title: trimmed,
-        position,
-        status: "pending",
-        priority: "medium",
-      })
-      .select()
-      .single();
+    const position = state[company]?.length ?? 0;
+    applyLocal((s) => ({ ...s, [company]: [...s[company], { id: tempId, text: trimmed, done: false, createdAt: Date.now(), position, priority: "medium" }] }));
+    const { data, error } = await supabase.from("checklist_tasks").insert({
+      user_id: userIdRef.current, owner_email: ownerRef.current,
+      company, title: trimmed, position, status: "pending", priority: "medium",
+    }).select().single();
     if (error) {
       console.error("[checklist] add error", error);
-      // rollback
       applyLocal((s) => ({ ...s, [company]: s[company].filter((t) => t.id !== tempId) }));
       return;
     }
     const row = data as DbRow;
-    applyLocal((s) => ({
-      ...s,
-      [company]: s[company].map((t) => (t.id === tempId ? rowToTask(row) : t)),
-    }));
+    applyLocal((s) => ({ ...s, [company]: s[company].map((t) => (t.id === tempId ? rowToTask(row) : t)) }));
   }, [state, applyLocal]);
 
   const edit = useCallback(async (company: Company, id: string, text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    applyLocal((s) => ({
-      ...s,
-      [company]: s[company].map((t) => (t.id === id ? { ...t, text: trimmed } : t)),
-    }));
-    const { error } = await supabase
-      .from("checklist_tasks")
-      .update({ title: trimmed })
-      .eq("id", id);
+    applyLocal((s) => ({ ...s, [company]: s[company].map((t) => (t.id === id ? { ...t, text: trimmed } : t)) }));
+    const { error } = await supabase.from("checklist_tasks").update({ title: trimmed }).eq("id", id);
     if (error) console.error("[checklist] edit error", error);
   }, [applyLocal]);
 
@@ -229,10 +183,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     const prev = state[company];
     applyLocal((s) => ({ ...s, [company]: s[company].filter((t) => t.id !== id) }));
     const { error } = await supabase.from("checklist_tasks").delete().eq("id", id);
-    if (error) {
-      console.error("[checklist] remove error", error);
-      applyLocal((s) => ({ ...s, [company]: prev }));
-    }
+    if (error) { console.error("[checklist] remove error", error); applyLocal((s) => ({ ...s, [company]: prev })); }
   }, [state, applyLocal]);
 
   const toggle = useCallback(async (company: Company, id: string) => {
@@ -248,55 +199,41 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         return { ...t, done: true, doneAt: fmtHHMM(nowIso) };
       }),
     }));
-    const { error } = await supabase
-      .from("checklist_tasks")
-      .update({
-        status: willDone ? "done" : "pending",
-        done_at: willDone ? nowIso : null,
-      })
-      .eq("id", id);
+    const { error } = await supabase.from("checklist_tasks").update({
+      status: willDone ? "done" : "pending",
+      done_at: willDone ? nowIso : null,
+    }).eq("id", id);
     if (error) console.error("[checklist] toggle error", error);
 
-    // Vincular conclusão à sessão de ponto ativa (histórico permanente)
     const active = getActivePontoSession();
     if (willDone && active.sessionId && active.ownerEmail) {
       const { error: logErr } = await supabase.from("ponto_session_tasks").insert({
         session_id: active.sessionId,
         task_id: id,
+        user_id: userIdRef.current,
         owner_email: active.ownerEmail,
         user_name: active.userName,
         company,
         title: task.text,
         completed_at: nowIso,
-      });
+      } as never);
       if (logErr) console.error("[checklist] ponto log error", logErr);
     } else if (!willDone && active.sessionId) {
-      // Desmarcou manualmente durante o expediente -> remove do log da sessão
-      await supabase
-        .from("ponto_session_tasks")
-        .delete()
-        .eq("session_id", active.sessionId)
-        .eq("task_id", id);
+      await supabase.from("ponto_session_tasks").delete()
+        .eq("session_id", active.sessionId).eq("task_id", id);
     }
   }, [state, applyLocal]);
 
-  // Resetar checklist (done -> pending) ao encerrar o expediente.
-  // O histórico permanece em ponto_session_tasks.
-  const resetAllDone = useCallback(async (owner: string) => {
-    const { error } = await supabase
-      .from("checklist_tasks")
+  const resetAllDone = useCallback(async () => {
+    if (!userIdRef.current) return;
+    const { error } = await supabase.from("checklist_tasks")
       .update({ status: "pending", done_at: null })
-      .eq("owner_email", owner)
-      .eq("status", "done");
+      .eq("user_id", userIdRef.current).eq("status", "done");
     if (error) console.error("[checklist] reset error", error);
   }, []);
 
   useEffect(() => {
-    const off = onPontoEvent((e) => {
-      if (e.type === "ended" && e.ownerEmail === ownerRef.current) {
-        resetAllDone(e.ownerEmail);
-      }
-    });
+    const off = onPontoEvent((e) => { if (e.type === "ended") resetAllDone(); });
     return () => { off; };
   }, [resetAllDone]);
 
@@ -310,34 +247,23 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     list.splice(toIdx, 0, moved);
     const reindexed = list.map((t, i) => ({ ...t, position: i }));
     applyLocal((s) => ({ ...s, [company]: reindexed }));
-    // persist new positions
-    await Promise.all(
-      reindexed.map((t) =>
-        supabase.from("checklist_tasks").update({ position: t.position }).eq("id", t.id)
-      )
-    );
+    await Promise.all(reindexed.map((t) =>
+      supabase.from("checklist_tasks").update({ position: t.position }).eq("id", t.id)
+    ));
   }, [state, applyLocal]);
 
   const clearCompany = useCallback(async (company: Company) => {
+    if (!userIdRef.current) return;
     const prev = state[company];
     applyLocal((s) => ({ ...s, [company]: [] }));
-    const { error } = await supabase
-      .from("checklist_tasks")
-      .delete()
-      .eq("owner_email", ownerRef.current)
-      .eq("company", company);
-    if (error) {
-      console.error("[checklist] clear error", error);
-      applyLocal((s) => ({ ...s, [company]: prev }));
-    }
+    const { error } = await supabase.from("checklist_tasks").delete()
+      .eq("user_id", userIdRef.current).eq("company", company);
+    if (error) { console.error("[checklist] clear error", error); applyLocal((s) => ({ ...s, [company]: prev })); }
   }, [state, applyLocal]);
 
   const totals = useMemo(() => {
     let total = 0, done = 0;
-    for (const c of COMPANIES) {
-      total += state[c].length;
-      done += state[c].filter((t) => t.done).length;
-    }
+    for (const c of COMPANIES) { total += state[c].length; done += state[c].filter((t) => t.done).length; }
     return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
   }, [state]);
 
