@@ -80,8 +80,9 @@ export function useOperationalData() {
     };
     load();
 
-    const ch = supabase.channel(`operations:${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ponto_sessions", filter: `user_id=eq.${userId}` }, () => load())
+    const channelName = `operations:${userId}:${Math.random().toString(36).slice(2, 10)}`;
+    const ch = supabase.channel(channelName);
+    ch.on("postgres_changes", { event: "*", schema: "public", table: "ponto_sessions", filter: `user_id=eq.${userId}` }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "ponto_session_tasks", filter: `user_id=eq.${userId}` }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "checklist_tasks", filter: `user_id=eq.${userId}` }, () => load())
       .subscribe();
