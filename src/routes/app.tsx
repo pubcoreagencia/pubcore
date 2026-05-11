@@ -11,15 +11,20 @@ export const Route = createFileRoute("/app")({
 });
 
 function AppLayout() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const nav = useNavigate();
 
   useEffect(() => {
-    if (user === null) {
-      const raw = typeof window !== "undefined" ? localStorage.getItem("pubcore_user") : null;
-      if (!raw) nav({ to: "/login" });
-    }
-  }, [user, nav]);
+    if (!loading && !user) nav({ to: "/login" });
+  }, [user, loading, nav]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-muted-foreground text-sm">Carregando…</div>
+      </div>
+    );
+  }
 
   return (
     <PontoProvider>
