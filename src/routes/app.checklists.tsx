@@ -12,9 +12,12 @@ import {
   BarChart, Bar, RadialBarChart, RadialBar, PolarAngleAxis,
 } from "recharts";
 import {
-  COMPANIES, COMPANY_COLORS, ASSIGNEES,
-  OPERATIONAL_HISTORY, TIMELINE, type Company,
+  COMPANIES, COMPANY_COLORS, type Company,
 } from "@/lib/mock-data";
+import {
+  useOperationalData, buildDailySeries, tasksByCompany, tasksByUser,
+  type SessionRow, type SessionTaskRow,
+} from "@/lib/operations";
 import { CompanyTag } from "@/components/CompanyTag";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/lib/auth";
