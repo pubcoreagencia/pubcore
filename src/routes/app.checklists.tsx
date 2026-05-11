@@ -580,7 +580,7 @@ function PontoTab() {
     start: startPonto, pause, resume, end, reset,
   } = usePonto();
   const status = session.status;
-  const start = () => startPonto(user?.name, user?.email);
+  const start = () => startPonto(user?.name, user?.email, user?.id);
   const startedAt = session.startedAt;
 
   // Tarefas concluídas vinculadas à sessão atual
