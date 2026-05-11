@@ -59,7 +59,7 @@ interface PontoCtx {
   livePauseMs: number;
   productiveMs: number;
   isLive: boolean;
-  start: (user?: string, ownerEmail?: string) => Promise<void>;
+  start: (user?: string, ownerEmail?: string, userId?: string) => Promise<void>;
   pause: () => void;
   resume: () => void;
   end: () => Promise<void>;
@@ -165,19 +165,20 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const start = async (user?: string, ownerEmail?: string) => {
+  const start = async (user?: string, ownerEmail?: string, userId?: string) => {
     const owner = ownerEmail ?? "guest@pubcore.local";
     const startedAt = Date.now();
-    // Insere a sessão no Supabase
+    const payload: Record<string, unknown> = {
+      owner_email: owner,
+      user_name: user ?? null,
+      started_at: new Date(startedAt).toISOString(),
+      status: "working",
+      pauses: [],
+    };
+    if (userId) payload.user_id = userId;
     const { data, error } = await supabase
       .from("ponto_sessions")
-      .insert({
-        owner_email: owner,
-        user_name: user ?? null,
-        started_at: new Date(startedAt).toISOString(),
-        status: "working",
-        pauses: [],
-      })
+      .insert(payload as never)
       .select("id")
       .single();
     if (error) {
