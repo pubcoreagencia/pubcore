@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendar_events: {
+        Row: {
+          company: string | null
+          created_at: string
+          event_date: string
+          event_time: string | null
+          id: string
+          notes: string | null
+          title: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          event_date: string
+          event_time?: string | null
+          id?: string
+          notes?: string | null
+          title: string
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          event_date?: string
+          event_time?: string | null
+          id?: string
+          notes?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       checklist_tasks: {
         Row: {
           assignee: string | null
@@ -28,6 +67,7 @@ export type Database = {
           status: string
           title: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           assignee?: string | null
@@ -42,6 +82,7 @@ export type Database = {
           status?: string
           title: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           assignee?: string | null
@@ -56,6 +97,91 @@ export type Database = {
           status?: string
           title?: string
           updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      crm_leads: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          owner: string | null
+          stage: string
+          updated_at: string
+          user_id: string
+          value: number
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          owner?: string | null
+          stage?: string
+          updated_at?: string
+          user_id: string
+          value?: number
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          owner?: string | null
+          stage?: string
+          updated_at?: string
+          user_id?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      kanban_cards: {
+        Row: {
+          assignee: string | null
+          checklist: Json
+          column_name: string
+          company: string
+          created_at: string
+          id: string
+          position: number
+          priority: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assignee?: string | null
+          checklist?: Json
+          column_name?: string
+          company: string
+          created_at?: string
+          id?: string
+          position?: number
+          priority?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assignee?: string | null
+          checklist?: Json
+          column_name?: string
+          company?: string
+          created_at?: string
+          id?: string
+          position?: number
+          priority?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -69,6 +195,7 @@ export type Database = {
           session_id: string
           task_id: string | null
           title: string
+          user_id: string | null
           user_name: string | null
         }
         Insert: {
@@ -80,6 +207,7 @@ export type Database = {
           session_id: string
           task_id?: string | null
           title: string
+          user_id?: string | null
           user_name?: string | null
         }
         Update: {
@@ -91,6 +219,7 @@ export type Database = {
           session_id?: string
           task_id?: string | null
           title?: string
+          user_id?: string | null
           user_name?: string | null
         }
         Relationships: [
@@ -117,6 +246,7 @@ export type Database = {
           summary: Json | null
           total_ms: number
           updated_at: string
+          user_id: string | null
           user_name: string | null
         }
         Insert: {
@@ -132,6 +262,7 @@ export type Database = {
           summary?: Json | null
           total_ms?: number
           updated_at?: string
+          user_id?: string | null
           user_name?: string | null
         }
         Update: {
@@ -147,7 +278,38 @@ export type Database = {
           summary?: Json | null
           total_ms?: number
           updated_at?: string
+          user_id?: string | null
           user_name?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          role?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
