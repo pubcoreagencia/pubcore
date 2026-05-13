@@ -5,7 +5,7 @@ import {
   Check, Filter, Plus, Trash2, Pencil, GripVertical, X,
   Play, Pause, StopCircle, RotateCcw,
   TrendingUp, CheckCircle2, AlertTriangle, ListTodo, Activity,
-  Sparkles, History, Timer, BarChart3, Users,
+  Sparkles, History, Timer, BarChart3, Users, Trash,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -16,7 +16,7 @@ import {
 } from "@/lib/mock-data";
 import {
   useOperationalData, buildDailySeries, tasksByCompany, tasksByUser,
-  type SessionRow, type SessionTaskRow,
+  type SessionRow, type SessionTaskRow, type ActivityRow,
 } from "@/lib/operations";
 import { CompanyTag } from "@/components/CompanyTag";
 import { StatCard } from "@/components/StatCard";
