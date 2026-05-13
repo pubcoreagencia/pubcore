@@ -6,6 +6,7 @@ import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { logActivity } from "@/lib/activity-log";
 
 export const Route = createFileRoute("/app/crm")({ component: CRMPage });
 
@@ -68,7 +69,15 @@ function CRMPage() {
     if (error) toast.error(error.message); else { setOpen(false); setDraft({ name: "", company: "", owner: COMPANIES[0], value: "" }); }
   };
 
-  const remove = async (id: string) => { await supabase.from("crm_leads").delete().eq("id", id); };
+  const remove = async (id: string) => {
+    const lead = leads.find((l) => l.id === id);
+    await supabase.from("crm_leads").delete().eq("id", id);
+    if (lead) await logActivity({
+      entity_type: "crm_lead", entity_id: id, action: "deleted",
+      title: lead.name, company: lead.owner ?? lead.company ?? null,
+      payload: { stage: lead.stage, value: lead.value },
+    });
+  };
 
   const total = leads.reduce((s, l) => s + Number(l.value), 0);
   const closed = leads.filter((l) => l.stage === "Fechado").reduce((s, l) => s + Number(l.value), 0);

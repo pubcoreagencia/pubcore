@@ -6,6 +6,7 @@ import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import { logActivity } from "@/lib/activity-log";
 
 export const Route = createFileRoute("/app/calendar")({ component: CalendarPage });
 
@@ -72,7 +73,15 @@ function CalendarPage() {
     if (error) toast.error(error.message); else { setOpen(false); setDraft({ ...draft, title: "" }); }
   };
 
-  const remove = async (id: string) => { await supabase.from("calendar_events").delete().eq("id", id); };
+  const remove = async (id: string) => {
+    const ev = events.find((e) => e.id === id);
+    await supabase.from("calendar_events").delete().eq("id", id);
+    if (ev) await logActivity({
+      entity_type: "calendar_event", entity_id: id, action: "deleted",
+      title: ev.title, company: ev.company,
+      payload: { type: ev.type, event_date: ev.event_date, event_time: ev.event_time },
+    });
+  };
 
   return (
     <div className="p-6 lg:p-10 max-w-[1600px] mx-auto">
