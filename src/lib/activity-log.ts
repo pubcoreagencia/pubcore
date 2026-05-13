@@ -43,7 +43,7 @@ export async function logActivity(input: ActivityLogInput): Promise<void> {
       action: input.action,
       title: input.title ?? null,
       company: input.company ?? null,
-      payload: input.payload ?? {},
+      payload: (input.payload ?? {}) as never,
     });
   } catch (err) {
     // eslint-disable-next-line no-console
