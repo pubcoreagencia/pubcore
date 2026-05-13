@@ -147,12 +147,17 @@ export type Database = {
         Row: {
           assignee: string | null
           checklist: Json
-          column_name: string
+          column_id: string | null
+          column_name: string | null
           company: string
           created_at: string
+          description: string | null
+          due_date: string | null
           id: string
+          notes: string | null
           position: number
           priority: string
+          status: string
           title: string
           updated_at: string
           user_id: string
@@ -160,12 +165,17 @@ export type Database = {
         Insert: {
           assignee?: string | null
           checklist?: Json
-          column_name?: string
+          column_id?: string | null
+          column_name?: string | null
           company: string
           created_at?: string
+          description?: string | null
+          due_date?: string | null
           id?: string
+          notes?: string | null
           position?: number
           priority?: string
+          status?: string
           title: string
           updated_at?: string
           user_id: string
@@ -173,13 +183,56 @@ export type Database = {
         Update: {
           assignee?: string | null
           checklist?: Json
-          column_name?: string
+          column_id?: string | null
+          column_name?: string | null
           company?: string
           created_at?: string
+          description?: string | null
+          due_date?: string | null
           id?: string
+          notes?: string | null
           position?: number
           priority?: string
+          status?: string
           title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_cards_column_id_fkey"
+            columns: ["column_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_columns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      kanban_columns: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
           updated_at?: string
           user_id?: string
         }
