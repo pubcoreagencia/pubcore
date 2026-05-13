@@ -54,7 +54,7 @@ function LoginPage() {
           backgroundSize: "32px 32px",
         }} />
         <div className="relative flex items-center gap-4">
-          <img src="/logo.png" alt="PUB" className="h-16 w-auto" />
+          <img src="/favicon.ico" alt="PUB" className="h-16 w-auto" />
           <div>
             <div className="font-display font-semibold text-xl tracking-tight">PUB <span className="text-primary">CORE</span></div>
             <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Operational OS</div>
@@ -75,7 +75,7 @@ function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
           <div className="lg:hidden flex items-center gap-3 mb-8">
-            <img src="/logo.png" alt="PUB" className="h-10 w-auto" />
+            <img src="/favicon.ico" alt="PUB" className="h-10 w-auto" />
             <span className="font-display font-semibold">PUB <span className="text-primary">CORE</span></span>
           </div>
 
