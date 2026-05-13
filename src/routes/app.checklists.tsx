@@ -16,7 +16,7 @@ import {
 } from "@/lib/mock-data";
 import {
   useOperationalData, buildDailySeries, tasksByCompany, tasksByUser,
-  type SessionRow, type SessionTaskRow, type ActivityRow,
+  type SessionRow, type SessionTaskRow,
 } from "@/lib/operations";
 import { CompanyTag } from "@/components/CompanyTag";
 import { StatCard } from "@/components/StatCard";
