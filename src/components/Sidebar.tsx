@@ -59,18 +59,18 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="p-3 border-t border-sidebar-border">
-        <div className="flex items-center gap-3 rounded-lg p-2.5 bg-sidebar-accent/40">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground font-bold text-sm">
+      <div className="relative p-3 border-t border-sidebar-border">
+        <div className="flex items-center gap-3 rounded-xl p-2.5 glass">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground font-bold text-sm ring-1 ring-white/15 shadow-glow">
             {user?.name?.[0] ?? "U"}
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate text-sidebar-foreground">{user?.name}</div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{user?.role}</div>
+            <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground truncate">{user?.role}</div>
           </div>
           <button
             onClick={handleLogout}
-            className="text-muted-foreground hover:text-destructive transition-colors p-1"
+            className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-md hover:bg-destructive/10"
             aria-label="Sair"
           >
             <LogOut className="h-4 w-4" />
