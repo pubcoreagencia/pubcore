@@ -126,7 +126,7 @@ function KanbanPage() {
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "kanban_cards", filter: `user_id=eq.${userId}` }, async () => {
         const { data } = await supabase.from("kanban_cards").select("*").eq("user_id", userId).order("position");
-        setCards(((data ?? []) as Card[]).map(normalizeCard));
+        setCards(((data ?? []) as unknown[]).map(normalizeCard));
       })
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };
