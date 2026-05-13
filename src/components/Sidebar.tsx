@@ -37,22 +37,23 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="relative flex-1 p-3 space-y-1">
         {items.map((it) => {
           const active = it.exact ? path === it.to : path.startsWith(it.to);
           return (
             <Link
               key={it.to}
               to={it.to}
-              className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all ${
+              className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all ${
                 active
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-card"
-                  : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
+                  ? "bg-sidebar-accent/80 text-sidebar-accent-foreground shadow-card border border-white/5"
+                  : "text-sidebar-foreground/65 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border border-transparent"
               }`}
             >
-              <it.icon className={`h-4 w-4 ${active ? "text-primary" : ""}`} />
-              <span className="font-medium">{it.label}</span>
-              {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-glow" />}
+              {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full bg-gradient-primary shadow-glow" />}
+              <it.icon className={`h-4 w-4 transition-colors ${active ? "text-primary" : "group-hover:text-primary/80"}`} />
+              <span className="font-medium tracking-tight">{it.label}</span>
+              {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-glow animate-pulse" />}
             </Link>
           );
         })}
