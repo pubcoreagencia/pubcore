@@ -42,7 +42,7 @@ export function Sidebar() {
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
       <div className="flex items-center gap-3 px-5 h-20 border-b border-sidebar-border">
-        <img src="/logo.png" alt="PUB" className="h-12 w-auto" />
+        <img src="/favicon.ico" alt="PUB" className="h-12 w-auto" />
         <div className="leading-tight">
           <div className="font-display font-semibold tracking-tight text-sidebar-foreground text-[15px]">
             PUB <span className="text-primary">CORE</span>
