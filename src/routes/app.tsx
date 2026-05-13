@@ -31,9 +31,13 @@ function AppLayout() {
       <ChecklistProvider>
         <div className="flex min-h-screen w-full bg-background">
           <Sidebar />
-          <main className="flex-1 min-w-0 bg-glow relative">
-            <PontoHeader />
-            <Outlet />
+          <main className="flex-1 min-w-0 relative">
+            <div className="absolute inset-0 bg-glow pointer-events-none" />
+            <div className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />
+            <div className="relative">
+              <PontoHeader />
+              <Outlet />
+            </div>
           </main>
         </div>
       </ChecklistProvider>
