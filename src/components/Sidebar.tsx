@@ -1,17 +1,32 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, KanbanSquare, ListChecks, Calendar, Users2, Settings,
-  LogOut, Sparkles,
+  LogOut,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
-const items = [
-  { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/app/kanban", label: "Kanban", icon: KanbanSquare },
-  { to: "/app/checklists", label: "Checklists", icon: ListChecks },
-  { to: "/app/calendar", label: "Calendário", icon: Calendar },
-  { to: "/app/crm", label: "CRM", icon: Users2 },
-  { to: "/app/settings", label: "Configurações", icon: Settings },
+type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
+
+const groups: { label: string; items: NavItem[] }[] = [
+  {
+    label: "Operação",
+    items: [{ to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true }],
+  },
+  {
+    label: "Workflow",
+    items: [
+      { to: "/app/kanban", label: "Kanban", icon: KanbanSquare },
+      { to: "/app/checklists", label: "Checklists", icon: ListChecks },
+      { to: "/app/calendar", label: "Calendário", icon: Calendar },
+    ],
+  },
+  {
+    label: "Gestão",
+    items: [
+      { to: "/app/crm", label: "CRM", icon: Users2 },
+      { to: "/app/settings", label: "Configurações", icon: Settings },
+    ],
+  },
 ];
 
 export function Sidebar() {
@@ -25,52 +40,58 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar relative overflow-hidden">
-      <div className="absolute inset-0 bg-glow opacity-60 pointer-events-none" />
-      <div className="relative flex items-center gap-3 px-5 h-16 border-b border-sidebar-border">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary shadow-glow ring-1 ring-white/10">
-          <Sparkles className="h-4 w-4 text-primary-foreground" />
-        </div>
-        <div>
-          <div className="font-display font-semibold tracking-tight text-sidebar-foreground text-[15px]">PUB <span className="text-gradient">CORE</span></div>
-          <div className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Operational OS</div>
+    <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
+      <div className="flex items-center gap-3 px-5 h-20 border-b border-sidebar-border">
+        <img src="/logo.png" alt="PUB" className="h-12 w-auto" />
+        <div className="leading-tight">
+          <div className="font-display font-semibold tracking-tight text-sidebar-foreground text-[15px]">
+            PUB <span className="text-primary">CORE</span>
+          </div>
+          <div className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground">Operational OS</div>
         </div>
       </div>
 
-      <nav className="relative flex-1 p-3 space-y-1">
-        {items.map((it) => {
-          const active = it.exact ? path === it.to : path.startsWith(it.to);
-          return (
-            <Link
-              key={it.to}
-              to={it.to}
-              className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all ${
-                active
-                  ? "bg-sidebar-accent/80 text-sidebar-accent-foreground shadow-card border border-white/5"
-                  : "text-sidebar-foreground/65 hover:text-sidebar-foreground hover:bg-sidebar-accent/40 border border-transparent"
-              }`}
-            >
-              {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-[3px] rounded-r-full bg-gradient-primary shadow-glow" />}
-              <it.icon className={`h-4 w-4 transition-colors ${active ? "text-primary" : "group-hover:text-primary/80"}`} />
-              <span className="font-medium tracking-tight">{it.label}</span>
-              {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary shadow-glow animate-pulse" />}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 px-2 pt-4 space-y-5 overflow-y-auto">
+        {groups.map((group) => (
+          <div key={group.label}>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60 px-3 mb-1.5">
+              {group.label}
+            </div>
+            <div className="space-y-0.5">
+              {group.items.map((it) => {
+                const active = it.exact ? path === it.to : path.startsWith(it.to);
+                return (
+                  <Link
+                    key={it.to}
+                    to={it.to}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                      active
+                        ? "bg-secondary text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                    }`}
+                  >
+                    <it.icon className={`h-4 w-4 flex-shrink-0 ${active ? "text-primary" : ""}`} />
+                    <span>{it.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      <div className="relative p-3 border-t border-sidebar-border">
-        <div className="flex items-center gap-3 rounded-xl p-2.5 glass">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground font-bold text-sm ring-1 ring-white/15 shadow-glow">
+      <div className="p-4 border-t border-sidebar-border">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground font-semibold text-sm">
             {user?.name?.[0] ?? "U"}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate text-sidebar-foreground">{user?.name}</div>
-            <div className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground truncate">{user?.role}</div>
+            <div className="text-xs font-medium truncate text-foreground">{user?.name}</div>
+            <div className="text-[10px] text-muted-foreground truncate capitalize">{user?.role}</div>
           </div>
           <button
             onClick={handleLogout}
-            className="text-muted-foreground hover:text-destructive transition-colors p-1.5 rounded-md hover:bg-destructive/10"
+            className="text-muted-foreground hover:text-foreground transition-colors p-1.5"
             aria-label="Sair"
           >
             <LogOut className="h-4 w-4" />
