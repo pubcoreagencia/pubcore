@@ -201,7 +201,7 @@ function KanbanPage() {
     if (patch.checklist) dbPatch.checklist = patch.checklist as unknown;
     setCards((cs) => cs.map((c) => c.id === id ? { ...c, ...patch } : c));
     setOpenCard((c) => c && c.id === id ? { ...c, ...patch } : c);
-    await supabase.from("kanban_cards").update(dbPatch).eq("id", id);
+    await supabase.from("kanban_cards").update(dbPatch as never).eq("id", id);
   };
 
   const moveCard = async (cardId: string, targetColId: string, targetIdx?: number) => {
