@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sparkles, Mail, ArrowRight, Lock, User } from "lucide-react";
+import { Mail, ArrowRight, Lock, User } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
@@ -47,25 +47,23 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background bg-glow">
+    <div className="min-h-screen flex bg-background">
       <div className="hidden lg:flex flex-1 flex-col justify-between p-12 border-r border-border relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.04]" style={{
+        <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
           backgroundSize: "32px 32px",
         }} />
-        <div className="relative flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
-            <Sparkles className="h-5 w-5 text-primary-foreground" />
-          </div>
+        <div className="relative flex items-center gap-4">
+          <img src="/logo.png" alt="PUB" className="h-16 w-auto" />
           <div>
-            <div className="font-display font-bold text-xl tracking-tight">PUB CORE</div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Holding Operating System</div>
+            <div className="font-display font-semibold text-xl tracking-tight">PUB <span className="text-primary">CORE</span></div>
+            <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Operational OS</div>
           </div>
         </div>
         <div className="relative max-w-lg">
-          <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight">
+          <h1 className="font-display text-5xl font-semibold leading-[1.05] tracking-tight">
             A central operacional<br />
-            <span className="text-gradient">executiva</span> da sua holding.
+            <span className="text-primary">executiva</span> da sua holding.
           </h1>
           <p className="mt-6 text-muted-foreground text-lg leading-relaxed">
             Kanban, checklists, calendário e CRM unificados — Pub 3D, Pub IA, Pub RECORDS, Pub Films, Bricks e Têxtil em uma única visão.
@@ -76,9 +74,9 @@ function LoginPage() {
 
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-md">
-          <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary"><Sparkles className="h-4 w-4 text-primary-foreground" /></div>
-            <span className="font-display font-bold">PUB CORE</span>
+          <div className="lg:hidden flex items-center gap-3 mb-8">
+            <img src="/logo.png" alt="PUB" className="h-10 w-auto" />
+            <span className="font-display font-semibold">PUB <span className="text-primary">CORE</span></span>
           </div>
 
           <h2 className="font-display text-3xl font-bold tracking-tight">
@@ -124,7 +122,7 @@ function LoginPage() {
             )}
 
             <button type="submit" disabled={loading}
-              className="group w-full rounded-lg bg-gradient-primary py-3 text-sm font-bold text-primary-foreground shadow-glow hover:shadow-elegant transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+              className="group w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50">
               {loading ? "Aguarde..." : mode === "signin" ? "Entrar" : mode === "signup" ? "Criar conta" : "Enviar link"}
               <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </button>
