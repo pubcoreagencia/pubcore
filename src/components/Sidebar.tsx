@@ -25,14 +25,15 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-      <div className="flex items-center gap-2 px-5 h-16 border-b border-sidebar-border">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-primary shadow-glow">
+    <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar relative overflow-hidden">
+      <div className="absolute inset-0 bg-glow opacity-60 pointer-events-none" />
+      <div className="relative flex items-center gap-3 px-5 h-16 border-b border-sidebar-border">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary shadow-glow ring-1 ring-white/10">
           <Sparkles className="h-4 w-4 text-primary-foreground" />
         </div>
         <div>
-          <div className="font-display font-bold tracking-tight text-sidebar-foreground">PUB CORE</div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Holding OS</div>
+          <div className="font-display font-semibold tracking-tight text-sidebar-foreground text-[15px]">PUB <span className="text-gradient">CORE</span></div>
+          <div className="text-[9px] uppercase tracking-[0.2em] text-muted-foreground">Operational OS</div>
         </div>
       </div>
 
