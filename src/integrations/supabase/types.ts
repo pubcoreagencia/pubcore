@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          company: string | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          owner_email: string
+          payload: Json
+          title: string | null
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          action: string
+          company?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          owner_email: string
+          payload?: Json
+          title?: string | null
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          action?: string
+          company?: string | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          owner_email?: string
+          payload?: Json
+          title?: string | null
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           company: string | null

@@ -5,6 +5,7 @@ import { COMPANIES, type Company } from "./mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./auth";
 import { getActivePontoSession, onPontoEvent } from "./ponto";
+import { logActivity } from "./activity-log";
 
 export interface UserTask {
   id: string;
@@ -181,9 +182,14 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const remove = useCallback(async (company: Company, id: string) => {
     const prev = state[company];
+    const task = prev.find((t) => t.id === id);
     applyLocal((s) => ({ ...s, [company]: s[company].filter((t) => t.id !== id) }));
     const { error } = await supabase.from("checklist_tasks").delete().eq("id", id);
-    if (error) { console.error("[checklist] remove error", error); applyLocal((s) => ({ ...s, [company]: prev })); }
+    if (error) { console.error("[checklist] remove error", error); applyLocal((s) => ({ ...s, [company]: prev })); return; }
+    if (task) await logActivity({
+      entity_type: "checklist_task", entity_id: id, action: "deleted",
+      title: task.text, company, payload: { was_done: task.done, priority: task.priority },
+    });
   }, [state, applyLocal]);
 
   const toggle = useCallback(async (company: Company, id: string) => {
@@ -258,7 +264,13 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     applyLocal((s) => ({ ...s, [company]: [] }));
     const { error } = await supabase.from("checklist_tasks").delete()
       .eq("user_id", userIdRef.current).eq("company", company);
-    if (error) { console.error("[checklist] clear error", error); applyLocal((s) => ({ ...s, [company]: prev })); }
+    if (error) { console.error("[checklist] clear error", error); applyLocal((s) => ({ ...s, [company]: prev })); return; }
+    for (const task of prev) {
+      logActivity({
+        entity_type: "checklist_task", entity_id: task.id, action: "deleted",
+        title: task.text, company, payload: { was_done: task.done, bulk: true },
+      });
+    }
   }, [state, applyLocal]);
 
   const totals = useMemo(() => {
