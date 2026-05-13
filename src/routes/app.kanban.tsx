@@ -100,7 +100,7 @@ function KanbanPage() {
       setColumns(columnList);
 
       // Migrate legacy cards: column_id null but column_name set
-      const cardList = (cs ?? []) as Card[];
+      const cardList = ((cs ?? []) as unknown[]).map(normalizeCard);
       const legacy = cardList.filter((c) => !c.column_id && c.column_name);
       if (legacy.length > 0) {
         const byName = new Map(columnList.map((c) => [c.name, c.id]));
@@ -110,9 +110,9 @@ function KanbanPage() {
           return supabase.from("kanban_cards").update({ column_id: colId }).eq("id", c.id);
         }));
         const { data: refreshed } = await supabase.from("kanban_cards").select("*").eq("user_id", userId).order("position");
-        setCards((refreshed ?? []).map(normalizeCard) as Card[]);
+        setCards(((refreshed ?? []) as unknown[]).map(normalizeCard));
       } else {
-        setCards(cardList.map(normalizeCard));
+        setCards(cardList);
       }
       setLoaded(true);
     };
