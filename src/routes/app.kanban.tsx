@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { getActivePontoSession } from "@/lib/ponto";
 import { toast } from "sonner";
+import { logActivity } from "@/lib/activity-log";
 
 export const Route = createFileRoute("/app/kanban")({ component: KanbanPage });
 
@@ -160,9 +161,20 @@ function KanbanPage() {
 
   const deleteColumn = async (id: string) => {
     const colCards = cards.filter((c) => c.column_id === id);
+    const col = columns.find((c) => c.id === id);
     if (colCards.length > 0 && !confirm(`Excluir coluna com ${colCards.length} card(s)? Os cards também serão removidos.`)) return;
     await supabase.from("kanban_cards").delete().eq("column_id", id);
     await supabase.from("kanban_columns").delete().eq("id", id);
+    if (col) await logActivity({
+      entity_type: "kanban_column", entity_id: id, action: "deleted",
+      title: col.name, payload: { card_count: colCards.length },
+    });
+    for (const c of colCards) {
+      logActivity({
+        entity_type: "kanban_card", entity_id: c.id, action: "deleted",
+        title: c.title, company: c.company, payload: { cascade_from_column: col?.name, priority: c.priority },
+      });
+    }
   };
 
   const reorderColumns = async (fromId: string, toId: string) => {
@@ -193,7 +205,13 @@ function KanbanPage() {
   };
 
   const deleteCard = async (id: string) => {
+    const card = cards.find((c) => c.id === id);
     await supabase.from("kanban_cards").delete().eq("id", id);
+    if (card) await logActivity({
+      entity_type: "kanban_card", entity_id: id, action: "deleted",
+      title: card.title, company: card.company,
+      payload: { priority: card.priority, status: card.status, column_id: card.column_id },
+    });
   };
 
   const updateCard = async (id: string, patch: Partial<Card>) => {
