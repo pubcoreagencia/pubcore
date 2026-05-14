@@ -1,109 +1,54 @@
-# Refatoração: PUB CORE → Plataforma Multi-Workspace
+## Aba "Finanças" — Central financeira da PUB CORE
 
-Transformar a PUB CORE numa arquitetura inspirada no Lovable, com workspaces isolados, hierarquia de papéis (MASTER, WORKSPACE_ADMIN, MEMBER) e um painel global MASTER.
+Nova aba `/app/finance` totalmente integrada ao sistema multi-workspace existente, com persistência no Supabase e realtime.
 
----
+### 1. Banco de dados (migration)
 
-## 1. Banco de dados (Supabase)
+Tabelas novas (todas com `workspace_id`, RLS `is_workspace_member OR master`, realtime habilitado):
 
-### Novas tabelas
-- **`workspaces`** — `id`, `name`, `slug`, `owner_id`, `created_at`
-- **`workspace_members`** — `id`, `workspace_id`, `user_id`, `role` (`admin` | `member`), `created_at`. Único por (workspace_id, user_id).
-- **`app_roles`** (enum global): `master`, `user`
-- **`user_roles`** — `id`, `user_id`, `role app_role` (segue o padrão de segurança recomendado, separado de `profiles`)
+- **`finance_categories`** — categorias customizáveis de entrada/saída. Campos: `name`, `kind` (`income`|`expense`), `color`, `icon`, `position`.
+- **`finance_transactions`** — entradas e saídas. Campos: `kind` (`income`|`expense`), `amount` (numeric), `description`, `category_id`, `company`, `occurred_on` (date), `recurrence` (`none`|`monthly`|`weekly`|`yearly`), `responsible`, `notes`.
+- **`finance_costs`** — custos fixos/variáveis. Campos: `name`, `kind` (`fixed`|`variable`), `amount_monthly`, `company`, `category`, `notes`, `active`.
+- **`finance_products`** — catálogo. Campos: `name`, `company` (Pub 3D, Pub IA, Pub RECORDS, Pub Films, Bricks, Têxtil), `cost`, `price`, `avg_demand_monthly`, `stock`, `category`, `notes`. Markup, margem e lucro unitário derivados no front.
 
-### Funções `SECURITY DEFINER`
-- `has_app_role(_user_id uuid, _role app_role) returns boolean` — checa MASTER global
-- `is_workspace_member(_workspace_id uuid, _user_id uuid) returns boolean`
-- `is_workspace_admin(_workspace_id uuid, _user_id uuid) returns boolean`
-- `current_workspace_id()` — lê de `auth.jwt()` claim opcional, fallback ao primeiro workspace do usuário
+Sem alterações em tabelas existentes.
 
-### Migração das tabelas existentes
-Adicionar coluna `workspace_id uuid not null` em:
-`notes`, `note_categories`, `checklist_tasks`, `kanban_columns`, `kanban_cards`, `crm_leads`, `calendar_events`, `ponto_sessions`, `ponto_session_tasks`, `activity_log`.
+### 2. Frontend
 
-Backfill: para cada `user_id` distinto, criar um workspace pessoal (`{display_name}'s Workspace`), inserir `workspace_members` como `admin`, e atribuir esse `workspace_id` a todas as linhas existentes daquele usuário.
+**Rota raiz `src/routes/app.finance.tsx`** com tabs internas (estilo Linear/Stripe):
 
-### RLS — substituir políticas atuais
-Para todas as tabelas operacionais, política nova:
+```text
+[ Dashboard | Entradas/Saídas | Custos | Produtos | Breakeven | Relatórios ]
 ```
-USING (
-  is_workspace_member(workspace_id, auth.uid())
-  OR has_app_role(auth.uid(), 'master')
-)
-```
-Mutações: idem + checagem em `WITH CHECK`. MASTER vê e edita tudo.
 
-### Bootstrap
-- Trigger `handle_new_user` estendido: cria profile + workspace pessoal + membership `admin` + role `user`.
-- Seed manual: promover o primeiro usuário (ou um e-mail informado) a `master` via `supabase--insert`.
+- **Dashboard** — KPIs (faturamento, lucro líquido, despesas, saldo, breakeven diário/mensal), gráfico de evolução (Recharts area), comparativo mês atual vs anterior, top empresas, top produtos, alertas de saúde.
+- **Entradas/Saídas** — tabela unificada com filtros (tipo, categoria, empresa, período, busca), modal de criação/edição, ações de excluir, badge de recorrência.
+- **Custos** — duas listas (Fixos / Variáveis), totais por tipo, impacto mensal, comparativo por empresa.
+- **Produtos** — grid de cards por empresa, modal CRUD, exibe markup/margem/lucro unitário calculados.
+- **Breakeven** — calcula a partir de custos fixos + variáveis médios + ticket médio dos produtos: ponto de equilíbrio diário/mensal, faturamento mínimo, qtd mínima de vendas, "quanto falta para o azul" (vs entradas do mês), barras de progresso, ranking empresas lucrativas vs no prejuízo.
+- **Relatórios** — tabelas mensais/semanais, métricas por empresa e produto, comparativos históricos, export CSV.
 
----
+**Sidebar** — adicionar item "Finanças" no grupo "Gestão" com ícone `Wallet`.
 
-## 2. Camada de aplicação
+**Realtime** — canal único `finance:${workspaceId}` escutando as 4 tabelas, refetch on change.
 
-### Novo store: `src/lib/workspace.tsx`
-Context provider `WorkspaceProvider` que:
-- Carrega workspaces do usuário + role global (`master` ou `user`)
-- Persiste workspace ativo em `localStorage` (`pubcore_active_workspace`)
-- Expõe `{ workspaces, activeWorkspace, setActiveWorkspace, role, isMaster, isWorkspaceAdmin, refresh }`
-- Realtime nas tabelas `workspaces` e `workspace_members`
+**Stores leves** — sem provider global; cada tab usa hooks `useFinance*` com `useEffect` + estado local, escopados ao `activeWorkspaceId` do `useWorkspace()`.
 
-Montar dentro de `src/routes/app.tsx`, **acima** dos providers existentes (Ponto, Checklist).
+### 3. Visual
 
-### Refatorar acesso a dados
-Todos os `supabase.from(...).select()` / `.insert()` nas stores e rotas (`operations.tsx`, `checklist-store.tsx`, `app.notes.tsx`, `app.kanban.tsx`, `app.calendar.tsx`, `app.crm.tsx`, `ponto.tsx`, `activity-log.ts`) passam a:
-- filtrar por `workspace_id = activeWorkspace.id` (em vez de `user_id`)
-- incluir `workspace_id` em todo `insert`
-- canais realtime usam filtro `workspace_id=eq.${activeWorkspace.id}`
+Dark premium consistente com o resto da PUB CORE: cards com `bg-card/50`, bordas sutis, glow no KPI principal via `--gradient-primary`, números em `font-display`, microinterações com `transition-colors`. Recharts usando tokens semânticos (`hsl(var(--primary))`, etc).
 
-Ao trocar de workspace → recarregar dados.
+### 4. Integração
 
-### UI
+- Activity log: registra `created`/`updated`/`deleted` em `finance_transactions` (entity_type `finance_transaction` — adicionar ao type union).
+- Tudo escopado a `activeWorkspaceId`; troca de workspace recarrega.
+- Persistência e recovery automáticos via Supabase + realtime.
 
-**Workspace switcher** no topo da `Sidebar`:
-- Dropdown com workspaces do usuário, atalho "Criar workspace", e (se MASTER) "Ver todos os workspaces"
-- Modal de criação simples (nome → cria workspace + membership admin)
+### 5. Fora de escopo (não vou fazer agora)
 
-**Master Dashboard** — nova rota `src/routes/app.master.tsx` (visível só para MASTER):
-- Lista de todos os workspaces (nome, owner, nº membros, última atividade)
-- Lista de todos os usuários com role atual + dropdown para promover/rebaixar
-- KPIs globais: total workspaces, usuários, sessões hoje, tarefas concluídas
-- Botão "Entrar neste workspace" → seta `activeWorkspace` mesmo sem ser membro (MASTER bypass)
+- Importação de extrato bancário / OFX.
+- Conciliação automática.
+- Multi-moeda (assumindo BRL).
+- Notas fiscais / integração contábil.
 
-Item "Master" na sidebar só aparece se `isMaster`.
-
-**Settings** (`app.settings.tsx`): nova aba "Workspace" com nome, lista de membros, convidar por e-mail (cria membership se o usuário existir), promover/remover (só admin).
-
-### Proteção de rotas
-- `/app/master` → redireciona se não for MASTER
-- Guards de mutação: a UI de admin (gerenciar membros, deletar workspace) só renderiza se `isWorkspaceAdmin || isMaster`
-
----
-
-## 3. Detalhes técnicos
-
-- Tipos atualizados em `src/integrations/supabase/types.ts` automaticamente após migração.
-- Realtime: habilitar replicação em `workspaces`, `workspace_members`, `user_roles`.
-- Activity log passa a registrar `workspace_id` para isolamento.
-- Backwards-compat: como vamos backfillar, nenhum dado se perde; usuários veem o "workspace pessoal" deles ao primeiro login.
-- Promoção do primeiro MASTER: vou perguntar o e-mail antes de aplicar.
-
----
-
-## 4. Etapas de execução
-
-1. **Migration**: criar tabelas, enums, funções, adicionar `workspace_id` a todas as tabelas operacionais, backfill, novas RLS, trigger `handle_new_user`. Pedir aprovação.
-2. **Promover MASTER** via `supabase--insert` (após confirmar e-mail).
-3. **`WorkspaceProvider`** + integração no layout `app.tsx`.
-4. **Refatorar stores e rotas** para usar `workspace_id`.
-5. **Workspace switcher** na Sidebar + modal de criação.
-6. **Master Dashboard** (`app.master.tsx`).
-7. **Settings → aba Workspace** (membros, convites, promoções).
-8. Smoke test: criar 2º workspace, alternar, verificar isolamento.
-
----
-
-## Pergunta antes de iniciar
-
-**Qual e-mail deve ser promovido a MASTER inicial?** Sem isso o painel global fica inacessível no primeiro deploy.
+Confirme e eu já aplico a migration e construo a aba.

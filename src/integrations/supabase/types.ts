@@ -197,6 +197,192 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_categories: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string
+          id: string
+          kind: string
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          kind: string
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          kind?: string
+          name?: string
+          position?: number
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      finance_costs: {
+        Row: {
+          active: boolean
+          amount_monthly: number
+          category: string | null
+          company: string | null
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          active?: boolean
+          amount_monthly?: number
+          category?: string | null
+          company?: string | null
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          active?: boolean
+          amount_monthly?: number
+          category?: string | null
+          company?: string | null
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      finance_products: {
+        Row: {
+          avg_demand_monthly: number
+          category: string | null
+          company: string
+          cost: number
+          created_at: string
+          id: string
+          name: string
+          notes: string | null
+          price: number
+          stock: number
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          avg_demand_monthly?: number
+          category?: string | null
+          company?: string
+          cost?: number
+          created_at?: string
+          id?: string
+          name: string
+          notes?: string | null
+          price?: number
+          stock?: number
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          avg_demand_monthly?: number
+          category?: string | null
+          company?: string
+          cost?: number
+          created_at?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          price?: number
+          stock?: number
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      finance_transactions: {
+        Row: {
+          amount: number
+          category_id: string | null
+          category_name: string | null
+          company: string | null
+          created_at: string
+          description: string
+          id: string
+          kind: string
+          notes: string | null
+          occurred_on: string
+          recurrence: string
+          responsible: string | null
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          amount?: number
+          category_id?: string | null
+          category_name?: string | null
+          company?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          kind: string
+          notes?: string | null
+          occurred_on?: string
+          recurrence?: string
+          responsible?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          amount?: number
+          category_id?: string | null
+          category_name?: string | null
+          company?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          kind?: string
+          notes?: string | null
+          occurred_on?: string
+          recurrence?: string
+          responsible?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       kanban_cards: {
         Row: {
           assignee: string | null

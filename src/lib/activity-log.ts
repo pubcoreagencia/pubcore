@@ -8,7 +8,10 @@ export type ActivityEntityType =
   | "calendar_event"
   | "crm_lead"
   | "ponto_session"
-  | "note";
+  | "note"
+  | "finance_transaction"
+  | "finance_cost"
+  | "finance_product";
 
 export type ActivityAction = "deleted" | "created" | "completed" | "updated";
 

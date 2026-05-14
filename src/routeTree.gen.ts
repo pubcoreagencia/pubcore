@@ -17,6 +17,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppNotesRouteImport } from './routes/app.notes'
 import { Route as AppKanbanRouteImport } from './routes/app.kanban'
+import { Route as AppFinanceRouteImport } from './routes/app.finance'
 import { Route as AppCrmRouteImport } from './routes/app.crm'
 import { Route as AppChecklistsRouteImport } from './routes/app.checklists'
 import { Route as AppCalendarRouteImport } from './routes/app.calendar'
@@ -61,6 +62,11 @@ const AppKanbanRoute = AppKanbanRouteImport.update({
   path: '/kanban',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFinanceRoute = AppFinanceRouteImport.update({
+  id: '/finance',
+  path: '/finance',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCrmRoute = AppCrmRouteImport.update({
   id: '/crm',
   path: '/crm',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
   '/app/crm': typeof AppCrmRoute
+  '/app/finance': typeof AppFinanceRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
   '/app/crm': typeof AppCrmRoute
+  '/app/finance': typeof AppFinanceRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
   '/app/crm': typeof AppCrmRoute
+  '/app/finance': typeof AppFinanceRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/checklists'
     | '/app/crm'
+    | '/app/finance'
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/checklists'
     | '/app/crm'
+    | '/app/finance'
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/checklists'
     | '/app/crm'
+    | '/app/finance'
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
@@ -222,6 +234,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKanbanRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/finance': {
+      id: '/app/finance'
+      path: '/finance'
+      fullPath: '/app/finance'
+      preLoaderRoute: typeof AppFinanceRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/crm': {
       id: '/app/crm'
       path: '/crm'
@@ -250,6 +269,7 @@ interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppChecklistsRoute: typeof AppChecklistsRoute
   AppCrmRoute: typeof AppCrmRoute
+  AppFinanceRoute: typeof AppFinanceRoute
   AppKanbanRoute: typeof AppKanbanRoute
   AppNotesRoute: typeof AppNotesRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -260,6 +280,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppChecklistsRoute: AppChecklistsRoute,
   AppCrmRoute: AppCrmRoute,
+  AppFinanceRoute: AppFinanceRoute,
   AppKanbanRoute: AppKanbanRoute,
   AppNotesRoute: AppNotesRoute,
   AppSettingsRoute: AppSettingsRoute,
@@ -277,3 +298,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
