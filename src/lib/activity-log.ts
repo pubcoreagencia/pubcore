@@ -6,7 +6,8 @@ export type ActivityEntityType =
   | "kanban_column"
   | "calendar_event"
   | "crm_lead"
-  | "ponto_session";
+  | "ponto_session"
+  | "note";
 
 export type ActivityAction = "deleted" | "created" | "completed" | "updated";
 

@@ -156,12 +156,12 @@ function NotesPage() {
     if (selectedId === id) setSelectedId(null);
     if (n) {
       await logActivity({
-        entity_type: "checklist_task" as never, // reuse generic types; not ideal but logs
+        entity_type: "note",
         entity_id: id,
         action: "deleted",
         title: n.title,
         company: n.company,
-        payload: { category: n.category, tags: n.tags, source: "notes" },
+        payload: { category: n.category, tags: n.tags },
       });
     }
   };
