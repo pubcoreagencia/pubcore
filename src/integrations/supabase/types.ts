@@ -711,11 +711,54 @@ export type Database = {
       stock_categories: {
         Row: {
           color: string
+          company_id: string | null
+          created_at: string
+          group_id: string | null
+          icon: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string
+          company_id?: string | null
+          created_at?: string
+          group_id?: string | null
+          icon?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string
+          company_id?: string | null
+          created_at?: string
+          group_id?: string | null
+          icon?: string
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      stock_companies: {
+        Row: {
+          color: string
           created_at: string
           icon: string
           id: string
           name: string
           position: number
+          slug: string
           updated_at: string
           user_id: string
           workspace_id: string
@@ -727,12 +770,104 @@ export type Database = {
           id?: string
           name: string
           position?: number
+          slug: string
           updated_at?: string
           user_id: string
           workspace_id: string
         }
         Update: {
           color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name?: string
+          position?: number
+          slug?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      stock_field_defs: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          is_system: boolean
+          key: string
+          label: string
+          options: Json
+          position: number
+          required: boolean
+          type: string
+          updated_at: string
+          user_id: string
+          visible: boolean
+          workspace_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          key: string
+          label: string
+          options?: Json
+          position?: number
+          required?: boolean
+          type?: string
+          updated_at?: string
+          user_id: string
+          visible?: boolean
+          workspace_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_system?: boolean
+          key?: string
+          label?: string
+          options?: Json
+          position?: number
+          required?: boolean
+          type?: string
+          updated_at?: string
+          user_id?: string
+          visible?: boolean
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      stock_groups: {
+        Row: {
+          color: string
+          company_id: string
+          created_at: string
+          icon: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string
+          company_id: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string
+          company_id?: string
           created_at?: string
           icon?: string
           id?: string
@@ -747,15 +882,20 @@ export type Database = {
       stock_items: {
         Row: {
           category: string | null
+          category_id: string | null
           company: string
+          company_id: string | null
           cost: number
           created_at: string
+          data: Json
           description: string | null
+          group_id: string | null
           id: string
           location: string | null
           min_quantity: number
           name: string
           notes: string | null
+          position: number
           price: number
           quantity: number
           sku: string | null
@@ -767,15 +907,20 @@ export type Database = {
         }
         Insert: {
           category?: string | null
+          category_id?: string | null
           company?: string
+          company_id?: string | null
           cost?: number
           created_at?: string
+          data?: Json
           description?: string | null
+          group_id?: string | null
           id?: string
           location?: string | null
           min_quantity?: number
           name: string
           notes?: string | null
+          position?: number
           price?: number
           quantity?: number
           sku?: string | null
@@ -787,15 +932,20 @@ export type Database = {
         }
         Update: {
           category?: string | null
+          category_id?: string | null
           company?: string
+          company_id?: string | null
           cost?: number
           created_at?: string
+          data?: Json
           description?: string | null
+          group_id?: string | null
           id?: string
           location?: string | null
           min_quantity?: number
           name?: string
           notes?: string | null
+          position?: number
           price?: number
           quantity?: number
           sku?: string | null
@@ -809,6 +959,7 @@ export type Database = {
       }
       stock_movements: {
         Row: {
+          company_id: string | null
           created_at: string
           id: string
           item_id: string
@@ -822,6 +973,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           id?: string
           item_id: string
@@ -835,6 +987,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           id?: string
           item_id?: string
