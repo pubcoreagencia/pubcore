@@ -203,7 +203,7 @@ function KpiCard({ label, value, sub, icon, tone = "default", glow = false }: {
     tone === "danger" ? "text-destructive" :
     tone === "primary" ? "text-primary" : "text-foreground";
   return (
-    <div className={`relative rounded-2xl border border-border/40 bg-card/60 p-5 overflow-hidden ${glow ? "shadow-[0_0_60px_-20px_hsl(var(--primary)/0.4)]" : ""}`}>
+    <div className={`relative rounded-2xl border border-border/40 bg-card/60 p-5 overflow-hidden ${glow ? "shadow-[0_0_60px_-20px_color-mix(in oklab, var(--primary) 40%, transparent)]" : ""}`}>
       {glow && <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />}
       <div className="relative flex items-start justify-between">
         <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
@@ -295,21 +295,21 @@ function DashboardTab({ kpis, tx, products }: { kpis: ReturnType<typeof calcKPIs
           <AreaChart data={series}>
             <defs>
               <linearGradient id="gIncome" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(var(--success))" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="hsl(var(--success))" stopOpacity={0} />
+                <stop offset="0%" stopColor="var(--success)" stopOpacity={0.4} />
+                <stop offset="100%" stopColor="var(--success)" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="gExpense" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(var(--destructive))" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="hsl(var(--destructive))" stopOpacity={0} />
+                <stop offset="0%" stopColor="var(--destructive)" stopOpacity={0.4} />
+                <stop offset="100%" stopColor="var(--destructive)" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-            <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
-            <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
+            <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} />
+            <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
+            <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
               formatter={(v: number) => BRL(v)} />
-            <Area type="monotone" dataKey="income" name="Entradas" stroke="hsl(var(--success))" strokeWidth={2} fill="url(#gIncome)" />
-            <Area type="monotone" dataKey="expense" name="Saídas" stroke="hsl(var(--destructive))" strokeWidth={2} fill="url(#gExpense)" />
+            <Area type="monotone" dataKey="income" name="Entradas" stroke="var(--success)" strokeWidth={2} fill="url(#gIncome)" />
+            <Area type="monotone" dataKey="expense" name="Saídas" stroke="var(--destructive)" strokeWidth={2} fill="url(#gExpense)" />
           </AreaChart>
         </ResponsiveContainer>
       </div>
@@ -615,11 +615,11 @@ function CostsTab({ costs }: { costs: Cost[] }) {
         {byCompany.length === 0 ? <EmptyHint label="Sem custos cadastrados." /> : (
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={byCompany}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-              <XAxis dataKey="company" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => BRL(v)} />
-              <Bar dataKey="total" name="Custo mensal" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
+              <XAxis dataKey="company" stroke="var(--muted-foreground)" fontSize={11} />
+              <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
+              <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => BRL(v)} />
+              <Bar dataKey="total" name="Custo mensal" fill="var(--primary)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -910,7 +910,7 @@ function BreakevenTab({ kpis, tx, products, costs }: {
     <div className="space-y-6">
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card/60 to-card/60 p-6 relative overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.15),transparent_70%)] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,color-mix(in oklab, var(--primary) 15%, transparent),transparent_70%)] pointer-events-none" />
           <div className="relative">
             <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-2">Status do mês</div>
             <div className="flex items-baseline gap-3 mb-1">
@@ -1019,14 +1019,14 @@ function ReportsTab({ tx, products }: { tx: Tx[]; products: Product[] }) {
         <h3 className="font-display text-base font-semibold mb-4">Lucro mensal — 12 meses</h3>
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={series}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
-            <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
-            <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => BRL(v)} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
+            <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} />
+            <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
+            <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => BRL(v)} />
             <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="income" name="Entradas" fill="hsl(var(--success))" radius={[4,4,0,0]} />
-            <Bar dataKey="expense" name="Saídas" fill="hsl(var(--destructive))" radius={[4,4,0,0]} />
-            <Bar dataKey="profit" name="Lucro" fill="hsl(var(--primary))" radius={[4,4,0,0]} />
+            <Bar dataKey="income" name="Entradas" fill="var(--success)" radius={[4,4,0,0]} />
+            <Bar dataKey="expense" name="Saídas" fill="var(--destructive)" radius={[4,4,0,0]} />
+            <Bar dataKey="profit" name="Lucro" fill="var(--primary)" radius={[4,4,0,0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
