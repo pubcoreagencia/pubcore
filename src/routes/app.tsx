@@ -5,6 +5,7 @@ import { PontoHeader } from "@/components/PontoHeader";
 import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
+import { WorkspaceProvider } from "@/lib/workspace";
 
 export const Route = createFileRoute("/app")({
   component: AppLayout,
@@ -27,16 +28,18 @@ function AppLayout() {
   }
 
   return (
-    <PontoProvider>
-      <ChecklistProvider>
-        <div className="flex min-h-screen w-full bg-background">
-          <Sidebar />
-          <main className="flex-1 min-w-0 relative">
-            <PontoHeader />
-            <Outlet />
-          </main>
-        </div>
-      </ChecklistProvider>
-    </PontoProvider>
+    <WorkspaceProvider>
+      <PontoProvider>
+        <ChecklistProvider>
+          <div className="flex min-h-screen w-full bg-background">
+            <Sidebar />
+            <main className="flex-1 min-w-0 relative">
+              <PontoHeader />
+              <Outlet />
+            </main>
+          </div>
+        </ChecklistProvider>
+      </PontoProvider>
+    </WorkspaceProvider>
   );
 }
