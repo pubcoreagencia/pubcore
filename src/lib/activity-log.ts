@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveWorkspaceId } from "./workspace";
 
 export type ActivityEntityType =
   | "checklist_task"
