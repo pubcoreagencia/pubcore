@@ -27,6 +27,7 @@ export type Database = {
           title: string | null
           user_id: string
           user_name: string | null
+          workspace_id: string
         }
         Insert: {
           action: string
@@ -40,6 +41,7 @@ export type Database = {
           title?: string | null
           user_id: string
           user_name?: string | null
+          workspace_id: string
         }
         Update: {
           action?: string
@@ -53,6 +55,7 @@ export type Database = {
           title?: string | null
           user_id?: string
           user_name?: string | null
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -68,6 +71,7 @@ export type Database = {
           type: string
           updated_at: string
           user_id: string
+          workspace_id: string
         }
         Insert: {
           company?: string | null
@@ -80,6 +84,7 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id: string
+          workspace_id: string
         }
         Update: {
           company?: string | null
@@ -92,6 +97,7 @@ export type Database = {
           type?: string
           updated_at?: string
           user_id?: string
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -110,6 +116,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string | null
+          workspace_id: string
         }
         Insert: {
           assignee?: string | null
@@ -125,6 +132,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id?: string | null
+          workspace_id: string
         }
         Update: {
           assignee?: string | null
@@ -140,6 +148,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string | null
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -156,6 +165,7 @@ export type Database = {
           updated_at: string
           user_id: string
           value: number
+          workspace_id: string
         }
         Insert: {
           company?: string | null
@@ -169,6 +179,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           value?: number
+          workspace_id: string
         }
         Update: {
           company?: string | null
@@ -182,6 +193,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           value?: number
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -203,6 +215,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          workspace_id: string
         }
         Insert: {
           assignee?: string | null
@@ -221,6 +234,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          workspace_id: string
         }
         Update: {
           assignee?: string | null
@@ -239,6 +253,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          workspace_id?: string
         }
         Relationships: [
           {
@@ -259,6 +274,7 @@ export type Database = {
           position: number
           updated_at: string
           user_id: string
+          workspace_id: string
         }
         Insert: {
           color?: string | null
@@ -268,6 +284,7 @@ export type Database = {
           position?: number
           updated_at?: string
           user_id: string
+          workspace_id: string
         }
         Update: {
           color?: string | null
@@ -277,6 +294,7 @@ export type Database = {
           position?: number
           updated_at?: string
           user_id?: string
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -290,6 +308,7 @@ export type Database = {
           position: number
           updated_at: string
           user_id: string
+          workspace_id: string
         }
         Insert: {
           color?: string
@@ -300,6 +319,7 @@ export type Database = {
           position?: number
           updated_at?: string
           user_id: string
+          workspace_id: string
         }
         Update: {
           color?: string
@@ -310,6 +330,7 @@ export type Database = {
           position?: number
           updated_at?: string
           user_id?: string
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -329,6 +350,7 @@ export type Database = {
           updated_at: string
           user_id: string
           user_name: string | null
+          workspace_id: string
         }
         Insert: {
           category?: string
@@ -345,6 +367,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           user_name?: string | null
+          workspace_id: string
         }
         Update: {
           category?: string
@@ -361,6 +384,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           user_name?: string | null
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -376,6 +400,7 @@ export type Database = {
           title: string
           user_id: string | null
           user_name: string | null
+          workspace_id: string
         }
         Insert: {
           company: string
@@ -388,6 +413,7 @@ export type Database = {
           title: string
           user_id?: string | null
           user_name?: string | null
+          workspace_id: string
         }
         Update: {
           company?: string
@@ -400,6 +426,7 @@ export type Database = {
           title?: string
           user_id?: string | null
           user_name?: string | null
+          workspace_id?: string
         }
         Relationships: [
           {
@@ -427,6 +454,7 @@ export type Database = {
           updated_at: string
           user_id: string | null
           user_name: string | null
+          workspace_id: string
         }
         Insert: {
           created_at?: string
@@ -443,6 +471,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           user_name?: string | null
+          workspace_id: string
         }
         Update: {
           created_at?: string
@@ -459,6 +488,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
           user_name?: string | null
+          workspace_id?: string
         }
         Relationships: []
       }
@@ -492,15 +522,110 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      workspace_members: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["workspace_role"]
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["workspace_role"]
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["workspace_role"]
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_members_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workspaces: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+          slug: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+          slug?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_app_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_workspace_admin: {
+        Args: { _user_id: string; _workspace_id: string }
+        Returns: boolean
+      }
+      is_workspace_member: {
+        Args: { _user_id: string; _workspace_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "master" | "user"
+      workspace_role: "admin" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -627,6 +752,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["master", "user"],
+      workspace_role: ["admin", "member"],
+    },
   },
 } as const
