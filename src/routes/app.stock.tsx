@@ -21,8 +21,7 @@ import {
 } from "@/components/ui/tabs";
 import {
   Boxes, Plus, Pencil, Trash2, Search, Settings2, GripVertical,
-  Building2, ArrowDownToLine, ArrowUpFromLine, History, AlertTriangle,
-  LayoutGrid, Table as TableIcon, X, Check, ChevronDown, Eye, EyeOff,
+  ArrowDownToLine, History, LayoutGrid, Table as TableIcon, Eye, EyeOff,
 } from "lucide-react";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
