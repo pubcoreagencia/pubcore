@@ -1,64 +1,109 @@
-## Diagnóstico
+# Refatoração: PUB CORE → Plataforma Multi-Workspace
 
-Acessei o workspace **PUB Records Hub** via cross-project tools. A identidade real é o oposto do que apliquei na rodada anterior:
+Transformar a PUB CORE numa arquitetura inspirada no Lovable, com workspaces isolados, hierarquia de papéis (MASTER, WORKSPACE_ADMIN, MEMBER) e um painel global MASTER.
 
-| | PUB Records (real) | PUB CORE atual (errado) |
-|---|---|---|
-| Canvas | Preto puro `hsl(0 0% 4%)` | Azul-escuro com aurora |
-| Acento | **Vermelho** `hsl(0 72% 51%)` único | Violeta neon + azul elétrico |
-| Estilo | Flat, minimal, sem glow | Glassmorphism + grid + glow |
-| Cards | `bg-card border rounded-xl` chapado | Sombras + ring + hover-lift |
-| Logo | `/logo.png` (identidade própria) | Ícone genérico `Sparkles` |
-| Tipografia | Space Grotesk + DM Sans ✓ | Space Grotesk + DM Sans ✓ |
-| Sidebar | Agrupada com labels minúsculas uppercase | Item flat sem grupos |
+---
 
-A direção certa é **executiva, sóbria, cinematográfica em escuridão — não neon**.
+## 1. Banco de dados (Supabase)
 
-## Plano
+### Novas tabelas
+- **`workspaces`** — `id`, `name`, `slug`, `owner_id`, `created_at`
+- **`workspace_members`** — `id`, `workspace_id`, `user_id`, `role` (`admin` | `member`), `created_at`. Único por (workspace_id, user_id).
+- **`app_roles`** (enum global): `master`, `user`
+- **`user_roles`** — `id`, `user_id`, `role app_role` (segue o padrão de segurança recomendado, separado de `profiles`)
 
-### 1. Tokens de design (`src/styles.css`)
-Reescrever a paleta espelhando PUB Records, mantendo o formato `oklch` exigido pelo template:
-- `--background` preto profundo, `--card`/`--surface` em cinzas escurecidos refinados
-- `--primary` = vermelho PUB (≈ `oklch(0.58 0.22 25)`), `--ring` igual
-- `--accent` discreto (cinza elevado), não uma segunda cor neon
-- Remover `--gradient-aurora`, `bg-aurora`, `grid-bg`, `ring-glow` (poluição)
-- Manter `glass`, `shadow-card`, `shadow-elegant` mais sutis
-- Background do `body` sem radial-gradients coloridos (só preto + um leve halo vermelho 5% no topo)
+### Funções `SECURITY DEFINER`
+- `has_app_role(_user_id uuid, _role app_role) returns boolean` — checa MASTER global
+- `is_workspace_member(_workspace_id uuid, _user_id uuid) returns boolean`
+- `is_workspace_admin(_workspace_id uuid, _user_id uuid) returns boolean`
+- `current_workspace_id()` — lê de `auth.jwt()` claim opcional, fallback ao primeiro workspace do usuário
 
-### 2. Logo PUB Records
-- Copiar `public/logo.png` do workspace via `cross_project--copy_project_asset` para `public/logo.png` da PUB CORE
-- Usar em Sidebar, tela de Login e header onde fizer sentido
+### Migração das tabelas existentes
+Adicionar coluna `workspace_id uuid not null` em:
+`notes`, `note_categories`, `checklist_tasks`, `kanban_columns`, `kanban_cards`, `crm_leads`, `calendar_events`, `ponto_sessions`, `ponto_session_tasks`, `activity_log`.
 
-### 3. Sidebar (`src/components/Sidebar.tsx`)
-- Trocar ícone `Sparkles` pelo `<img src="/logo.png">`
-- Agrupar nav em seções com labels uppercase tracking-widest, padrão PUB Records:
-  - **Operação**: Dashboard, Bater Ponto (atalho)
-  - **Workflow**: Kanban, Checklists, Calendário
-  - **Gestão**: CRM, Configurações
-- Item ativo: `bg-secondary text-foreground` simples (sem barra lateral neon, sem ponto pulsante) — alinhado ao padrão PUB Records
-- Footer do usuário: avatar com inicial em vermelho sólido, sem `glass`
+Backfill: para cada `user_id` distinto, criar um workspace pessoal (`{display_name}'s Workspace`), inserir `workspace_members` como `admin`, e atribuir esse `workspace_id` a todas as linhas existentes daquele usuário.
 
-### 4. Shell (`src/routes/app.tsx`)
-- Remover `bg-glow` + `grid-bg` do `<main>`; deixar fundo limpo
-- Manter apenas um halo vermelho muito sutil no canto superior direito (radial 6% opacidade)
+### RLS — substituir políticas atuais
+Para todas as tabelas operacionais, política nova:
+```
+USING (
+  is_workspace_member(workspace_id, auth.uid())
+  OR has_app_role(auth.uid(), 'master')
+)
+```
+Mutações: idem + checagem em `WITH CHECK`. MASTER vê e edita tudo.
 
-### 5. Componente `StatusBadge` portado
-- Criar `src/components/StatusBadge.tsx` usando o mapa de cores por status do PUB Records (Produção/Mixagem/Aprovado/etc.) — útil para Kanban, Checklists e Histórico
-- Substituir badges atuais nos módulos onde já existem labels de status
+### Bootstrap
+- Trigger `handle_new_user` estendido: cria profile + workspace pessoal + membership `admin` + role `user`.
+- Seed manual: promover o primeiro usuário (ou um e-mail informado) a `master` via `supabase--insert`.
 
-### 6. PontoHeader + cards globais
-- Padronizar todos os cards para `bg-card border border-border rounded-xl p-5` (flat, sem `hover-lift`/`ring-glow`)
-- Botões primários: vermelho sólido, sem gradiente; hover = `opacity-90` (padrão PUB Records)
-- Inputs: `bg-card border border-border focus:ring-1 focus:ring-primary`
+---
 
-### 7. Login (`src/routes/login.tsx`)
-- Trocar branding pelo `<img src="/logo.png" className="h-20" />` centralizado
-- Remover gradientes neon do botão "Entrar"
+## 2. Camada de aplicação
 
-### Não tocar
-- Toda lógica, hooks, Supabase, realtime, rotas, tipos
-- Conteúdo dos módulos (Dashboard data, Kanban DnD, Checklists, etc.)
-- `client.ts`, `types.ts`, migrations
+### Novo store: `src/lib/workspace.tsx`
+Context provider `WorkspaceProvider` que:
+- Carrega workspaces do usuário + role global (`master` ou `user`)
+- Persiste workspace ativo em `localStorage` (`pubcore_active_workspace`)
+- Expõe `{ workspaces, activeWorkspace, setActiveWorkspace, role, isMaster, isWorkspaceAdmin, refresh }`
+- Realtime nas tabelas `workspaces` e `workspace_members`
 
-## Resultado esperado
-PUB CORE com a mesma "respiração" visual da PUB Records: preto sólido, vermelho como única assinatura cromática, tipografia Space Grotesk + DM Sans, cards flat e organização sidebar por grupos — coerência total entre os dois produtos do mesmo grupo.
+Montar dentro de `src/routes/app.tsx`, **acima** dos providers existentes (Ponto, Checklist).
+
+### Refatorar acesso a dados
+Todos os `supabase.from(...).select()` / `.insert()` nas stores e rotas (`operations.tsx`, `checklist-store.tsx`, `app.notes.tsx`, `app.kanban.tsx`, `app.calendar.tsx`, `app.crm.tsx`, `ponto.tsx`, `activity-log.ts`) passam a:
+- filtrar por `workspace_id = activeWorkspace.id` (em vez de `user_id`)
+- incluir `workspace_id` em todo `insert`
+- canais realtime usam filtro `workspace_id=eq.${activeWorkspace.id}`
+
+Ao trocar de workspace → recarregar dados.
+
+### UI
+
+**Workspace switcher** no topo da `Sidebar`:
+- Dropdown com workspaces do usuário, atalho "Criar workspace", e (se MASTER) "Ver todos os workspaces"
+- Modal de criação simples (nome → cria workspace + membership admin)
+
+**Master Dashboard** — nova rota `src/routes/app.master.tsx` (visível só para MASTER):
+- Lista de todos os workspaces (nome, owner, nº membros, última atividade)
+- Lista de todos os usuários com role atual + dropdown para promover/rebaixar
+- KPIs globais: total workspaces, usuários, sessões hoje, tarefas concluídas
+- Botão "Entrar neste workspace" → seta `activeWorkspace` mesmo sem ser membro (MASTER bypass)
+
+Item "Master" na sidebar só aparece se `isMaster`.
+
+**Settings** (`app.settings.tsx`): nova aba "Workspace" com nome, lista de membros, convidar por e-mail (cria membership se o usuário existir), promover/remover (só admin).
+
+### Proteção de rotas
+- `/app/master` → redireciona se não for MASTER
+- Guards de mutação: a UI de admin (gerenciar membros, deletar workspace) só renderiza se `isWorkspaceAdmin || isMaster`
+
+---
+
+## 3. Detalhes técnicos
+
+- Tipos atualizados em `src/integrations/supabase/types.ts` automaticamente após migração.
+- Realtime: habilitar replicação em `workspaces`, `workspace_members`, `user_roles`.
+- Activity log passa a registrar `workspace_id` para isolamento.
+- Backwards-compat: como vamos backfillar, nenhum dado se perde; usuários veem o "workspace pessoal" deles ao primeiro login.
+- Promoção do primeiro MASTER: vou perguntar o e-mail antes de aplicar.
+
+---
+
+## 4. Etapas de execução
+
+1. **Migration**: criar tabelas, enums, funções, adicionar `workspace_id` a todas as tabelas operacionais, backfill, novas RLS, trigger `handle_new_user`. Pedir aprovação.
+2. **Promover MASTER** via `supabase--insert` (após confirmar e-mail).
+3. **`WorkspaceProvider`** + integração no layout `app.tsx`.
+4. **Refatorar stores e rotas** para usar `workspace_id`.
+5. **Workspace switcher** na Sidebar + modal de criação.
+6. **Master Dashboard** (`app.master.tsx`).
+7. **Settings → aba Workspace** (membros, convites, promoções).
+8. Smoke test: criar 2º workspace, alternar, verificar isolamento.
+
+---
+
+## Pergunta antes de iniciar
+
+**Qual e-mail deve ser promovido a MASTER inicial?** Sem isso o painel global fica inacessível no primeiro deploy.
