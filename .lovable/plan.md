@@ -1,54 +1,71 @@
-## Aba "Finanças" — Central financeira da PUB CORE
+## Refactor Estoque — multi-empresa 100% editável
 
-Nova aba `/app/finance` totalmente integrada ao sistema multi-workspace existente, com persistência no Supabase e realtime.
+Transforma `/app/stock` em um workspace por empresa, com schema dinâmico (estilo Airtable) e hierarquia grupo → categoria. Tudo persistido no Supabase com realtime.
 
 ### 1. Banco de dados (migration)
 
-Tabelas novas (todas com `workspace_id`, RLS `is_workspace_member OR master`, realtime habilitado):
+Novas tabelas (todas com `workspace_id`, RLS `is_workspace_member OR master`, realtime):
 
-- **`finance_categories`** — categorias customizáveis de entrada/saída. Campos: `name`, `kind` (`income`|`expense`), `color`, `icon`, `position`.
-- **`finance_transactions`** — entradas e saídas. Campos: `kind` (`income`|`expense`), `amount` (numeric), `description`, `category_id`, `company`, `occurred_on` (date), `recurrence` (`none`|`monthly`|`weekly`|`yearly`), `responsible`, `notes`.
-- **`finance_costs`** — custos fixos/variáveis. Campos: `name`, `kind` (`fixed`|`variable`), `amount_monthly`, `company`, `category`, `notes`, `active`.
-- **`finance_products`** — catálogo. Campos: `name`, `company` (Pub 3D, Pub IA, Pub RECORDS, Pub Films, Bricks, Têxtil), `cost`, `price`, `avg_demand_monthly`, `stock`, `category`, `notes`. Markup, margem e lucro unitário derivados no front.
+- **`stock_companies`** — `name`, `slug`, `color`, `icon`, `position`. Substitui o array fixo `COMPANIES`. Seeded com as 6 empresas no primeiro acesso (front-side, idempotente).
+- **`stock_groups`** — `company_id`, `name`, `color`, `icon`, `position`.
+- **`stock_field_defs`** — `company_id`, `key`, `label`, `type` (`text`|`number`|`currency`|`select`|`date`|`boolean`|`textarea`), `options` jsonb (para select), `position`, `required`, `visible`, `is_system` (campos base não excluíveis).
 
-Sem alterações em tabelas existentes.
+Alterações em tabelas existentes:
 
-### 2. Frontend
+- **`stock_categories`** — adicionar `company_id uuid`, `group_id uuid`.
+- **`stock_items`** — adicionar `company_id uuid`, `group_id uuid`, `category_id uuid`, `data jsonb DEFAULT '{}'` (valores dos campos custom). Mantém `name`, `quantity`, `cost`, `price`, `sku`, `supplier`, `location`, `notes`, `min_quantity` como campos base.
+- **`stock_movements`** — adicionar `company_id uuid` para escopar histórico.
 
-**Rota raiz `src/routes/app.finance.tsx`** com tabs internas (estilo Linear/Stripe):
+Sem foreign keys (segue padrão do projeto). Limpezas de órfãos via lógica no front.
+
+### 2. Frontend — `src/routes/app.stock.tsx` (rewrite)
 
 ```text
-[ Dashboard | Entradas/Saídas | Custos | Produtos | Breakeven | Relatórios ]
+┌────────────────────────────────────────────────────────────┐
+│ [Pub 3D] [Pub IA] [Pub RECORDS] [Films] [Bricks] [+ Add]  │  ← abas de empresa (editáveis)
+├────────────────────────────────────────────────────────────┤
+│ ⚙ Configurar empresa  |  Grupos  |  Categorias  |  Campos │
+├────────────────────────────────────────────────────────────┤
+│ 🔍 busca   filtros: grupo▾ categoria▾   [Tabela|Cards]    │
+│ ┌────────────────────────────────────────────────────────┐ │
+│ │ ≡  Item        Qtd  Custo  Preço  SKU  Fornec  ⋯     │ │
+│ │ ≡  ●  Resina   12   R$80   R$200  R-1  X        ⋯     │ │
+│ └────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────┘
 ```
 
-- **Dashboard** — KPIs (faturamento, lucro líquido, despesas, saldo, breakeven diário/mensal), gráfico de evolução (Recharts area), comparativo mês atual vs anterior, top empresas, top produtos, alertas de saúde.
-- **Entradas/Saídas** — tabela unificada com filtros (tipo, categoria, empresa, período, busca), modal de criação/edição, ações de excluir, badge de recorrência.
-- **Custos** — duas listas (Fixos / Variáveis), totais por tipo, impacto mensal, comparativo por empresa.
-- **Produtos** — grid de cards por empresa, modal CRUD, exibe markup/margem/lucro unitário calculados.
-- **Breakeven** — calcula a partir de custos fixos + variáveis médios + ticket médio dos produtos: ponto de equilíbrio diário/mensal, faturamento mínimo, qtd mínima de vendas, "quanto falta para o azul" (vs entradas do mês), barras de progresso, ranking empresas lucrativas vs no prejuízo.
-- **Relatórios** — tabelas mensais/semanais, métricas por empresa e produto, comparativos históricos, export CSV.
+**Componentes principais:**
 
-**Sidebar** — adicionar item "Finanças" no grupo "Gestão" com ícone `Wallet`.
+- `CompanyTabs` — lista de `stock_companies`, drag-to-reorder, dialog para criar/renomear/excluir. Aba ativa salva em `localStorage`.
+- `CompanyConfigDialog` — gerencia grupos, categorias, campos custom da empresa selecionada (3 sub-abas internas).
+- `FieldsManager` — CRUD dos `stock_field_defs`: tipo, label, options (para select), reordenar via drag, toggle visível.
+- `GroupsManager` / `CategoriesManager` — CRUD com cor/ícone, drag-to-reorder. Categoria pertence a um grupo.
+- `ItemsView` — alterna tabela / cards. Tabela renderiza colunas dinamicamente a partir de `field_defs.visible` + base. Edição inline (click na célula → input → blur autosave). Drag-to-reorder linhas. Filtros por grupo/categoria, busca em tempo real (debounce 200ms).
+- `MovementDialog` — registrar entrada/saída/ajuste. Atualiza `stock_items.quantity` + insere `stock_movements`.
 
-**Realtime** — canal único `finance:${workspaceId}` escutando as 4 tabelas, refetch on change.
+**Persistência / realtime:**
 
-**Stores leves** — sem provider global; cada tab usa hooks `useFinance*` com `useEffect` + estado local, escopados ao `activeWorkspaceId` do `useWorkspace()`.
+- Hook `useStockData(companyId)` — fetch + canal `stock:${workspaceId}:${companyId}` ouvindo as 6 tabelas com filtro por workspace; refetch on change.
+- Autosave: cada edição inline faz `update` direto no Supabase, com optimistic UI e toast em erro.
+- Drag-and-drop: usa `@dnd-kit/core` + `@dnd-kit/sortable` (já usado no projeto se disponível; senão instalo) para reordenar abas, grupos, categorias, campos e linhas. Salva `position` em batch.
+
+**Seed inicial (idempotente):**
+
+Quando o usuário abre a aba pela primeira vez e `stock_companies` está vazia para o workspace, cria as 6 empresas padrão + os campos base (`name`, `quantity`, `min_quantity`, `cost`, `price`, `sku`, `supplier`, `location`, `notes`) marcados como `is_system=true`. Itens já existentes (com `company` text) são migrados via SQL na própria migration mapeando `company` → `company_id`.
 
 ### 3. Visual
 
-Dark premium consistente com o resto da PUB CORE: cards com `bg-card/50`, bordas sutis, glow no KPI principal via `--gradient-primary`, números em `font-display`, microinterações com `transition-colors`. Recharts usando tokens semânticos (`hsl(var(--primary))`, etc).
+Mantém o dark premium do resto da PUB CORE. Tabs de empresa com cor própria (chip arredondado, border colorido quando ativa). Tabela com linhas hover, células editáveis com ring no focus. Drag handle só aparece on hover. Cards (modo alternativo) em grid responsivo.
 
-### 4. Integração
+### 4. Fora do escopo
 
-- Activity log: registra `created`/`updated`/`deleted` em `finance_transactions` (entity_type `finance_transaction` — adicionar ao type union).
-- Tudo escopado a `activeWorkspaceId`; troca de workspace recarrega.
-- Persistência e recovery automáticos via Supabase + realtime.
+- Importação CSV / exportação avançada (mantém só a operação CRUD).
+- Permissões granulares por empresa (continua usando RLS de workspace).
+- Histórico/undo de edições inline além do `stock_movements`.
+- Anexos de arquivo nos itens.
 
-### 5. Fora de escopo (não vou fazer agora)
+### 5. Observação técnica
 
-- Importação de extrato bancário / OFX.
-- Conciliação automática.
-- Multi-moeda (assumindo BRL).
-- Notas fiscais / integração contábil.
+A migration faz `ALTER TABLE` adicionando colunas nullable + tabelas novas — não quebra dados existentes. O seed roda no client e é idempotente (`upsert` por `slug`).
 
-Confirme e eu já aplico a migration e construo a aba.
+Confirme e eu aplico a migration + escrevo o módulo (rota inteira reescrita, ~1.5k linhas distribuídas em arquivos `src/routes/app.stock.tsx` + helpers em `src/lib/stock/`).
