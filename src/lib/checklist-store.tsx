@@ -263,11 +263,11 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   }, [state, applyLocal]);
 
   const clearCompany = useCallback(async (company: Company) => {
-    if (!userIdRef.current) return;
+    if (!userIdRef.current || !wsRef.current) return;
     const prev = state[company];
     applyLocal((s) => ({ ...s, [company]: [] }));
     const { error } = await supabase.from("checklist_tasks").delete()
-      .eq("user_id", userIdRef.current).eq("company", company);
+      .eq("workspace_id", wsRef.current).eq("company", company);
     if (error) { console.error("[checklist] clear error", error); applyLocal((s) => ({ ...s, [company]: prev })); return; }
     for (const task of prev) {
       logActivity({
