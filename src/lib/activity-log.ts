@@ -31,8 +31,11 @@ export async function logActivity(input: ActivityLogInput): Promise<void> {
     const { data: u } = await supabase.auth.getUser();
     const user = u?.user;
     if (!user) return;
+    const workspace_id = getActiveWorkspaceId();
+    if (!workspace_id) return;
     await supabase.from("activity_log").insert({
       user_id: user.id,
+      workspace_id,
       owner_email: user.email ?? "unknown",
       user_name:
         input.user_name ??
@@ -46,7 +49,7 @@ export async function logActivity(input: ActivityLogInput): Promise<void> {
       title: input.title ?? null,
       company: input.company ?? null,
       payload: (input.payload ?? {}) as never,
-    });
+    } as never);
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn("[activity-log] failed:", err);
