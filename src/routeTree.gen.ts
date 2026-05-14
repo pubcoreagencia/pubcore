@@ -15,6 +15,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppNotesRouteImport } from './routes/app.notes'
 import { Route as AppKanbanRouteImport } from './routes/app.kanban'
 import { Route as AppCrmRouteImport } from './routes/app.crm'
 import { Route as AppChecklistsRouteImport } from './routes/app.checklists'
@@ -50,6 +51,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AppRoute,
 } as any)
+const AppNotesRoute = AppNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppKanbanRoute = AppKanbanRouteImport.update({
   id: '/kanban',
   path: '/kanban',
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/app/checklists': typeof AppChecklistsRoute
   '/app/crm': typeof AppCrmRoute
   '/app/kanban': typeof AppKanbanRoute
+  '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/': typeof AppIndexRoute
 }
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/app/checklists': typeof AppChecklistsRoute
   '/app/crm': typeof AppCrmRoute
   '/app/kanban': typeof AppKanbanRoute
+  '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
   '/app': typeof AppIndexRoute
 }
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/app/checklists': typeof AppChecklistsRoute
   '/app/crm': typeof AppCrmRoute
   '/app/kanban': typeof AppKanbanRoute
+  '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/': typeof AppIndexRoute
 }
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/app/checklists'
     | '/app/crm'
     | '/app/kanban'
+    | '/app/notes'
     | '/app/settings'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
@@ -129,6 +139,7 @@ export interface FileRouteTypes {
     | '/app/checklists'
     | '/app/crm'
     | '/app/kanban'
+    | '/app/notes'
     | '/app/settings'
     | '/app'
   id:
@@ -141,6 +152,7 @@ export interface FileRouteTypes {
     | '/app/checklists'
     | '/app/crm'
     | '/app/kanban'
+    | '/app/notes'
     | '/app/settings'
     | '/app/'
   fileRoutesById: FileRoutesById
@@ -196,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/notes': {
+      id: '/app/notes'
+      path: '/notes'
+      fullPath: '/app/notes'
+      preLoaderRoute: typeof AppNotesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/kanban': {
       id: '/app/kanban'
       path: '/kanban'
@@ -232,6 +251,7 @@ interface AppRouteChildren {
   AppChecklistsRoute: typeof AppChecklistsRoute
   AppCrmRoute: typeof AppCrmRoute
   AppKanbanRoute: typeof AppKanbanRoute
+  AppNotesRoute: typeof AppNotesRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -241,6 +261,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppChecklistsRoute: AppChecklistsRoute,
   AppCrmRoute: AppCrmRoute,
   AppKanbanRoute: AppKanbanRoute,
+  AppNotesRoute: AppNotesRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppIndexRoute: AppIndexRoute,
 }

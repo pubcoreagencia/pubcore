@@ -1,7 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, KanbanSquare, ListChecks, Calendar, Users2, Settings,
-  LogOut,
+  LogOut, StickyNote,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -18,6 +18,7 @@ const groups: { label: string; items: NavItem[] }[] = [
       { to: "/app/kanban", label: "Kanban", icon: KanbanSquare },
       { to: "/app/checklists", label: "Checklists", icon: ListChecks },
       { to: "/app/calendar", label: "Calendário", icon: Calendar },
+      { to: "/app/notes", label: "Notas", icon: StickyNote },
     ],
   },
   {
