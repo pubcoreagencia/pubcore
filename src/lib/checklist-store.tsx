@@ -4,6 +4,7 @@ import {
 import { COMPANIES, type Company } from "./mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./auth";
+import { useWorkspace, getActiveWorkspaceId } from "./workspace";
 import { getActivePontoSession, onPontoEvent } from "./ponto";
 import { logActivity } from "./activity-log";
 
@@ -87,17 +88,20 @@ const ChecklistCtx = createContext<Ctx | null>(null);
 
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id ?? null;
   const ownerEmail = user?.email ?? "guest@pubcore.local";
   const [state, setState] = useState<ChecklistState>(() => emptyState());
   const [loading, setLoading] = useState(true);
   const userIdRef = useRef(userId);
   const ownerRef = useRef(ownerEmail);
+  const wsRef = useRef(activeWorkspaceId);
   userIdRef.current = userId;
   ownerRef.current = ownerEmail;
+  wsRef.current = activeWorkspaceId;
 
   useEffect(() => {
-    if (!userId) { setState(emptyState()); setLoading(false); return; }
+    if (!userId || !activeWorkspaceId) { setState(emptyState()); setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
 
@@ -105,7 +109,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase
         .from("checklist_tasks")
         .select("*")
-        .eq("user_id", userId)
+        .eq("workspace_id", activeWorkspaceId)
         .order("position", { ascending: true });
       if (cancelled) return;
       if (error) { console.error("[checklist] load error", error); setState(emptyState()); }
@@ -114,9 +118,9 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     })();
 
     const channel = supabase
-      .channel(`checklist_tasks:${userId}`)
+      .channel(`checklist_tasks:${activeWorkspaceId}`)
       .on("postgres_changes",
-        { event: "*", schema: "public", table: "checklist_tasks", filter: `user_id=eq.${userId}` },
+        { event: "*", schema: "public", table: "checklist_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` },
         (payload) => {
           setState((prev) => {
             const next: ChecklistState = { ...prev };
@@ -149,20 +153,20 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       .subscribe();
 
     return () => { cancelled = true; supabase.removeChannel(channel); };
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   const applyLocal = useCallback((u: (s: ChecklistState) => ChecklistState) => setState((s) => u(s)), []);
 
   const add = useCallback(async (company: Company, text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || !userIdRef.current) return;
+    if (!trimmed || !userIdRef.current || !wsRef.current) return;
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const position = state[company]?.length ?? 0;
     applyLocal((s) => ({ ...s, [company]: [...s[company], { id: tempId, text: trimmed, done: false, createdAt: Date.now(), position, priority: "medium" }] }));
     const { data, error } = await supabase.from("checklist_tasks").insert({
-      user_id: userIdRef.current, owner_email: ownerRef.current,
+      user_id: userIdRef.current, workspace_id: wsRef.current, owner_email: ownerRef.current,
       company, title: trimmed, position, status: "pending", priority: "medium",
-    }).select().single();
+    } as never).select().single();
     if (error) {
       console.error("[checklist] add error", error);
       applyLocal((s) => ({ ...s, [company]: s[company].filter((t) => t.id !== tempId) }));
@@ -259,11 +263,11 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   }, [state, applyLocal]);
 
   const clearCompany = useCallback(async (company: Company) => {
-    if (!userIdRef.current) return;
+    if (!userIdRef.current || !wsRef.current) return;
     const prev = state[company];
     applyLocal((s) => ({ ...s, [company]: [] }));
     const { error } = await supabase.from("checklist_tasks").delete()
-      .eq("user_id", userIdRef.current).eq("company", company);
+      .eq("workspace_id", wsRef.current).eq("company", company);
     if (error) { console.error("[checklist] clear error", error); applyLocal((s) => ({ ...s, [company]: prev })); return; }
     for (const task of prev) {
       logActivity({
