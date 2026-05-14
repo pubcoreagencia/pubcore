@@ -26,6 +26,7 @@ const groups: { label: string; items: NavItem[] }[] = [
     items: [
       { to: "/app/crm", label: "CRM", icon: Users2 },
       { to: "/app/finance", label: "Finanças", icon: Wallet },
+      { to: "/app/stock", label: "Estoque", icon: Boxes },
       { to: "/app/settings", label: "Configurações", icon: Settings },
     ],
   },
