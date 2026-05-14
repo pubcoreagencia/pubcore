@@ -4,6 +4,7 @@ import {
 import { COMPANIES, type Company } from "./mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./auth";
+import { useWorkspace, getActiveWorkspaceId } from "./workspace";
 import { getActivePontoSession, onPontoEvent } from "./ponto";
 import { logActivity } from "./activity-log";
 
