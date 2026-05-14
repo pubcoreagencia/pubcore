@@ -280,6 +280,57 @@ export type Database = {
         }
         Relationships: []
       }
+      notes: {
+        Row: {
+          category: string
+          color: string | null
+          company: string | null
+          content: string
+          created_at: string
+          favorite: boolean
+          id: string
+          owner_email: string
+          pinned: boolean
+          tags: string[]
+          title: string
+          updated_at: string
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          category?: string
+          color?: string | null
+          company?: string | null
+          content?: string
+          created_at?: string
+          favorite?: boolean
+          id?: string
+          owner_email: string
+          pinned?: boolean
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          category?: string
+          color?: string | null
+          company?: string | null
+          content?: string
+          created_at?: string
+          favorite?: boolean
+          id?: string
+          owner_email?: string
+          pinned?: boolean
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: []
+      }
       ponto_session_tasks: {
         Row: {
           company: string
