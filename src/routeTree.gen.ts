@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppStockRouteImport } from './routes/app.stock'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppNotesRouteImport } from './routes/app.notes'
 import { Route as AppKanbanRouteImport } from './routes/app.kanban'
@@ -45,6 +46,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStockRoute = AppStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/stock': typeof AppStockRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/stock': typeof AppStockRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/stock': typeof AppStockRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
+    | '/app/stock'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
+    | '/app/stock'
     | '/app'
   id:
     | '__root__'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
+    | '/app/stock'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -211,6 +223,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/stock': {
+      id: '/app/stock'
+      path: '/stock'
+      fullPath: '/app/stock'
+      preLoaderRoute: typeof AppStockRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/settings': {
@@ -273,6 +292,7 @@ interface AppRouteChildren {
   AppKanbanRoute: typeof AppKanbanRoute
   AppNotesRoute: typeof AppNotesRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppStockRoute: typeof AppStockRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -284,6 +304,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppKanbanRoute: AppKanbanRoute,
   AppNotesRoute: AppNotesRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppStockRoute: AppStockRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
