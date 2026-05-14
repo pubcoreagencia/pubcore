@@ -708,6 +708,147 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_categories: {
+        Row: {
+          color: string
+          created_at: string
+          icon: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      stock_items: {
+        Row: {
+          category: string | null
+          company: string
+          cost: number
+          created_at: string
+          description: string | null
+          id: string
+          location: string | null
+          min_quantity: number
+          name: string
+          notes: string | null
+          price: number
+          quantity: number
+          sku: string | null
+          status: string
+          supplier: string | null
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          category?: string | null
+          company?: string
+          cost?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          min_quantity?: number
+          name: string
+          notes?: string | null
+          price?: number
+          quantity?: number
+          sku?: string | null
+          status?: string
+          supplier?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          category?: string | null
+          company?: string
+          cost?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          location?: string | null
+          min_quantity?: number
+          name?: string
+          notes?: string | null
+          price?: number
+          quantity?: number
+          sku?: string | null
+          status?: string
+          supplier?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      stock_movements: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_name: string
+          kind: string
+          notes: string | null
+          occurred_at: string
+          quantity: number
+          user_id: string
+          user_name: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_name: string
+          kind: string
+          notes?: string | null
+          occurred_at?: string
+          quantity?: number
+          user_id: string
+          user_name?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_name?: string
+          kind?: string
+          notes?: string | null
+          occurred_at?: string
+          quantity?: number
+          user_id?: string
+          user_name?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
