@@ -535,20 +535,13 @@ function HistoryTab() {
         </div>
         <Select label="Empresa" value={companyFilter} onChange={(v) => setCompanyFilter(v as Company | "Todas")} options={["Todas", ...COMPANIES]} />
         <Select label="Usuário" value={userFilter} onChange={setUserFilter} options={userOptions} />
-        <Select
-          label="Eventos"
-          value={eventTypeFilter}
-          onChange={(v) => setEventTypeFilter(v as typeof eventTypeFilter)}
-          options={["todos", "concluidas", "excluidas"]}
-        />
         <span className="ml-auto text-xs text-muted-foreground font-mono">
-          {loading ? "Carregando…" : `${totals.completed} concluídas · ${totals.deleted} excluídas`}
+          {loading ? "Carregando…" : `${totals.completed} concluídas`}
         </span>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard label="Tarefas concluídas" value={totals.completed} icon={CheckCircle2} accent="success" hint="no período" />
-        <StatCard label="Itens excluídos" value={totals.deleted} icon={Trash} accent="warning" hint="auditoria" />
         <StatCard label="Sessões encerradas" value={totals.sessions} icon={History} accent="info" hint="expedientes" />
         <StatCard label="Tempo produtivo" value={fmtTime(totals.productiveMs)} icon={Timer} accent="primary" hint="acumulado" />
       </div>
