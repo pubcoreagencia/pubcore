@@ -650,42 +650,22 @@ function HistoryTab() {
           </div>
         ) : (
           <ol className="relative border-l border-border ml-3 space-y-3 max-h-[480px] overflow-y-auto pr-2">
-            {filteredTimeline.slice(0, 200).map((e) => {
-              const isDel = e.kind === "deleted";
-              return (
-                <li key={e.id} className="ml-5">
-                  <span
-                    className={`absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full shadow-glow ${
-                      isDel ? "bg-destructive" : "bg-success"
-                    }`}
-                  />
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {new Date(e.ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                    {isDel ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-destructive/30 bg-destructive/10 text-destructive uppercase tracking-wider">
-                        <Trash className="h-3 w-3" /> Excluído
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-success/30 bg-success/10 text-success uppercase tracking-wider">
-                        <CheckCircle2 className="h-3 w-3" /> Concluído
-                      </span>
-                    )}
-                    {e.company && <CompanyTag company={e.company as Company} />}
-                    <span className={`text-foreground ${isDel ? "line-through text-muted-foreground" : ""}`}>
-                      {e.title}
-                    </span>
-                    {isDel && (
-                      <span className="text-[10px] text-muted-foreground">
-                        ({ENTITY_LABEL[(e as Extract<TimelineEvent, { kind: "deleted" }>).entity_type] ?? (e as Extract<TimelineEvent, { kind: "deleted" }>).entity_type})
-                      </span>
-                    )}
-                    {e.user_name && <span className="text-xs text-muted-foreground">— {e.user_name}</span>}
-                  </div>
-                </li>
-              );
-            })}
+            {filteredTimeline.slice(0, 200).map((e) => (
+              <li key={e.id} className="ml-5">
+                <span className="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full shadow-glow bg-success" />
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {new Date(e.ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-success/30 bg-success/10 text-success uppercase tracking-wider">
+                    <CheckCircle2 className="h-3 w-3" /> Concluído
+                  </span>
+                  {e.company && <CompanyTag company={e.company as Company} />}
+                  <span className="text-foreground">{e.title}</span>
+                  {e.user_name && <span className="text-xs text-muted-foreground">— {e.user_name}</span>}
+                </div>
+              </li>
+            ))}
           </ol>
         )}
       </div>
