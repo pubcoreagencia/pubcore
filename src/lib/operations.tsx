@@ -34,18 +34,6 @@ export interface ChecklistRow {
   updated_at: string;
 }
 
-export interface ActivityRow {
-  id: string;
-  entity_type: string;
-  entity_id: string | null;
-  action: string;
-  title: string | null;
-  company: string | null;
-  user_name: string | null;
-  created_at: string;
-  payload: Record<string, unknown> | null;
-}
-
 /**
  * Loads all operational data for the current user with realtime sync.
  * Single source of truth for Dashboard, Histórico and Métricas.
