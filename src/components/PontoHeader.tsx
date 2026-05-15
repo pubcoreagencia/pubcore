@@ -14,7 +14,7 @@ export function PontoHeader() {
   return (
     <Link
       to="/app/checklists"
-      className="fixed top-3 right-3 z-50 group"
+      className="fixed top-[60px] right-3 md:top-3 z-40 group"
       aria-label="Abrir Bater Ponto"
     >
       <div className={`flex items-center gap-3 rounded-full border px-3 py-1.5 backdrop-blur-md shadow-card transition ${
