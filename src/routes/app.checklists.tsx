@@ -428,25 +428,20 @@ function Select({
 
 /* =================== TAB: HISTÓRICO =================== */
 
-const ENTITY_LABEL: Record<string, string> = {
-  checklist_task: "Tarefa do checklist",
-  kanban_card: "Card do Kanban",
-  kanban_column: "Coluna do Kanban",
-  calendar_event: "Evento",
-  crm_lead: "Lead",
-  ponto_session: "Sessão",
+type TimelineEvent = {
+  kind: "completed";
+  id: string;
+  ts: number;
+  title: string;
+  company: string | null;
+  user_name: string | null;
 };
 
-type TimelineEvent =
-  | { kind: "completed"; id: string; ts: number; title: string; company: string | null; user_name: string | null }
-  | { kind: "deleted"; id: string; ts: number; title: string; company: string | null; user_name: string | null; entity_type: string };
-
 function HistoryTab() {
-  const { sessions, sessionTasks, activity, loading } = useOperationalData();
+  const { sessions, sessionTasks, loading } = useOperationalData();
   const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">("semanal");
   const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
   const [userFilter, setUserFilter] = useState<string>("Todos");
-  const [eventTypeFilter, setEventTypeFilter] = useState<"todos" | "concluidas" | "excluidas">("todos");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -464,18 +459,13 @@ function HistoryTab() {
     () => sessionTasks.filter((t) => new Date(t.completed_at).getTime() >= cutoff),
     [sessionTasks, cutoff]
   );
-  const periodDeletions = useMemo(
-    () => activity.filter((a) => a.action === "deleted" && new Date(a.created_at).getTime() >= cutoff),
-    [activity, cutoff]
-  );
 
   const userOptions = useMemo(() => {
     const s = new Set<string>();
     for (const x of sessions) if (x.user_name) s.add(x.user_name);
     for (const x of sessionTasks) if (x.user_name) s.add(x.user_name);
-    for (const x of activity) if (x.user_name) s.add(x.user_name);
     return ["Todos", ...Array.from(s).sort()];
-  }, [sessions, sessionTasks, activity]);
+  }, [sessions, sessionTasks]);
 
   const filteredSessions = useMemo(() => {
     return periodSessions.filter((s) => {
@@ -489,7 +479,7 @@ function HistoryTab() {
   }, [periodSessions, periodTasks, userFilter, companyFilter]);
 
   const filteredTimeline = useMemo<TimelineEvent[]>(() => {
-    const completed: TimelineEvent[] = periodTasks
+    return periodTasks
       .filter((t) =>
         (companyFilter === "Todas" || t.company === companyFilter) &&
         (userFilter === "Todos" || (t.user_name ?? "") === userFilter)
@@ -501,28 +491,9 @@ function HistoryTab() {
         title: t.title,
         company: t.company,
         user_name: t.user_name,
-      }));
-
-    const deleted: TimelineEvent[] = periodDeletions
-      .filter((a) =>
-        (companyFilter === "Todas" || a.company === companyFilter) &&
-        (userFilter === "Todos" || (a.user_name ?? "") === userFilter)
-      )
-      .map((a) => ({
-        kind: "deleted" as const,
-        id: `d-${a.id}`,
-        ts: new Date(a.created_at).getTime(),
-        title: a.title ?? "(sem título)",
-        company: a.company,
-        user_name: a.user_name,
-        entity_type: a.entity_type,
-      }));
-
-    let merged = [...completed, ...deleted].sort((a, b) => b.ts - a.ts);
-    if (eventTypeFilter === "concluidas") merged = merged.filter((e) => e.kind === "completed");
-    if (eventTypeFilter === "excluidas") merged = merged.filter((e) => e.kind === "deleted");
-    return merged;
-  }, [periodTasks, periodDeletions, companyFilter, userFilter, eventTypeFilter]);
+      }))
+      .sort((a, b) => b.ts - a.ts);
+  }, [periodTasks, companyFilter, userFilter]);
 
   const series = useMemo(() => buildDailySeries(periodSessions, periodTasks, days), [periodSessions, periodTasks, days]);
 
@@ -530,10 +501,6 @@ function HistoryTab() {
     completed: periodTasks.filter((t) =>
       (companyFilter === "Todas" || t.company === companyFilter) &&
       (userFilter === "Todos" || (t.user_name ?? "") === userFilter)
-    ).length,
-    deleted: periodDeletions.filter((a) =>
-      (companyFilter === "Todas" || a.company === companyFilter) &&
-      (userFilter === "Todos" || (a.user_name ?? "") === userFilter)
     ).length,
     sessions: filteredSessions.length,
     productiveMs: filteredSessions.reduce((a, s) => a + (s.productive_ms ?? 0), 0),
