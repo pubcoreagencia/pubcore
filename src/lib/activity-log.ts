@@ -1,5 +1,5 @@
-import { supabase } from "@/integrations/supabase/client";
-import { getActiveWorkspaceId } from "./workspace";
+// Activity log was removed. Deleted items are wiped permanently with no audit trail.
+// This stub remains so existing call sites compile without changes.
 
 export type ActivityEntityType =
   | "checklist_task"
@@ -25,36 +25,6 @@ export interface ActivityLogInput {
   user_name?: string | null;
 }
 
-/**
- * Inserts an activity record. Best-effort: logs and swallows errors so the
- * primary mutation (delete/update/etc.) is never blocked by audit failures.
- */
-export async function logActivity(input: ActivityLogInput): Promise<void> {
-  try {
-    const { data: u } = await supabase.auth.getUser();
-    const user = u?.user;
-    if (!user) return;
-    const workspace_id = getActiveWorkspaceId();
-    if (!workspace_id) return;
-    await supabase.from("activity_log").insert({
-      user_id: user.id,
-      workspace_id,
-      owner_email: user.email ?? "unknown",
-      user_name:
-        input.user_name ??
-        (user.user_metadata?.name as string | undefined) ??
-        (user.user_metadata?.full_name as string | undefined) ??
-        user.email?.split("@")[0] ??
-        null,
-      entity_type: input.entity_type,
-      entity_id: input.entity_id ?? null,
-      action: input.action,
-      title: input.title ?? null,
-      company: input.company ?? null,
-      payload: (input.payload ?? {}) as never,
-    } as never);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn("[activity-log] failed:", err);
-  }
+export async function logActivity(_input: ActivityLogInput): Promise<void> {
+  // no-op
 }

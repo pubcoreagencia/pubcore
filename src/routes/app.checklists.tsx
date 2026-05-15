@@ -5,7 +5,7 @@ import {
   Check, Filter, Plus, Trash2, Pencil, GripVertical, X,
   Play, Pause, StopCircle, RotateCcw,
   TrendingUp, CheckCircle2, AlertTriangle, ListTodo, Activity,
-  Sparkles, History, Timer, BarChart3, Users, Trash,
+  Sparkles, History, Timer, BarChart3, Users,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -428,25 +428,20 @@ function Select({
 
 /* =================== TAB: HISTÓRICO =================== */
 
-const ENTITY_LABEL: Record<string, string> = {
-  checklist_task: "Tarefa do checklist",
-  kanban_card: "Card do Kanban",
-  kanban_column: "Coluna do Kanban",
-  calendar_event: "Evento",
-  crm_lead: "Lead",
-  ponto_session: "Sessão",
+type TimelineEvent = {
+  kind: "completed";
+  id: string;
+  ts: number;
+  title: string;
+  company: string | null;
+  user_name: string | null;
 };
 
-type TimelineEvent =
-  | { kind: "completed"; id: string; ts: number; title: string; company: string | null; user_name: string | null }
-  | { kind: "deleted"; id: string; ts: number; title: string; company: string | null; user_name: string | null; entity_type: string };
-
 function HistoryTab() {
-  const { sessions, sessionTasks, activity, loading } = useOperationalData();
+  const { sessions, sessionTasks, loading } = useOperationalData();
   const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">("semanal");
   const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
   const [userFilter, setUserFilter] = useState<string>("Todos");
-  const [eventTypeFilter, setEventTypeFilter] = useState<"todos" | "concluidas" | "excluidas">("todos");
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
 
@@ -464,18 +459,13 @@ function HistoryTab() {
     () => sessionTasks.filter((t) => new Date(t.completed_at).getTime() >= cutoff),
     [sessionTasks, cutoff]
   );
-  const periodDeletions = useMemo(
-    () => activity.filter((a) => a.action === "deleted" && new Date(a.created_at).getTime() >= cutoff),
-    [activity, cutoff]
-  );
 
   const userOptions = useMemo(() => {
     const s = new Set<string>();
     for (const x of sessions) if (x.user_name) s.add(x.user_name);
     for (const x of sessionTasks) if (x.user_name) s.add(x.user_name);
-    for (const x of activity) if (x.user_name) s.add(x.user_name);
     return ["Todos", ...Array.from(s).sort()];
-  }, [sessions, sessionTasks, activity]);
+  }, [sessions, sessionTasks]);
 
   const filteredSessions = useMemo(() => {
     return periodSessions.filter((s) => {
@@ -489,7 +479,7 @@ function HistoryTab() {
   }, [periodSessions, periodTasks, userFilter, companyFilter]);
 
   const filteredTimeline = useMemo<TimelineEvent[]>(() => {
-    const completed: TimelineEvent[] = periodTasks
+    return periodTasks
       .filter((t) =>
         (companyFilter === "Todas" || t.company === companyFilter) &&
         (userFilter === "Todos" || (t.user_name ?? "") === userFilter)
@@ -501,28 +491,9 @@ function HistoryTab() {
         title: t.title,
         company: t.company,
         user_name: t.user_name,
-      }));
-
-    const deleted: TimelineEvent[] = periodDeletions
-      .filter((a) =>
-        (companyFilter === "Todas" || a.company === companyFilter) &&
-        (userFilter === "Todos" || (a.user_name ?? "") === userFilter)
-      )
-      .map((a) => ({
-        kind: "deleted" as const,
-        id: `d-${a.id}`,
-        ts: new Date(a.created_at).getTime(),
-        title: a.title ?? "(sem título)",
-        company: a.company,
-        user_name: a.user_name,
-        entity_type: a.entity_type,
-      }));
-
-    let merged = [...completed, ...deleted].sort((a, b) => b.ts - a.ts);
-    if (eventTypeFilter === "concluidas") merged = merged.filter((e) => e.kind === "completed");
-    if (eventTypeFilter === "excluidas") merged = merged.filter((e) => e.kind === "deleted");
-    return merged;
-  }, [periodTasks, periodDeletions, companyFilter, userFilter, eventTypeFilter]);
+      }))
+      .sort((a, b) => b.ts - a.ts);
+  }, [periodTasks, companyFilter, userFilter]);
 
   const series = useMemo(() => buildDailySeries(periodSessions, periodTasks, days), [periodSessions, periodTasks, days]);
 
@@ -530,10 +501,6 @@ function HistoryTab() {
     completed: periodTasks.filter((t) =>
       (companyFilter === "Todas" || t.company === companyFilter) &&
       (userFilter === "Todos" || (t.user_name ?? "") === userFilter)
-    ).length,
-    deleted: periodDeletions.filter((a) =>
-      (companyFilter === "Todas" || a.company === companyFilter) &&
-      (userFilter === "Todos" || (a.user_name ?? "") === userFilter)
     ).length,
     sessions: filteredSessions.length,
     productiveMs: filteredSessions.reduce((a, s) => a + (s.productive_ms ?? 0), 0),
@@ -568,20 +535,13 @@ function HistoryTab() {
         </div>
         <Select label="Empresa" value={companyFilter} onChange={(v) => setCompanyFilter(v as Company | "Todas")} options={["Todas", ...COMPANIES]} />
         <Select label="Usuário" value={userFilter} onChange={setUserFilter} options={userOptions} />
-        <Select
-          label="Eventos"
-          value={eventTypeFilter}
-          onChange={(v) => setEventTypeFilter(v as typeof eventTypeFilter)}
-          options={["todos", "concluidas", "excluidas"]}
-        />
         <span className="ml-auto text-xs text-muted-foreground font-mono">
-          {loading ? "Carregando…" : `${totals.completed} concluídas · ${totals.deleted} excluídas`}
+          {loading ? "Carregando…" : `${totals.completed} concluídas`}
         </span>
       </div>
 
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard label="Tarefas concluídas" value={totals.completed} icon={CheckCircle2} accent="success" hint="no período" />
-        <StatCard label="Itens excluídos" value={totals.deleted} icon={Trash} accent="warning" hint="auditoria" />
         <StatCard label="Sessões encerradas" value={totals.sessions} icon={History} accent="info" hint="expedientes" />
         <StatCard label="Tempo produtivo" value={fmtTime(totals.productiveMs)} icon={Timer} accent="primary" hint="acumulado" />
       </div>
@@ -690,42 +650,22 @@ function HistoryTab() {
           </div>
         ) : (
           <ol className="relative border-l border-border ml-3 space-y-3 max-h-[480px] overflow-y-auto pr-2">
-            {filteredTimeline.slice(0, 200).map((e) => {
-              const isDel = e.kind === "deleted";
-              return (
-                <li key={e.id} className="ml-5">
-                  <span
-                    className={`absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full shadow-glow ${
-                      isDel ? "bg-destructive" : "bg-success"
-                    }`}
-                  />
-                  <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {new Date(e.ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                    {isDel ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-destructive/30 bg-destructive/10 text-destructive uppercase tracking-wider">
-                        <Trash className="h-3 w-3" /> Excluído
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-success/30 bg-success/10 text-success uppercase tracking-wider">
-                        <CheckCircle2 className="h-3 w-3" /> Concluído
-                      </span>
-                    )}
-                    {e.company && <CompanyTag company={e.company as Company} />}
-                    <span className={`text-foreground ${isDel ? "line-through text-muted-foreground" : ""}`}>
-                      {e.title}
-                    </span>
-                    {isDel && (
-                      <span className="text-[10px] text-muted-foreground">
-                        ({ENTITY_LABEL[(e as Extract<TimelineEvent, { kind: "deleted" }>).entity_type] ?? (e as Extract<TimelineEvent, { kind: "deleted" }>).entity_type})
-                      </span>
-                    )}
-                    {e.user_name && <span className="text-xs text-muted-foreground">— {e.user_name}</span>}
-                  </div>
-                </li>
-              );
-            })}
+            {filteredTimeline.slice(0, 200).map((e) => (
+              <li key={e.id} className="ml-5">
+                <span className="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full shadow-glow bg-success" />
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {new Date(e.ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border border-success/30 bg-success/10 text-success uppercase tracking-wider">
+                    <CheckCircle2 className="h-3 w-3" /> Concluído
+                  </span>
+                  {e.company && <CompanyTag company={e.company as Company} />}
+                  <span className="text-foreground">{e.title}</span>
+                  {e.user_name && <span className="text-xs text-muted-foreground">— {e.user_name}</span>}
+                </div>
+              </li>
+            ))}
           </ol>
         )}
       </div>
