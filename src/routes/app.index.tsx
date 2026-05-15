@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   TrendingUp, CheckCircle2, ListTodo, Factory, Clock, Timer,
   Activity, Calendar as CalendarIcon, Sparkles, ArrowRight,
+  Boxes, Wallet, StickyNote, Zap, ChevronRight,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
