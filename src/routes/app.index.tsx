@@ -79,12 +79,12 @@ function Dashboard() {
   const recent = useMemo(() => sessionTasks.slice(0, 8), [sessionTasks]);
 
   const KPI_DEFS = [
-    { label: "Tarefas concluídas", value: String(kpis.completedTotal), hint: "checklist atual", icon: CheckCircle2, accent: "text-success" },
-    { label: "Tarefas pendentes", value: String(kpis.pending), hint: "aguardando ação", icon: ListTodo, accent: "text-warning" },
-    { label: "Produtividade 7d", value: `${kpis.productivity}%`, hint: "produtivo / total", icon: TrendingUp, accent: "text-primary" },
-    { label: "Horas trabalhadas", value: kpis.hours.toFixed(1) + "h", hint: "últimos 7 dias", icon: Timer, accent: "text-info" },
-    { label: "Empresas operadas", value: `${kpis.companies}/${COMPANIES.length}`, hint: "na semana", icon: Factory, accent: "text-warning" },
-    { label: "Sessões de ponto", value: String(kpis.weekSessions), hint: "últimos 7 dias", icon: Activity, accent: "text-info" },
+    { label: "Tarefas concluídas", value: String(kpis.completedTotal), hint: "checklist atual", icon: CheckCircle2, accent: "text-success", to: "/app/checklists" as const },
+    { label: "Tarefas pendentes", value: String(kpis.pending), hint: "aguardando ação", icon: ListTodo, accent: "text-warning", to: "/app/checklists" as const, filter: "pending" },
+    { label: "Produtividade 7d", value: `${kpis.productivity}%`, hint: "produtivo / total", icon: TrendingUp, accent: "text-primary", to: "/app" as const },
+    { label: "Horas trabalhadas", value: kpis.hours.toFixed(1) + "h", hint: "últimos 7 dias", icon: Timer, accent: "text-info", to: "/app" as const },
+    { label: "Empresas operadas", value: `${kpis.companies}/${COMPANIES.length}`, hint: "na semana", icon: Factory, accent: "text-warning", to: "/app/kanban" as const },
+    { label: "Sessões de ponto", value: String(kpis.weekSessions), hint: "últimos 7 dias", icon: Activity, accent: "text-info", to: "/app" as const },
   ];
 
   return (
