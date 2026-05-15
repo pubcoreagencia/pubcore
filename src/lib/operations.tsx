@@ -45,19 +45,18 @@ export function useOperationalData() {
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [sessionTasks, setSessionTasks] = useState<SessionTaskRow[]>([]);
   const [checklist, setChecklist] = useState<ChecklistRow[]>([]);
-  const [activity, setActivity] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!userId) {
-      setSessions([]); setSessionTasks([]); setChecklist([]); setActivity([]); setLoading(false);
+      setSessions([]); setSessionTasks([]); setChecklist([]); setLoading(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
 
     const load = async () => {
-      const [s, st, ch, ac] = await Promise.all([
+      const [s, st, ch] = await Promise.all([
         supabase.from("ponto_sessions")
           .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, owner_email")
           .eq("user_id", userId)
@@ -72,17 +71,11 @@ export function useOperationalData() {
           .select("id, company, title, status, done_at, created_at, updated_at")
           .eq("user_id", userId)
           .limit(1000),
-        supabase.from("activity_log")
-          .select("id, entity_type, entity_id, action, title, company, user_name, created_at, payload")
-          .eq("user_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(1000),
       ]);
       if (cancelled) return;
       setSessions((s.data ?? []) as SessionRow[]);
       setSessionTasks((st.data ?? []) as SessionTaskRow[]);
       setChecklist((ch.data ?? []) as ChecklistRow[]);
-      setActivity((ac.data ?? []) as ActivityRow[]);
       setLoading(false);
     };
     load();
@@ -92,13 +85,12 @@ export function useOperationalData() {
     ch.on("postgres_changes", { event: "*", schema: "public", table: "ponto_sessions", filter: `user_id=eq.${userId}` }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "ponto_session_tasks", filter: `user_id=eq.${userId}` }, () => load())
       .on("postgres_changes", { event: "*", schema: "public", table: "checklist_tasks", filter: `user_id=eq.${userId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "activity_log", filter: `user_id=eq.${userId}` }, () => load())
       .subscribe();
 
     return () => { cancelled = true; supabase.removeChannel(ch); };
   }, [userId]);
 
-  return { sessions, sessionTasks, checklist, activity, loading };
+  return { sessions, sessionTasks, checklist, loading };
 }
 
 export function startOfDay(d: Date) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
