@@ -1,36 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import {
-  LayoutDashboard, KanbanSquare, ListChecks, Calendar, Users2, Settings,
-  LogOut, StickyNote, Wallet, Boxes,
-} from "lucide-react";
+import { LayoutDashboard, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
-
-type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
-
-const groups: { label: string; items: NavItem[] }[] = [
-  {
-    label: "Operação",
-    items: [{ to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true }],
-  },
-  {
-    label: "Workflow",
-    items: [
-      { to: "/app/kanban", label: "Kanban", icon: KanbanSquare },
-      { to: "/app/checklists", label: "Checklists", icon: ListChecks },
-      { to: "/app/calendar", label: "Calendário", icon: Calendar },
-      { to: "/app/notes", label: "Notas", icon: StickyNote },
-    ],
-  },
-  {
-    label: "Gestão",
-    items: [
-      { to: "/app/crm", label: "CRM", icon: Users2 },
-      { to: "/app/finance", label: "Finanças", icon: Wallet },
-      { to: "/app/stock", label: "Estoque", icon: Boxes },
-      { to: "/app/settings", label: "Configurações", icon: Settings },
-    ],
-  },
-];
+import { navGroups } from "./nav-config";
 
 export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -55,7 +26,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-2 pt-4 space-y-5 overflow-y-auto">
-        {groups.map((group) => (
+        {navGroups.map((group) => (
           <div key={group.label}>
             <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60 px-3 mb-1.5">
               {group.label}
@@ -104,3 +75,6 @@ export function Sidebar() {
     </aside>
   );
 }
+
+// Keep LayoutDashboard import to satisfy potential type re-exports
+void LayoutDashboard;

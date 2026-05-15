@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
+import { MobileNav } from "@/components/MobileNav";
 import { PontoHeader } from "@/components/PontoHeader";
 import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
@@ -33,7 +34,8 @@ function AppLayout() {
         <ChecklistProvider>
           <div className="flex min-h-screen w-full bg-background">
             <Sidebar />
-            <main className="flex-1 min-w-0 relative">
+            <main className="flex-1 min-w-0 relative flex flex-col">
+              <MobileNav />
               <PontoHeader />
               <Outlet />
             </main>
