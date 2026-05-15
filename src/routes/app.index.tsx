@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   TrendingUp, CheckCircle2, ListTodo, Factory, Clock, Timer,
   Activity, Calendar as CalendarIcon, Sparkles, ArrowRight,
-  Boxes, Wallet, StickyNote, Zap, ChevronRight,
+  Boxes, Wallet, StickyNote, Zap, ChevronRight, BarChart3,
+  KanbanSquare, ListChecks, AlertTriangle,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -28,6 +29,21 @@ interface CalendarRow {
   company: string | null;
   event_date: string;
   event_time: string | null;
+}
+
+interface StockItemRow {
+  id: string;
+  name: string;
+  sku: string | null;
+  quantity: number;
+  company_id: string;
+}
+
+interface NoteRow {
+  id: string;
+  title: string;
+  company: string | null;
+  updated_at: string;
 }
 
 function Dashboard() {
@@ -58,6 +74,51 @@ function Dashboard() {
     return () => { cancelled = true; supabase.removeChannel(ch); };
   }, [user?.id]);
 
+  // Itens de estoque com baixa quantidade (<= 10)
+  const [lowStock, setLowStock] = useState<StockItemRow[]>([]);
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const load = async () => {
+      const { data } = await supabase
+        .from("stock_items")
+        .select("id, name, sku, quantity, company_id")
+        .eq("workspace_id", user.id)
+        .lte("quantity", 10)
+        .order("quantity", { ascending: true })
+        .limit(5);
+      if (!cancelled) setLowStock((data ?? []) as StockItemRow[]);
+    };
+    load();
+    const ch = supabase
+      .channel(`dash_stock:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "stock_items", filter: `workspace_id=eq.${user.id}` }, () => load())
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [user?.id]);
+
+  // Notas recentes
+  const [recentNotes, setRecentNotes] = useState<NoteRow[]>([]);
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const load = async () => {
+      const { data } = await supabase
+        .from("notes")
+        .select("id, title, company, updated_at")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(5);
+      if (!cancelled) setRecentNotes((data ?? []) as NoteRow[]);
+    };
+    load();
+    const ch = supabase
+      .channel(`dash_notes:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `user_id=eq.${user.id}` }, () => load())
+      .subscribe();
+    return () => { cancelled = true; supabase.removeChannel(ch); };
+  }, [user?.id]);
+
   // KPIs derivados de dados reais
   const todayStart = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d.getTime(); }, []);
   const weekStart = todayStart - 6 * 86400000;
@@ -80,11 +141,20 @@ function Dashboard() {
 
   const KPI_DEFS = [
     { label: "Tarefas concluídas", value: String(kpis.completedTotal), hint: "checklist atual", icon: CheckCircle2, accent: "text-success", to: "/app/checklists" as const },
-    { label: "Tarefas pendentes", value: String(kpis.pending), hint: "aguardando ação", icon: ListTodo, accent: "text-warning", to: "/app/checklists" as const, filter: "pending" },
+    { label: "Tarefas pendentes", value: String(kpis.pending), hint: "aguardando ação", icon: ListTodo, accent: "text-warning", to: "/app/checklists" as const },
     { label: "Produtividade 7d", value: `${kpis.productivity}%`, hint: "produtivo / total", icon: TrendingUp, accent: "text-primary", to: "/app" as const },
     { label: "Horas trabalhadas", value: kpis.hours.toFixed(1) + "h", hint: "últimos 7 dias", icon: Timer, accent: "text-info", to: "/app" as const },
     { label: "Empresas operadas", value: `${kpis.companies}/${COMPANIES.length}`, hint: "na semana", icon: Factory, accent: "text-warning", to: "/app/kanban" as const },
     { label: "Sessões de ponto", value: String(kpis.weekSessions), hint: "últimos 7 dias", icon: Activity, accent: "text-info", to: "/app" as const },
+  ];
+
+  const QUICK_CARDS = [
+    { label: "Kanban", desc: "Visualize tarefas", icon: KanbanSquare, to: "/app/kanban" as const, color: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20" },
+    { label: "Checklists", desc: "Tarefas pendentes", icon: ListChecks, to: "/app/checklists" as const, color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    { label: "Notas", desc: `${recentNotes.length} recentes`, icon: StickyNote, to: "/app/notes" as const, color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    { label: "Estoque", desc: `${lowStock.length} itens baixos`, icon: Boxes, to: "/app/stock" as const, color: "text-rose-400", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+    { label: "Finanças", desc: "Controle financeiro", icon: Wallet, to: "/app/finance" as const, color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/20" },
+    { label: "Calendário", desc: `${events.length} eventos`, icon: CalendarIcon, to: "/app/calendar" as const, color: "text-indigo-400", bg: "bg-indigo-500/10", border: "border-indigo-500/20" },
   ];
 
   return (
@@ -130,15 +200,49 @@ function Dashboard() {
         ))}
       </section>
 
+      {/* Quick Access Cards */}
+      <section>
+        <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
+          <Zap className="h-4 w-4 text-primary" /> Acesso rápido
+        </h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          {QUICK_CARDS.map((c) => (
+            <Link
+              key={c.label}
+              to={c.to}
+              className={`group relative rounded-xl border ${c.border} ${c.bg} p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden`}
+            >
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500">
+                <c.icon className="h-10 w-10" />
+              </div>
+              <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-card/80 ${c.color} mb-3 group-hover:scale-105 transition-transform duration-300`}>
+                <c.icon className="h-5 w-5" />
+              </div>
+              <div className="font-semibold text-sm">{c.label}</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{c.desc}</div>
+              <div className="mt-3 flex items-center gap-1 text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <span className={c.color}>Acessar</span>
+                <ChevronRight className={`h-3 w-3 ${c.color} group-hover:translate-x-0.5 transition-transform duration-300`} />
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Produtividade semanal */}
-        <section className="lg:col-span-2 rounded-xl border border-border bg-card shadow-card p-5">
+        <Link to="/app" className="lg:col-span-2 rounded-xl border border-border bg-card shadow-card p-5 block hover:border-primary/30 hover:shadow-[0_0_24px_-8px_rgba(79,70,229,0.12)] transition-all duration-300 cursor-pointer group">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h2 className="font-display text-lg font-bold">Produtividade semanal</h2>
+              <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-primary" /> Produtividade semanal
+              </h2>
               <p className="text-xs text-muted-foreground">Tempo produtivo vs. tempo total · últimos 7 dias</p>
             </div>
-            <span className="text-xs text-muted-foreground font-mono">{kpis.productivity}%</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground font-mono">{kpis.productivity}%</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all duration-300" />
+            </div>
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -157,41 +261,49 @@ function Dashboard() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </section>
+        </Link>
 
         {/* Progresso por empresa */}
-        <section className="rounded-xl border border-border bg-card shadow-card p-5">
-          <h2 className="font-display text-lg font-bold">Tarefas por empresa</h2>
-          <p className="text-xs text-muted-foreground">Concluídas na semana</p>
+        <Link to="/app/kanban" className="rounded-xl border border-border bg-card shadow-card p-5 block hover:border-primary/30 hover:shadow-[0_0_24px_-8px_rgba(79,70,229,0.12)] transition-all duration-300 cursor-pointer group">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-display text-lg font-bold">Tarefas por empresa</h2>
+              <p className="text-xs text-muted-foreground">Concluídas na semana</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all duration-300" />
+          </div>
           <div className="mt-5 space-y-3">
             {byCompany.map((b) => {
               const max = Math.max(1, ...byCompany.map((x) => x.completed));
               const pct = Math.round((b.completed / max) * 100);
               const color = COMPANY_COLORS[b.company];
               return (
-                <div key={b.company}>
+                <div key={b.company} className="group/bar">
                   <div className="flex items-center justify-between text-xs mb-1.5">
                     <CompanyTag company={b.company} />
                     <span className="text-muted-foreground font-mono">{b.completed}</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-surface overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+                    <div className="h-full rounded-full transition-all duration-500 group-hover/bar:brightness-110" style={{ width: `${pct}%`, backgroundColor: color }} />
                   </div>
                 </div>
               );
             })}
           </div>
-        </section>
+        </Link>
       </div>
 
-      {/* Atividade recente + próximos eventos */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <section className="rounded-xl border border-border bg-card shadow-card p-5">
+      {/* Atividade recente + próximos eventos + estoque + notas */}
+      <div className="grid lg:grid-cols-4 gap-6">
+        {/* Atividade recente */}
+        <section className="lg:col-span-2 rounded-xl border border-border bg-card shadow-card p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-lg font-bold flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" /> Atividade recente
             </h2>
-            <span className="text-xs text-muted-foreground">{recent.length} eventos</span>
+            <Link to="/app/checklists" className="text-xs text-primary hover:underline flex items-center gap-1">
+              Ver todos <ChevronRight className="h-3 w-3" />
+            </Link>
           </div>
           {recent.length === 0 ? (
             <div className="text-sm text-muted-foreground py-10 text-center">
@@ -200,8 +312,8 @@ function Dashboard() {
           ) : (
             <ol className="relative border-l border-border ml-3 space-y-3">
               {recent.map((e) => (
-                <li key={e.id} className="ml-5">
-                  <span className="absolute -left-[5px] mt-1.5 h-2.5 w-2.5 rounded-full bg-success shadow-glow" />
+                <li key={e.id} className="ml-5 relative">
+                  <span className="absolute -left-[21px] mt-1.5 h-2.5 w-2.5 rounded-full bg-success shadow-glow" />
                   <div className="flex flex-wrap items-center gap-2 text-sm">
                     <span className="font-mono text-xs text-muted-foreground">
                       {new Date(e.completed_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
@@ -216,12 +328,13 @@ function Dashboard() {
           )}
         </section>
 
-        <section className="rounded-xl border border-border bg-card shadow-card p-5">
+        {/* Próximos eventos */}
+        <Link to="/app/calendar" className="rounded-xl border border-border bg-card shadow-card p-5 block hover:border-primary/30 hover:shadow-[0_0_24px_-8px_rgba(79,70,229,0.12)] transition-all duration-300 cursor-pointer group">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-lg font-bold flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-info" /> Próximos eventos
             </h2>
-            <Link to="/app/calendar" className="text-xs text-primary hover:underline">Ver todos</Link>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all duration-300" />
           </div>
           {events.length === 0 ? (
             <div className="text-sm text-muted-foreground py-10 text-center">
@@ -249,12 +362,69 @@ function Dashboard() {
               })}
             </div>
           )}
-        </section>
+        </Link>
+
+        {/* Estoque Baixo + Notas Recentes */}
+        <div className="space-y-6">
+          <Link to="/app/stock" className="rounded-xl border border-border bg-card shadow-card p-5 block hover:border-rose-500/30 hover:shadow-[0_0_24px_-8px_rgba(244,63,94,0.12)] transition-all duration-300 cursor-pointer group">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-rose-400" /> Estoque baixo
+              </h2>
+              <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-rose-400 group-hover:translate-x-0.5 transition-all duration-300" />
+            </div>
+            {lowStock.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-6 text-center">
+                Nenhum item com estoque baixo.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {lowStock.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between rounded-lg p-2 hover:bg-rose-500/5 transition">
+                    <div className="min-w-0">
+                      <div className="text-sm truncate">{item.name}</div>
+                      {item.sku && <div className="text-[10px] text-muted-foreground font-mono">{item.sku}</div>}
+                    </div>
+                    <div className="text-xs font-bold text-rose-400 shrink-0">{item.quantity} und</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Link>
+
+          <Link to="/app/notes" className="rounded-xl border border-border bg-card shadow-card p-5 block hover:border-amber-500/30 hover:shadow-[0_0_24px_-8px_rgba(245,158,11,0.12)] transition-all duration-300 cursor-pointer group">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-bold flex items-center gap-2">
+                <StickyNote className="h-4 w-4 text-amber-400" /> Notas recentes
+              </h2>
+              <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all duration-300" />
+            </div>
+            {recentNotes.length === 0 ? (
+              <div className="text-sm text-muted-foreground py-6 text-center">
+                Nenhuma nota recente.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recentNotes.map((note) => (
+                  <div key={note.id} className="flex items-center gap-2 rounded-lg p-2 hover:bg-amber-500/5 transition">
+                    <div className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-sm truncate">{note.title}</div>
+                    </div>
+                    {note.company && <CompanyTag company={note.company as Company} />}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Link>
+        </div>
       </div>
 
       {/* Resumo operacional do dia */}
-      <section className="rounded-xl border border-border bg-card shadow-card p-5">
-        <h2 className="font-display text-lg font-bold mb-4">Resumo operacional de hoje</h2>
+      <section className="rounded-xl border border-border bg-card shadow-card p-5 hover:border-primary/20 transition-colors duration-300">
+        <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
+          <Activity className="h-4 w-4 text-primary" /> Resumo operacional de hoje
+        </h2>
         <DailySummary />
       </section>
     </div>
@@ -272,20 +442,25 @@ function DailySummary() {
   const companies = new Set(todayTasks.map((t) => t.company));
 
   const items = [
-    { label: "Tarefas concluídas", value: String(todayTasks.length) },
-    { label: "Tempo trabalhado", value: fmtTime(totalMs) },
-    { label: "Tempo produtivo", value: fmtTime(productiveMs) },
-    { label: "Empresas operadas", value: `${companies.size}` },
-    { label: "Sessões de ponto", value: String(todaySessions.length) },
+    { label: "Tarefas concluídas", value: String(todayTasks.length), to: "/app/checklists" as const },
+    { label: "Tempo trabalhado", value: fmtTime(totalMs), to: "/app" as const },
+    { label: "Tempo produtivo", value: fmtTime(productiveMs), to: "/app" as const },
+    { label: "Empresas operadas", value: `${companies.size}`, to: "/app/kanban" as const },
+    { label: "Sessões de ponto", value: String(todaySessions.length), to: "/app" as const },
   ];
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
       {items.map((i) => (
-        <div key={i.label} className="rounded-lg border border-border bg-surface/40 px-3 py-3">
+        <Link
+          key={i.label}
+          to={i.to}
+          className="group rounded-lg border border-border bg-surface/40 px-3 py-3 hover:border-primary/30 hover:bg-surface/60 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+        >
           <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{i.label}</div>
           <div className="font-display text-2xl font-bold tabular-nums mt-1">{i.value}</div>
-        </div>
+          <ChevronRight className="h-3 w-3 text-muted-foreground/30 mt-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" />
+        </Link>
       ))}
     </div>
   );
