@@ -1,0 +1,32 @@
+import {
+  LayoutDashboard, KanbanSquare, ListChecks, Calendar, Users2, Settings,
+  StickyNote, Wallet, Boxes,
+} from "lucide-react";
+
+export type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
+export type NavGroup = { label: string; items: NavItem[] };
+
+export const navGroups: NavGroup[] = [
+  {
+    label: "Operação",
+    items: [{ to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true }],
+  },
+  {
+    label: "Workflow",
+    items: [
+      { to: "/app/kanban", label: "Kanban", icon: KanbanSquare },
+      { to: "/app/checklists", label: "Checklists", icon: ListChecks },
+      { to: "/app/calendar", label: "Calendário", icon: Calendar },
+      { to: "/app/notes", label: "Notas", icon: StickyNote },
+    ],
+  },
+  {
+    label: "Gestão",
+    items: [
+      { to: "/app/crm", label: "CRM", icon: Users2 },
+      { to: "/app/finance", label: "Finanças", icon: Wallet },
+      { to: "/app/stock", label: "Estoque", icon: Boxes },
+      { to: "/app/settings", label: "Configurações", icon: Settings },
+    ],
+  },
+];
