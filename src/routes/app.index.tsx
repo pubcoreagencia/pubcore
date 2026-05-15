@@ -112,16 +112,21 @@ function Dashboard() {
       {/* KPIs */}
       <section className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {KPI_DEFS.map((k) => (
-          <div key={k.label} className="group rounded-xl border border-border bg-card p-5 shadow-card hover:border-primary/30 transition-all">
+          <Link
+            key={k.label}
+            to={k.to}
+            className="group rounded-xl border border-border bg-card p-5 shadow-card hover:border-primary/40 hover:shadow-[0_0_20px_-5px_rgba(79,70,229,0.15)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+          >
             <div className="flex items-start justify-between">
-              <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-surface ${k.accent}`}>
+              <div className={`flex h-9 w-9 items-center justify-center rounded-lg bg-surface ${k.accent} group-hover:scale-110 transition-transform duration-300`}>
                 <k.icon className="h-4 w-4" />
               </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground/40 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" />
             </div>
             <div className="mt-4 font-display text-2xl font-bold tracking-tight tabular-nums">{k.value}</div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1">{k.label}</div>
             <div className="text-[10px] text-muted-foreground/70 mt-0.5">{k.hint}</div>
-          </div>
+          </Link>
         ))}
       </section>
 
