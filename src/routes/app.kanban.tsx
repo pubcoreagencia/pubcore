@@ -61,6 +61,7 @@ function isDoneColumnName(name: string) {
 
 function KanbanPage() {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
   const [columns, setColumns] = useState<Column[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
