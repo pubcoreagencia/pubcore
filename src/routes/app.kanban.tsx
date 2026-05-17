@@ -145,9 +145,10 @@ function KanbanPage() {
 
   // ----- COLUMN OPS -----
   const createColumn = async () => {
-    if (!newColName.trim() || !userId) return;
+    if (!newColName.trim() || !userId || !activeWorkspaceId) return;
     const position = columns.length;
     await supabase.from("kanban_columns").insert({
+      workspace_id: activeWorkspaceId,
       user_id: userId, name: newColName.trim(), position,
       color: DEFAULT_COLUMNS[position % DEFAULT_COLUMNS.length].color,
     } as never);
