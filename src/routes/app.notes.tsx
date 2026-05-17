@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { COMPANIES, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
 import { logActivity } from "@/lib/activity-log";
