@@ -539,9 +539,12 @@ function NoteCard({
 }) {
   const preview = note.content.replace(/\s+/g, " ").trim().slice(0, 90);
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`group relative text-left rounded-xl border p-3 transition-all ${
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      className={`group relative text-left rounded-xl border p-3 transition-all cursor-pointer ${
         active
           ? "border-primary/50 bg-secondary/60 shadow-[0_0_0_1px_hsl(var(--primary)/0.3)]"
           : "border-border/40 bg-card/40 hover:border-border hover:bg-card/70"
@@ -584,7 +587,7 @@ function NoteCard({
           {formatRelative(note.updated_at)}
         </span>
       </div>
-    </button>
+    </div>
   );
 }
 
