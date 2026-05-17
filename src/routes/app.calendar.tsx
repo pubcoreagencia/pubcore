@@ -5,6 +5,7 @@ import { COMPANIES, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activity-log";
 
@@ -31,6 +32,7 @@ interface Ev {
 
 function CalendarPage() {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth());
@@ -42,21 +44,21 @@ function CalendarPage() {
   });
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !activeWorkspaceId) return;
     const load = async () => {
       const start = `${year}-${String(month + 1).padStart(2, "0")}-01`;
       const end = `${month === 11 ? year + 1 : year}-${String(((month + 1) % 12) + 1).padStart(2, "0")}-01`;
       const { data } = await supabase.from("calendar_events").select("*")
-        .eq("user_id", userId).gte("event_date", start).lt("event_date", end)
+        .eq("workspace_id", activeWorkspaceId).gte("event_date", start).lt("event_date", end)
         .order("event_date").order("event_time");
       setEvents((data ?? []) as Ev[]);
     };
     load();
-    const ch = supabase.channel(`cal:${userId}:${year}-${month}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events", filter: `user_id=eq.${userId}` }, load)
+    const ch = supabase.channel(`cal:${activeWorkspaceId}:${year}-${month}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "calendar_events", filter: `workspace_id=eq.${activeWorkspaceId}` }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [userId, month, year]);
+  }, [userId, activeWorkspaceId, month, year]);
 
   const first = new Date(year, month, 1).getDay();
   const days = new Date(year, month + 1, 0).getDate();
@@ -65,8 +67,9 @@ function CalendarPage() {
   const move = (d: number) => { const m = month + d; if (m < 0) { setMonth(11); setYear(year - 1); } else if (m > 11) { setMonth(0); setYear(year + 1); } else setMonth(m); };
 
   const create = async () => {
-    if (!draft.title.trim() || !userId) return;
+    if (!draft.title.trim() || !userId || !activeWorkspaceId) return;
     const { error } = await supabase.from("calendar_events").insert({
+      workspace_id: activeWorkspaceId,
       user_id: userId, title: draft.title.trim(), type: draft.type,
       company: draft.company, event_date: draft.event_date, event_time: draft.event_time,
     } as never);

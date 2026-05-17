@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { COMPANIES, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
 import { logActivity } from "@/lib/activity-log";
@@ -90,6 +91,7 @@ function formatRelative(iso: string): string {
 
 function NotesPage() {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
   const [notes, setNotes] = useState<Note[]>([]);
   const [categories, setCategories] = useState<NoteCategory[]>([]);
@@ -112,13 +114,13 @@ function NotesPage() {
 
   // ---- Load + realtime ----
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !activeWorkspaceId) return;
     let cancelled = false;
     const loadNotes = async () => {
       const { data, error } = await supabase
         .from("notes")
         .select("*")
-        .eq("user_id", userId)
+        .eq("workspace_id", activeWorkspaceId)
         .order("pinned", { ascending: false })
         .order("updated_at", { ascending: false });
       if (cancelled) return;
@@ -129,14 +131,14 @@ function NotesPage() {
       const { data, error } = await supabase
         .from("note_categories" as never)
         .select("*")
-        .eq("user_id", userId)
+        .eq("workspace_id", activeWorkspaceId)
         .order("position", { ascending: true });
       if (cancelled) return;
       if (error) { toast.error(error.message); return; }
       let cats = (data ?? []) as NoteCategory[];
       // Seed defaults if empty
       if (cats.length === 0) {
-        const seeds = DEFAULT_CATEGORIES.map((c, i) => ({ ...c, user_id: userId, position: i }));
+        const seeds = DEFAULT_CATEGORIES.map((c, i) => ({ ...c, workspace_id: activeWorkspaceId, user_id: userId, position: i }));
         const { data: inserted } = await supabase.from("note_categories" as never).insert(seeds as never).select();
         cats = ((inserted ?? []) as NoteCategory[]).sort((a, b) => a.position - b.position);
       }
@@ -145,12 +147,12 @@ function NotesPage() {
     Promise.all([loadNotes(), loadCats()]).finally(() => { if (!cancelled) setLoading(false); });
 
     const ch = supabase
-      .channel(`notes-mod:${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `user_id=eq.${userId}` }, loadNotes)
-      .on("postgres_changes", { event: "*", schema: "public", table: "note_categories", filter: `user_id=eq.${userId}` }, loadCats)
+      .channel(`notes-mod:${activeWorkspaceId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `workspace_id=eq.${activeWorkspaceId}` }, loadNotes)
+      .on("postgres_changes", { event: "*", schema: "public", table: "note_categories", filter: `workspace_id=eq.${activeWorkspaceId}` }, loadCats)
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   // ---- Filtering ----
   const filtered = useMemo(() => {
@@ -185,11 +187,12 @@ function NotesPage() {
 
   // ---- Notes CRUD ----
   const createNote = async () => {
-    if (!userId) return;
+    if (!userId || !activeWorkspaceId) return;
     const cat = filter.kind === "category" ? filter.name : (categories[0]?.name ?? "Ideias");
     const { data, error } = await supabase
       .from("notes")
       .insert({
+        workspace_id: activeWorkspaceId,
         user_id: userId,
         owner_email: user?.email ?? "unknown",
         user_name: user?.name ?? null,
@@ -232,7 +235,7 @@ function NotesPage() {
 
   // ---- Category CRUD ----
   const createCategory = async (name: string, color: string, icon: IconName) => {
-    if (!userId) return;
+    if (!userId || !activeWorkspaceId) return;
     const trimmed = name.trim();
     if (!trimmed) return;
     if (categories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
@@ -242,7 +245,7 @@ function NotesPage() {
     const position = (categories[categories.length - 1]?.position ?? -1) + 1;
     const { error } = await supabase
       .from("note_categories" as never)
-      .insert({ user_id: userId, name: trimmed, color, icon, position } as never);
+      .insert({ workspace_id: activeWorkspaceId, user_id: userId, name: trimmed, color, icon, position } as never);
     if (error) toast.error(error.message);
   };
 
@@ -536,9 +539,12 @@ function NoteCard({
 }) {
   const preview = note.content.replace(/\s+/g, " ").trim().slice(0, 90);
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`group relative text-left rounded-xl border p-3 transition-all ${
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
+      className={`group relative text-left rounded-xl border p-3 transition-all cursor-pointer ${
         active
           ? "border-primary/50 bg-secondary/60 shadow-[0_0_0_1px_hsl(var(--primary)/0.3)]"
           : "border-border/40 bg-card/40 hover:border-border hover:bg-card/70"
@@ -581,7 +587,7 @@ function NoteCard({
           {formatRelative(note.updated_at)}
         </span>
       </div>
-    </button>
+    </div>
   );
 }
 

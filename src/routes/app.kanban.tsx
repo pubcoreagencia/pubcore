@@ -5,6 +5,7 @@ import { COMPANIES, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { getActivePontoSession } from "@/lib/ponto";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activity-log";
@@ -60,6 +61,7 @@ function isDoneColumnName(name: string) {
 
 function KanbanPage() {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
   const [columns, setColumns] = useState<Column[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
@@ -83,18 +85,18 @@ function KanbanPage() {
 
   // ----- LOAD -----
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !activeWorkspaceId) return;
     let cancelled = false;
     const load = async () => {
       const [{ data: cols }, { data: cs }] = await Promise.all([
-        supabase.from("kanban_columns").select("*").eq("user_id", userId).order("position"),
-        supabase.from("kanban_cards").select("*").eq("user_id", userId).order("position"),
+        supabase.from("kanban_columns").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
+        supabase.from("kanban_cards").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
       ]);
       if (cancelled) return;
       let columnList = (cols ?? []) as Column[];
       // Seed defaults
       if (columnList.length === 0) {
-        const seed = DEFAULT_COLUMNS.map((c, i) => ({ user_id: userId, name: c.name, color: c.color, position: i }));
+        const seed = DEFAULT_COLUMNS.map((c, i) => ({ workspace_id: activeWorkspaceId, user_id: userId, name: c.name, color: c.color, position: i }));
         const { data: inserted } = await supabase.from("kanban_columns").insert(seed as never).select();
         columnList = ((inserted ?? []) as Column[]).sort((a, b) => a.position - b.position);
       }
@@ -110,7 +112,7 @@ function KanbanPage() {
           if (!colId) return Promise.resolve();
           return supabase.from("kanban_cards").update({ column_id: colId }).eq("id", c.id);
         }));
-        const { data: refreshed } = await supabase.from("kanban_cards").select("*").eq("user_id", userId).order("position");
+        const { data: refreshed } = await supabase.from("kanban_cards").select("*").eq("workspace_id", activeWorkspaceId).order("position");
         setCards(((refreshed ?? []) as unknown[]).map(normalizeCard));
       } else {
         setCards(cardList);
@@ -120,18 +122,18 @@ function KanbanPage() {
     load();
 
     const sfx = Math.random().toString(36).slice(2, 8);
-    const ch = supabase.channel(`kanban:${userId}:${sfx}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_columns", filter: `user_id=eq.${userId}` }, async () => {
-        const { data } = await supabase.from("kanban_columns").select("*").eq("user_id", userId).order("position");
+    const ch = supabase.channel(`kanban:${activeWorkspaceId}:${sfx}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_columns", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
+        const { data } = await supabase.from("kanban_columns").select("*").eq("workspace_id", activeWorkspaceId).order("position");
         setColumns((data ?? []) as Column[]);
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_cards", filter: `user_id=eq.${userId}` }, async () => {
-        const { data } = await supabase.from("kanban_cards").select("*").eq("user_id", userId).order("position");
+      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_cards", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
+        const { data } = await supabase.from("kanban_cards").select("*").eq("workspace_id", activeWorkspaceId).order("position");
         setCards(((data ?? []) as unknown[]).map(normalizeCard));
       })
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   function normalizeCard(c: any): Card {
     return {
@@ -143,9 +145,10 @@ function KanbanPage() {
 
   // ----- COLUMN OPS -----
   const createColumn = async () => {
-    if (!newColName.trim() || !userId) return;
+    if (!newColName.trim() || !userId || !activeWorkspaceId) return;
     const position = columns.length;
     await supabase.from("kanban_columns").insert({
+      workspace_id: activeWorkspaceId,
       user_id: userId, name: newColName.trim(), position,
       color: DEFAULT_COLUMNS[position % DEFAULT_COLUMNS.length].color,
     } as never);
@@ -192,10 +195,11 @@ function KanbanPage() {
 
   // ----- CARD OPS -----
   const createCard = async (colId: string) => {
-    if (!draft.title.trim() || !userId) return;
+    if (!draft.title.trim() || !userId || !activeWorkspaceId) return;
     const colCards = cards.filter((c) => c.column_id === colId);
     const col = columns.find((c) => c.id === colId);
     const { error } = await supabase.from("kanban_cards").insert({
+      workspace_id: activeWorkspaceId,
       user_id: userId, title: draft.title.trim(), company: draft.company,
       priority: "Média", column_id: colId, column_name: col?.name ?? "Backlog",
       position: colCards.length, status: "open", checklist: [],
@@ -257,8 +261,9 @@ function KanbanPage() {
     if (isDoneColumnName(col.name) && card.status !== "done") {
       await supabase.from("kanban_cards").update({ status: "done" }).eq("id", cardId);
       const active = getActivePontoSession();
-      if (active.sessionId && userId) {
+      if (active.sessionId && userId && activeWorkspaceId) {
         await supabase.from("ponto_session_tasks").insert({
+          workspace_id: activeWorkspaceId,
           user_id: userId,
           session_id: active.sessionId,
           owner_email: active.ownerEmail ?? user?.email ?? "guest@pubcore.local",
