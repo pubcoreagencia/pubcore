@@ -261,8 +261,9 @@ function KanbanPage() {
     if (isDoneColumnName(col.name) && card.status !== "done") {
       await supabase.from("kanban_cards").update({ status: "done" }).eq("id", cardId);
       const active = getActivePontoSession();
-      if (active.sessionId && userId) {
+      if (active.sessionId && userId && activeWorkspaceId) {
         await supabase.from("ponto_session_tasks").insert({
+          workspace_id: activeWorkspaceId,
           user_id: userId,
           session_id: active.sessionId,
           owner_email: active.ownerEmail ?? user?.email ?? "guest@pubcore.local",
