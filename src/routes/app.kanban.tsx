@@ -195,10 +195,11 @@ function KanbanPage() {
 
   // ----- CARD OPS -----
   const createCard = async (colId: string) => {
-    if (!draft.title.trim() || !userId) return;
+    if (!draft.title.trim() || !userId || !activeWorkspaceId) return;
     const colCards = cards.filter((c) => c.column_id === colId);
     const col = columns.find((c) => c.id === colId);
     const { error } = await supabase.from("kanban_cards").insert({
+      workspace_id: activeWorkspaceId,
       user_id: userId, title: draft.title.trim(), company: draft.company,
       priority: "Média", column_id: colId, column_name: col?.name ?? "Backlog",
       position: colCards.length, status: "open", checklist: [],
