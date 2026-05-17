@@ -5,6 +5,7 @@ import { COMPANIES, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activity-log";
 
