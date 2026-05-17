@@ -91,6 +91,7 @@ function formatRelative(iso: string): string {
 
 function NotesPage() {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
   const [notes, setNotes] = useState<Note[]>([]);
   const [categories, setCategories] = useState<NoteCategory[]>([]);
