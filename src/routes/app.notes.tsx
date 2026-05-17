@@ -187,11 +187,12 @@ function NotesPage() {
 
   // ---- Notes CRUD ----
   const createNote = async () => {
-    if (!userId) return;
+    if (!userId || !activeWorkspaceId) return;
     const cat = filter.kind === "category" ? filter.name : (categories[0]?.name ?? "Ideias");
     const { data, error } = await supabase
       .from("notes")
       .insert({
+        workspace_id: activeWorkspaceId,
         user_id: userId,
         owner_email: user?.email ?? "unknown",
         user_name: user?.name ?? null,
