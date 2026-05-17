@@ -235,7 +235,7 @@ function NotesPage() {
 
   // ---- Category CRUD ----
   const createCategory = async (name: string, color: string, icon: IconName) => {
-    if (!userId) return;
+    if (!userId || !activeWorkspaceId) return;
     const trimmed = name.trim();
     if (!trimmed) return;
     if (categories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
@@ -245,7 +245,7 @@ function NotesPage() {
     const position = (categories[categories.length - 1]?.position ?? -1) + 1;
     const { error } = await supabase
       .from("note_categories" as never)
-      .insert({ user_id: userId, name: trimmed, color, icon, position } as never);
+      .insert({ workspace_id: activeWorkspaceId, user_id: userId, name: trimmed, color, icon, position } as never);
     if (error) toast.error(error.message);
   };
 
