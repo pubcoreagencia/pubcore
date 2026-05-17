@@ -33,6 +33,7 @@ interface Lead {
 
 function CRMPage() {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
   const [leads, setLeads] = useState<Lead[]>([]);
   const [drag, setDrag] = useState<string | null>(null);
@@ -42,17 +43,17 @@ function CRMPage() {
   });
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !activeWorkspaceId) return;
     const load = async () => {
-      const { data } = await supabase.from("crm_leads").select("*").eq("user_id", userId).order("created_at", { ascending: false });
+      const { data } = await supabase.from("crm_leads").select("*").eq("workspace_id", activeWorkspaceId).order("created_at", { ascending: false });
       setLeads((data ?? []) as Lead[]);
     };
     load();
-    const ch = supabase.channel(`crm:${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "crm_leads", filter: `user_id=eq.${userId}` }, load)
+    const ch = supabase.channel(`crm:${activeWorkspaceId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "crm_leads", filter: `workspace_id=eq.${activeWorkspaceId}` }, load)
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   const onDrop = async (stage: Stage) => {
     if (!drag) return;
@@ -62,8 +63,9 @@ function CRMPage() {
   };
 
   const create = async () => {
-    if (!draft.name.trim() || !userId) return;
+    if (!draft.name.trim() || !userId || !activeWorkspaceId) return;
     const { error } = await supabase.from("crm_leads").insert({
+      workspace_id: activeWorkspaceId,
       user_id: userId, name: draft.name.trim(), company: draft.company || null,
       owner: draft.owner, stage: "Novo", value: Number(draft.value) || 0,
     } as never);
