@@ -114,13 +114,13 @@ function NotesPage() {
 
   // ---- Load + realtime ----
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !activeWorkspaceId) return;
     let cancelled = false;
     const loadNotes = async () => {
       const { data, error } = await supabase
         .from("notes")
         .select("*")
-        .eq("user_id", userId)
+        .eq("workspace_id", activeWorkspaceId)
         .order("pinned", { ascending: false })
         .order("updated_at", { ascending: false });
       if (cancelled) return;
@@ -131,14 +131,14 @@ function NotesPage() {
       const { data, error } = await supabase
         .from("note_categories" as never)
         .select("*")
-        .eq("user_id", userId)
+        .eq("workspace_id", activeWorkspaceId)
         .order("position", { ascending: true });
       if (cancelled) return;
       if (error) { toast.error(error.message); return; }
       let cats = (data ?? []) as NoteCategory[];
       // Seed defaults if empty
       if (cats.length === 0) {
-        const seeds = DEFAULT_CATEGORIES.map((c, i) => ({ ...c, user_id: userId, position: i }));
+        const seeds = DEFAULT_CATEGORIES.map((c, i) => ({ ...c, workspace_id: activeWorkspaceId, user_id: userId, position: i }));
         const { data: inserted } = await supabase.from("note_categories" as never).insert(seeds as never).select();
         cats = ((inserted ?? []) as NoteCategory[]).sort((a, b) => a.position - b.position);
       }
@@ -147,12 +147,12 @@ function NotesPage() {
     Promise.all([loadNotes(), loadCats()]).finally(() => { if (!cancelled) setLoading(false); });
 
     const ch = supabase
-      .channel(`notes-mod:${userId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `user_id=eq.${userId}` }, loadNotes)
-      .on("postgres_changes", { event: "*", schema: "public", table: "note_categories", filter: `user_id=eq.${userId}` }, loadCats)
+      .channel(`notes-mod:${activeWorkspaceId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `workspace_id=eq.${activeWorkspaceId}` }, loadNotes)
+      .on("postgres_changes", { event: "*", schema: "public", table: "note_categories", filter: `workspace_id=eq.${activeWorkspaceId}` }, loadCats)
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   // ---- Filtering ----
   const filtered = useMemo(() => {
