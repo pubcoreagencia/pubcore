@@ -703,7 +703,7 @@ function CostDialog({ initial, workspaceId, userId, onClose }: { initial: Cost |
 
   const submit = async () => {
     if (!workspaceId) return;
-    const amount_monthly = parseFloat(form.amount_monthly.replace(",", "."));
+    const amount_monthly = parseMoney(form.amount_monthly);
     if (!form.name.trim() || isNaN(amount_monthly)) { toast.error("Preencha nome e valor"); return; }
     const payload = {
       workspace_id: workspaceId, user_id: userId,
