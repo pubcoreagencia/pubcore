@@ -132,6 +132,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const createWorkspace = useCallback(async (name: string): Promise<Workspace | null> => {
     if (!userId || !name.trim()) return null;
+    // Apenas MASTER pode criar workspaces adicionais
+    if (!isMaster) {
+      console.warn("[workspace] only MASTER can create workspaces");
+      return null;
+    }
     const { data, error } = await supabase.from("workspaces")
       .insert({ name: name.trim(), owner_id: userId } as never)
       .select().single();
@@ -142,7 +147,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     await refresh();
     setActiveWorkspaceIdState(ws.id);
     return ws;
-  }, [userId, refresh]);
+  }, [userId, isMaster, refresh]);
 
   const activeWorkspace: WorkspaceMembership | Workspace | null = useMemo(() => {
     if (!activeWorkspaceId) return null;
