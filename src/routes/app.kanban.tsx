@@ -724,12 +724,45 @@ function CardDialog({
   const [description, setDescription] = useState(card.description ?? "");
   const [notes, setNotes] = useState(card.notes ?? "");
   const [newItem, setNewItem] = useState("");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   useEffect(() => {
     setTitle(card.title);
     setDescription(card.description ?? "");
     setNotes(card.notes ?? "");
   }, [card.id]);
+
+  // Debounced autosave per field (700ms). Flushes on unmount/card switch.
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const pendingRef = useRef<Partial<Card>>({});
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flush = useCallback(async () => {
+    timersRef.current.forEach((t) => clearTimeout(t));
+    timersRef.current.clear();
+    const patch = pendingRef.current;
+    if (!patch || Object.keys(patch).length === 0) return;
+    pendingRef.current = {};
+    setSaveStatus("saving");
+    try {
+      await onUpdate(patch);
+      setSaveStatus("saved");
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setSaveStatus("idle"), 1500);
+    } catch {
+      setSaveStatus("error");
+    }
+  }, [onUpdate]);
+
+  const queueField = useCallback((field: keyof Card, value: unknown) => {
+    pendingRef.current = { ...pendingRef.current, [field]: value };
+    setSaveStatus("saving");
+    const prev = timersRef.current.get(field as string);
+    if (prev) clearTimeout(prev);
+    timersRef.current.set(field as string, setTimeout(() => { void flush(); }, 700));
+  }, [flush]);
+
+  useEffect(() => () => { void flush(); }, [flush]);
 
   const addChecklistItem = () => {
     if (!newItem.trim()) return;
@@ -741,19 +774,20 @@ function CardDialog({
   const removeItem = (id: string) => onUpdate({ checklist: card.checklist.filter((i) => i.id !== id) });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 md:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 md:p-4" onClick={() => { void flush(); onClose(); }}>
       <div
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
       >
-        <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card z-10">
+        <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card z-10 gap-3">
           <input
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={() => title.trim() && title !== card.title && onUpdate({ title: title.trim() })}
-            className="flex-1 bg-transparent text-xl font-display font-bold outline-none"
+            onChange={(e) => { setTitle(e.target.value); queueField("title", e.target.value.trim() || card.title); }}
+            onBlur={() => void flush()}
+            className="flex-1 min-w-0 bg-transparent text-xl font-display font-bold outline-none"
           />
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+          <SaveIndicator status={saveStatus} />
+          <button onClick={() => { void flush(); onClose(); }} className="text-muted-foreground hover:text-foreground p-1">
             <X className="h-5 w-5" />
           </button>
         </div>
