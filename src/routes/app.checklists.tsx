@@ -21,7 +21,7 @@ import {
 import { CompanyTag } from "@/components/CompanyTag";
 import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/lib/auth";
-import { usePonto, fmtTime } from "@/lib/ponto";
+import { usePonto, fmtTime, onPontoEvent } from "@/lib/ponto";
 import { useChecklist, type UserTask } from "@/lib/checklist-store";
 import { useWorkspace } from "@/lib/workspace";
 
@@ -779,6 +779,9 @@ function PontoTab() {
       }
     };
     load();
+    const offPontoEvent = onPontoEvent((event) => {
+      if (event.type === "ended" && event.ownerEmail === user.email) load();
+    });
     const ch = supabase
       .channel(`ponto_sessions_history:${activeWorkspaceId}:${user.id}`)
       .on(
@@ -787,7 +790,7 @@ function PontoTab() {
         () => load()
       )
       .subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
+    return () => { cancelled = true; offPontoEvent(); supabase.removeChannel(ch); };
   }, [user?.id, user?.email, activeWorkspaceId, session.status]);
 
   const fmtClock = (ts: number | string | null) =>
