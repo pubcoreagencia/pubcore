@@ -275,6 +275,43 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     const ended: PontoSession = { ...session, status: "ended", endedAt: now, pauses };
     setSession(ended);
     const { liveWorkMs, livePauseMs, productiveMs } = compute(ended, now);
+    if (!ended.sessionId) {
+      const { data: authData } = await supabase.auth.getUser();
+      const resolvedUserId = authData.user?.id ?? null;
+      const workspaceId = resolvedUserId ? await resolveWorkspaceId(resolvedUserId) : null;
+      const owner = ended.ownerEmail ?? authData.user?.email ?? "guest@pubcore.local";
+      if (!resolvedUserId || !workspaceId) {
+        console.error("[ponto] end aborted: missing session_id fallback data", { workspaceId, resolvedUserId });
+        return;
+      }
+      const { data, error } = await supabase
+        .from("ponto_sessions")
+        .insert({
+          workspace_id: workspaceId,
+          user_id: resolvedUserId,
+          owner_email: owner,
+          user_name: ended.user ?? null,
+          started_at: new Date(ended.startedAt ?? now).toISOString(),
+          ended_at: new Date(now).toISOString(),
+          status: "ended",
+          pauses: ended.pauses as unknown as never,
+          total_ms: liveWorkMs,
+          productive_ms: productiveMs,
+          pause_ms: livePauseMs,
+        } as never)
+        .select("id")
+        .single();
+      if (error) {
+        console.error("[ponto] end fallback insert error", error);
+        return;
+      }
+      const sessionId = (data?.id as string | undefined) ?? null;
+      if (sessionId) {
+        setSession({ ...ended, sessionId, ownerEmail: owner });
+        emit({ type: "ended", sessionId, ownerEmail: owner });
+      }
+      return;
+    }
     const saved = await persistUpdate(ended, {
       total_ms: liveWorkMs,
       productive_ms: productiveMs,
