@@ -403,7 +403,7 @@ function EmptyHint({ label }: { label: string }) {
 }
 
 // ---------------- Transactions Tab ----------------
-function TransactionsTab({ tx, loading }: { tx: Tx[]; loading: boolean }) {
+function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: boolean; companyOptions: string[] }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [filter, setFilter] = useState<"all" | Kind>("all");
