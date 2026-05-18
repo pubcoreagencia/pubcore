@@ -98,6 +98,19 @@ function compute(session: PontoSession, now: number) {
   return { liveWorkMs, livePauseMs, productiveMs };
 }
 
+async function resolveWorkspaceId(userId: string) {
+  const active = getActiveWorkspaceId();
+  if (active) return active;
+  const { data, error } = await supabase
+    .from("workspace_members")
+    .select("workspace_id")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+  if (error) console.error("[ponto] workspace fallback error", error);
+  return (data?.workspace_id as string | undefined) ?? null;
+}
+
 export function PontoProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<PontoSession>(initial);
   const [, setTick] = useState(0);
@@ -169,7 +182,6 @@ export function PontoProvider({ children }: { children: ReactNode }) {
   const start = async (user?: string, ownerEmail?: string, userId?: string) => {
     const owner = ownerEmail ?? "guest@pubcore.local";
     const startedAt = Date.now();
-    const workspaceId = getActiveWorkspaceId();
     let resolvedUserId = userId ?? null;
     if (!resolvedUserId) {
       try {
@@ -177,6 +189,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
         resolvedUserId = data.user?.id ?? null;
       } catch {}
     }
+    const workspaceId = resolvedUserId ? await resolveWorkspaceId(resolvedUserId) : null;
     if (!workspaceId || !resolvedUserId) {
       console.error("[ponto] start aborted: missing workspace_id or user_id", { workspaceId, resolvedUserId });
       return;
@@ -213,20 +226,23 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     if (sessionId) emit({ type: "started", sessionId, ownerEmail: owner });
   };
 
-  const persistUpdate = (s: PontoSession, extra: Record<string, unknown> = {}) => {
-    if (!s.sessionId) return;
-    supabase
+  const persistUpdate = async (s: PontoSession, extra: Record<string, unknown> = {}) => {
+    if (!s.sessionId) return false;
+    const { error } = await supabase
       .from("ponto_sessions")
       .update({
         status: s.status,
         pauses: s.pauses as unknown as never,
         ended_at: s.endedAt ? new Date(s.endedAt).toISOString() : null,
+        updated_at: new Date().toISOString(),
         ...extra,
       })
-      .eq("id", s.sessionId)
-      .then(({ error }) => {
-        if (error) console.error("[ponto] update error", error);
-      });
+      .eq("id", s.sessionId);
+    if (error) {
+      console.error("[ponto] update error", error);
+      return false;
+    }
+    return true;
   };
 
   const pause = () => {
