@@ -857,9 +857,9 @@ function ProductDialog({ initial, workspaceId, userId, onClose }: { initial: Pro
     const payload = {
       workspace_id: workspaceId, user_id: userId,
       name: form.name, company: form.company,
-      cost: parseFloat(form.cost.replace(",", ".")) || 0,
-      price: parseFloat(form.price.replace(",", ".")) || 0,
-      avg_demand_monthly: parseFloat(form.avg_demand_monthly.replace(",", ".")) || 0,
+      cost: parseMoney(form.cost) || 0,
+      price: parseMoney(form.price) || 0,
+      avg_demand_monthly: parseMoney(form.avg_demand_monthly) || 0,
       stock: parseInt(form.stock) || 0,
       category: form.category || null, notes: form.notes || null,
     };
