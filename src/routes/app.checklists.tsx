@@ -746,7 +746,7 @@ function PontoTab() {
         .from("ponto_sessions")
         .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name")
         .eq("workspace_id", activeWorkspaceId)
-        .eq("user_id", user.id)
+        .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
         .eq("status", "ended")
         .order("started_at", { ascending: false })
         .limit(10);
@@ -788,7 +788,7 @@ function PontoTab() {
       )
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [user?.id, activeWorkspaceId, session.status]);
+  }, [user?.id, user?.email, activeWorkspaceId, session.status]);
 
   const fmtClock = (ts: number | string | null) =>
     ts ? new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
