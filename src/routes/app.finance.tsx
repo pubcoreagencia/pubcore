@@ -184,8 +184,22 @@ function FinancePage() {
   const { transactions, costs, products, loading } = useFinanceData();
   const kpis = useMemo(() => calcKPIs(transactions, costs), [transactions, costs]);
 
+  // Lista única de empresas: base canônica + valores observados nos dados.
+  const companyOptions = useMemo(() => {
+    const set = new Set<string>(COMPANIES);
+    for (const t of transactions) if (t.company) set.add(t.company);
+    for (const c of costs) if (c.company) set.add(c.company);
+    for (const p of products) if (p.company) set.add(p.company);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [transactions, costs, products]);
+
   return (
     <div className="px-6 lg:px-10 py-8 max-w-[1500px] mx-auto">
+      {/* Sugestões compartilhadas de empresa para inputs de texto livre */}
+      <datalist id="finance-company-suggestions">
+        {companyOptions.map(c => <option key={c} value={c} />)}
+      </datalist>
+
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1">
@@ -215,9 +229,9 @@ function FinancePage() {
         </TabsList>
 
         <TabsContent value="dashboard"><DashboardTab kpis={kpis} tx={transactions} products={products} /></TabsContent>
-        <TabsContent value="tx"><TransactionsTab tx={transactions} loading={loading} /></TabsContent>
+        <TabsContent value="tx"><TransactionsTab tx={transactions} loading={loading} companyOptions={companyOptions} /></TabsContent>
         <TabsContent value="costs"><CostsTab costs={costs} /></TabsContent>
-        <TabsContent value="products"><ProductsTab products={products} /></TabsContent>
+        <TabsContent value="products"><ProductsTab products={products} companyOptions={companyOptions} /></TabsContent>
         <TabsContent value="breakeven"><BreakevenTab kpis={kpis} tx={transactions} products={products} costs={costs} /></TabsContent>
         <TabsContent value="reports"><ReportsTab tx={transactions} products={products} /></TabsContent>
       </Tabs>
