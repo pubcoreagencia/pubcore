@@ -552,13 +552,12 @@ function TransactionDialog({ initial, workspaceId, userId, onClose }: {
         </div>
         <div>
           <Label>Empresa</Label>
-          <Select value={form.company || "none"} onValueChange={(v) => setForm(f => ({ ...f, company: v === "none" ? "" : v }))}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">—</SelectItem>
-              {COMPANIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Input
+            value={form.company}
+            onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+            placeholder="Ex: Pub 3D, Pub IA…"
+            list="finance-company-suggestions"
+          />
         </div>
         <div>
           <Label>Categoria</Label>
