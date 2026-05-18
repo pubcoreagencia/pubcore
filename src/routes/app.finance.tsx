@@ -736,13 +736,12 @@ function CostDialog({ initial, workspaceId, userId, onClose }: { initial: Cost |
         <div><Label>Valor mensal</Label><Input value={form.amount_monthly} onChange={(e) => setForm(f => ({ ...f, amount_monthly: e.target.value }))} placeholder="0,00" /></div>
         <div>
           <Label>Empresa</Label>
-          <Select value={form.company || "none"} onValueChange={(v) => setForm(f => ({ ...f, company: v === "none" ? "" : v }))}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">—</SelectItem>
-              {COMPANIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Input
+            value={form.company}
+            onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+            placeholder="Ex: Pub 3D, Pub IA…"
+            list="finance-company-suggestions"
+          />
         </div>
         <div><Label>Categoria</Label><Input value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))} placeholder="Aluguel, software…" /></div>
         <div className="col-span-2"><Label>Observações</Label><Textarea value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
