@@ -769,7 +769,7 @@ function CostDialog({ initial, workspaceId, userId, onClose }: { initial: Cost |
 }
 
 // ---------------- Products Tab ----------------
-function ProductsTab({ products }: { products: Product[] }) {
+function ProductsTab({ products, companyOptions }: { products: Product[]; companyOptions: string[] }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [filter, setFilter] = useState("all");
