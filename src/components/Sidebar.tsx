@@ -1,11 +1,14 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { LayoutDashboard, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { navGroups } from "./nav-config";
 
 export function Sidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user, logout } = useAuth();
+  const { isMaster } = useWorkspace();
   const nav = useNavigate();
 
   const handleLogout = async () => {
@@ -25,7 +28,9 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 px-2 pt-4 space-y-5 overflow-y-auto">
+      <div className="px-3 pt-3"><WorkspaceSwitcher /></div>
+
+      <nav className="flex-1 px-2 pt-3 space-y-5 overflow-y-auto">
         {navGroups.map((group) => (
           <div key={group.label}>
             <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60 px-3 mb-1.5">
@@ -61,7 +66,9 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="text-xs font-medium truncate text-foreground">{user?.name}</div>
-            <div className="text-[10px] text-muted-foreground truncate capitalize">{user?.role}</div>
+            <div className="text-[10px] truncate capitalize">
+              {isMaster ? <span className="text-primary font-semibold">MASTER</span> : <span className="text-muted-foreground">{user?.role}</span>}
+            </div>
           </div>
           <button
             onClick={handleLogout}
