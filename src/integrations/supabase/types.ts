@@ -1133,6 +1133,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      invite_member_by_email: {
+        Args: {
+          _email: string
+          _role?: Database["public"]["Enums"]["workspace_role"]
+          _workspace_id: string
+        }
+        Returns: Json
+      }
       is_workspace_admin: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
@@ -1140,6 +1148,27 @@ export type Database = {
       is_workspace_member: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
+      }
+      list_workspace_members: {
+        Args: { _workspace_id: string }
+        Returns: {
+          display_name: string
+          email: string
+          role: Database["public"]["Enums"]["workspace_role"]
+          user_id: string
+        }[]
+      }
+      remove_member: {
+        Args: { _user_id: string; _workspace_id: string }
+        Returns: undefined
+      }
+      set_member_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["workspace_role"]
+          _user_id: string
+          _workspace_id: string
+        }
+        Returns: undefined
       }
     }
     Enums: {
