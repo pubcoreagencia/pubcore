@@ -184,8 +184,22 @@ function FinancePage() {
   const { transactions, costs, products, loading } = useFinanceData();
   const kpis = useMemo(() => calcKPIs(transactions, costs), [transactions, costs]);
 
+  // Lista única de empresas: base canônica + valores observados nos dados.
+  const companyOptions = useMemo(() => {
+    const set = new Set<string>(COMPANIES);
+    for (const t of transactions) if (t.company) set.add(t.company);
+    for (const c of costs) if (c.company) set.add(c.company);
+    for (const p of products) if (p.company) set.add(p.company);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [transactions, costs, products]);
+
   return (
     <div className="px-6 lg:px-10 py-8 max-w-[1500px] mx-auto">
+      {/* Sugestões compartilhadas de empresa para inputs de texto livre */}
+      <datalist id="finance-company-suggestions">
+        {companyOptions.map(c => <option key={c} value={c} />)}
+      </datalist>
+
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
           <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1">
@@ -215,9 +229,9 @@ function FinancePage() {
         </TabsList>
 
         <TabsContent value="dashboard"><DashboardTab kpis={kpis} tx={transactions} products={products} /></TabsContent>
-        <TabsContent value="tx"><TransactionsTab tx={transactions} loading={loading} /></TabsContent>
+        <TabsContent value="tx"><TransactionsTab tx={transactions} loading={loading} companyOptions={companyOptions} /></TabsContent>
         <TabsContent value="costs"><CostsTab costs={costs} /></TabsContent>
-        <TabsContent value="products"><ProductsTab products={products} /></TabsContent>
+        <TabsContent value="products"><ProductsTab products={products} companyOptions={companyOptions} /></TabsContent>
         <TabsContent value="breakeven"><BreakevenTab kpis={kpis} tx={transactions} products={products} costs={costs} /></TabsContent>
         <TabsContent value="reports"><ReportsTab tx={transactions} products={products} /></TabsContent>
       </Tabs>
@@ -389,7 +403,7 @@ function EmptyHint({ label }: { label: string }) {
 }
 
 // ---------------- Transactions Tab ----------------
-function TransactionsTab({ tx, loading }: { tx: Tx[]; loading: boolean }) {
+function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: boolean; companyOptions: string[] }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [filter, setFilter] = useState<"all" | Kind>("all");
@@ -433,7 +447,7 @@ function TransactionsTab({ tx, loading }: { tx: Tx[]; loading: boolean }) {
           <SelectTrigger className="w-[160px] bg-card/60"><SelectValue placeholder="Empresa" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas empresas</SelectItem>
-            {COMPANIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            {companyOptions.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
@@ -552,13 +566,12 @@ function TransactionDialog({ initial, workspaceId, userId, onClose }: {
         </div>
         <div>
           <Label>Empresa</Label>
-          <Select value={form.company || "none"} onValueChange={(v) => setForm(f => ({ ...f, company: v === "none" ? "" : v }))}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">—</SelectItem>
-              {COMPANIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Input
+            value={form.company}
+            onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+            placeholder="Ex: Pub 3D, Pub IA…"
+            list="finance-company-suggestions"
+          />
         </div>
         <div>
           <Label>Categoria</Label>
@@ -737,13 +750,12 @@ function CostDialog({ initial, workspaceId, userId, onClose }: { initial: Cost |
         <div><Label>Valor mensal</Label><Input value={form.amount_monthly} onChange={(e) => setForm(f => ({ ...f, amount_monthly: e.target.value }))} placeholder="0,00" /></div>
         <div>
           <Label>Empresa</Label>
-          <Select value={form.company || "none"} onValueChange={(v) => setForm(f => ({ ...f, company: v === "none" ? "" : v }))}>
-            <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">—</SelectItem>
-              {COMPANIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Input
+            value={form.company}
+            onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+            placeholder="Ex: Pub 3D, Pub IA…"
+            list="finance-company-suggestions"
+          />
         </div>
         <div><Label>Categoria</Label><Input value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))} placeholder="Aluguel, software…" /></div>
         <div className="col-span-2"><Label>Observações</Label><Textarea value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} rows={2} /></div>
@@ -757,7 +769,7 @@ function CostDialog({ initial, workspaceId, userId, onClose }: { initial: Cost |
 }
 
 // ---------------- Products Tab ----------------
-function ProductsTab({ products }: { products: Product[] }) {
+function ProductsTab({ products, companyOptions }: { products: Product[]; companyOptions: string[] }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [filter, setFilter] = useState("all");
@@ -787,7 +799,7 @@ function ProductsTab({ products }: { products: Product[] }) {
           <SelectTrigger className="w-[180px] bg-card/60"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas empresas</SelectItem>
-            {COMPANIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            {companyOptions.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
@@ -881,10 +893,12 @@ function ProductDialog({ initial, workspaceId, userId, onClose }: { initial: Pro
         <div className="col-span-2"><Label>Nome</Label><Input value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} /></div>
         <div>
           <Label>Empresa</Label>
-          <Select value={form.company} onValueChange={(v) => setForm(f => ({ ...f, company: v }))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{COMPANIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-          </Select>
+          <Input
+            value={form.company}
+            onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+            placeholder="Ex: Pub 3D, Pub IA…"
+            list="finance-company-suggestions"
+          />
         </div>
         <div><Label>Categoria</Label><Input value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))} /></div>
         <div><Label>Custo (R$)</Label><Input value={form.cost} onChange={(e) => setForm(f => ({ ...f, cost: e.target.value }))} /></div>
