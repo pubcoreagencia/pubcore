@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { SaveIndicator } from "@/components/SaveIndicator";
 
 export const Route = createFileRoute("/app/notes")({ component: NotesPage });
 
