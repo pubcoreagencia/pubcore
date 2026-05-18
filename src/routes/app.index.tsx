@@ -307,9 +307,44 @@ function Dashboard() {
             <h2 className="font-display text-lg font-bold flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" /> Atividade recente
             </h2>
-            <Link to="/app/checklists" className="text-xs text-primary hover:underline flex items-center gap-1">
-              Ver todos <ChevronRight className="h-3 w-3" />
-            </Link>
+            <div className="flex items-center gap-3">
+              {recent.length > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button className="text-xs text-muted-foreground hover:text-destructive flex items-center gap-1 transition-colors" title="Limpar histórico">
+                      <Trash2 className="h-3 w-3" /> Limpar
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Limpar histórico de atividade?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Isso remove permanentemente todas as tarefas concluídas registradas nas sessões de ponto. Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={async () => {
+                          if (!user?.id) return;
+                          const { error } = await supabase
+                            .from("ponto_session_tasks")
+                            .delete()
+                            .eq("user_id", user.id);
+                          if (error) toast.error("Falha ao limpar histórico");
+                          else toast.success("Histórico de atividade limpo");
+                        }}
+                      >
+                        Limpar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              <Link to="/app/checklists" className="text-xs text-primary hover:underline flex items-center gap-1">
+                Ver todos <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
           </div>
           {recent.length === 0 ? (
             <div className="text-sm text-muted-foreground py-10 text-center">
