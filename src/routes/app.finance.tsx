@@ -53,6 +53,38 @@ const COMPANIES = ["Pub 3D", "Pub IA", "Pub RECORDS", "Pub Films", "Bricks", "TÃ
 const BRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
 
+/**
+ * Robust monetary parser. Accepts "2000", "2.000", "2,000", "2.000,50",
+ * "2,000.50", "R$ 2.000,50", "2000.50". Returns NaN for empty/invalid.
+ * The last "," or "." encountered is treated as the decimal separator; any
+ * earlier "." or "," are thousand separators and are stripped.
+ */
+function parseMoney(input: string | number | null | undefined): number {
+  if (input === null || input === undefined) return NaN;
+  if (typeof input === "number") return input;
+  const cleaned = String(input).replace(/[^\d.,-]/g, "");
+  if (!cleaned) return NaN;
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
+  let normalized: string;
+  if (lastComma === -1 && lastDot === -1) {
+    normalized = cleaned;
+  } else {
+    const decIdx = Math.max(lastComma, lastDot);
+    const intPart = cleaned.slice(0, decIdx).replace(/[.,]/g, "");
+    const decPart = cleaned.slice(decIdx + 1).replace(/[.,]/g, "");
+    // If "decimal" has more than 2 digits and the user only used one kind of
+    // separator, treat it as a thousand separator (e.g. "2.000" â†’ 2000).
+    if (decPart.length > 2 && (lastComma === -1 || lastDot === -1)) {
+      normalized = (intPart + decPart) || "0";
+    } else {
+      normalized = `${intPart || "0"}.${decPart || "0"}`;
+    }
+  }
+  const n = parseFloat(normalized);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 // ---------------- Data hook ----------------
 function useFinanceData() {
   const { activeWorkspaceId } = useWorkspace();
