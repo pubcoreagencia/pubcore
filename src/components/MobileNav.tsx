@@ -2,12 +2,14 @@ import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { LogOut, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { navGroups } from "./nav-config";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 export function MobileNav() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const { user, logout } = useAuth();
+  const { isMaster } = useWorkspace();
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
 
@@ -86,7 +88,7 @@ export function MobileNav() {
           </button>
         </div>
 
-        <div className="px-3 pt-3"><WorkspaceSwitcher /></div>
+        {isMaster && <div className="px-3 pt-3"><WorkspaceSwitcher /></div>}
 
         <nav className="flex-1 px-2 pt-3 pb-4 space-y-5 overflow-y-auto overscroll-contain">
           {navGroups.map((group) => (

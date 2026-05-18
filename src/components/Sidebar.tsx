@@ -28,7 +28,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <div className="px-3 pt-3"><WorkspaceSwitcher /></div>
+      {isMaster && <div className="px-3 pt-3"><WorkspaceSwitcher /></div>}
 
       <nav className="flex-1 px-2 pt-3 space-y-5 overflow-y-auto">
         {navGroups.map((group) => (

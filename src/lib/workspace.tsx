@@ -65,12 +65,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         .eq("user_id", userId),
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
-    const list: WorkspaceMembership[] = ((members ?? []) as unknown as Array<{ role: WorkspaceMemberRole; workspace: Workspace }>)
+    const master = ((roles ?? []) as Array<{ role: AppRole }>).some((r) => r.role === "master");
+    let list: WorkspaceMembership[] = ((members ?? []) as unknown as Array<{ role: WorkspaceMemberRole; workspace: Workspace }>)
       .filter((m) => m.workspace)
-      .map((m) => ({ ...m.workspace, member_role: m.role }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .map((m) => ({ ...m.workspace, member_role: m.role }));
+
+    // MASTER: pode ver e trocar entre TODOS os workspaces da plataforma
+    if (master) {
+      const { data: allWs } = await supabase.from("workspaces").select("id,name,slug,owner_id,created_at");
+      const ownIds = new Set(list.map((w) => w.id));
+      const extras: WorkspaceMembership[] = ((allWs ?? []) as Workspace[])
+        .filter((w) => !ownIds.has(w.id))
+        .map((w) => ({ ...w, member_role: "admin" as WorkspaceMemberRole }));
+      list = [...list, ...extras];
+    }
+
+    list.sort((a, b) => a.name.localeCompare(b.name));
     setWorkspaces(list);
-    setIsMaster(((roles ?? []) as Array<{ role: AppRole }>).some((r) => r.role === "master"));
+    setIsMaster(master);
     setLoading(false);
   }, [userId]);
 
@@ -120,6 +132,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const createWorkspace = useCallback(async (name: string): Promise<Workspace | null> => {
     if (!userId || !name.trim()) return null;
+    // Apenas MASTER pode criar workspaces adicionais
+    if (!isMaster) {
+      console.warn("[workspace] only MASTER can create workspaces");
+      return null;
+    }
     const { data, error } = await supabase.from("workspaces")
       .insert({ name: name.trim(), owner_id: userId } as never)
       .select().single();
@@ -130,7 +147,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     await refresh();
     setActiveWorkspaceIdState(ws.id);
     return ws;
-  }, [userId, refresh]);
+  }, [userId, isMaster, refresh]);
 
   const activeWorkspace: WorkspaceMembership | Workspace | null = useMemo(() => {
     if (!activeWorkspaceId) return null;
