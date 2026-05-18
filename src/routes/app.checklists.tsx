@@ -912,11 +912,35 @@ function PontoTab() {
 
       {/* 4: Histórico de Sessões */}
       <div className="rounded-xl border border-border bg-card p-6 shadow-card">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 gap-3">
           <h3 className="font-display font-semibold flex items-center gap-2">
             <History className="h-4 w-4 text-primary" /> Histórico de sessões
           </h3>
-          <span className="text-xs text-muted-foreground">{history.length} sessões</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">{history.length} sessões</span>
+            {history.length > 0 && (
+              <button
+                onClick={async () => {
+                  if (!user?.id || !activeWorkspaceId) return;
+                  if (!confirm("Limpar todo o histórico de sessões? Esta ação não pode ser desfeita.")) return;
+                  const ids = history.map((h) => h.id);
+                  if (ids.length === 0) return;
+                  await supabase.from("ponto_session_tasks").delete().in("session_id", ids);
+                  const { error } = await supabase
+                    .from("ponto_sessions")
+                    .delete()
+                    .in("id", ids)
+                    .eq("workspace_id", activeWorkspaceId);
+                  if (error) { console.error("[ponto] clear history error", error); return; }
+                  setHistory([]);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/20 transition"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Limpar histórico
+              </button>
+            )}
+          </div>
         </div>
         {history.length === 0 ? (
           <div className="text-sm text-muted-foreground py-8 text-center">
