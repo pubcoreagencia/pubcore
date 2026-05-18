@@ -879,10 +879,12 @@ function ProductDialog({ initial, workspaceId, userId, onClose }: { initial: Pro
         <div className="col-span-2"><Label>Nome</Label><Input value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} /></div>
         <div>
           <Label>Empresa</Label>
-          <Select value={form.company} onValueChange={(v) => setForm(f => ({ ...f, company: v }))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{COMPANIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-          </Select>
+          <Input
+            value={form.company}
+            onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
+            placeholder="Ex: Pub 3D, Pub IA…"
+            list="finance-company-suggestions"
+          />
         </div>
         <div><Label>Categoria</Label><Input value={form.category} onChange={(e) => setForm(f => ({ ...f, category: e.target.value }))} /></div>
         <div><Label>Custo (R$)</Label><Input value={form.cost} onChange={(e) => setForm(f => ({ ...f, cost: e.target.value }))} /></div>
