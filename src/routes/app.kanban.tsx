@@ -893,8 +893,8 @@ function CardDialog({
           <Field label="Observações">
             <textarea
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onBlur={() => notes !== (card.notes ?? "") && onUpdate({ notes: notes || null })}
+              onChange={(e) => { setNotes(e.target.value); queueField("notes", e.target.value || null); }}
+              onBlur={() => void flush()}
               rows={2}
               placeholder="Notas, links, contexto…"
               className="w-full bg-surface rounded px-2 py-2 text-sm resize-y"
