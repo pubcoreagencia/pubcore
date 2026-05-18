@@ -753,7 +753,7 @@ function PontoTab() {
       if (error) console.error("[ponto] history load error", error);
       if (!sessions || cancelled) return;
       const ids = sessions.map((s) => s.id);
-      let counts: Record<string, { count: number; companies: Set<string> }> = {};
+      const counts: Record<string, { count: number; companies: Set<string> }> = {};
       if (ids.length > 0) {
         const { data: tasks } = await supabase
           .from("ponto_session_tasks")
