@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.enforce_master_role() FROM PUBLIC, anon, authenticated;

@@ -3,6 +3,7 @@ import { LogOut, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { navGroups } from "./nav-config";
+import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 export function MobileNav() {
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -85,7 +86,9 @@ export function MobileNav() {
           </button>
         </div>
 
-        <nav className="flex-1 px-2 pt-4 pb-4 space-y-5 overflow-y-auto overscroll-contain">
+        <div className="px-3 pt-3"><WorkspaceSwitcher /></div>
+
+        <nav className="flex-1 px-2 pt-3 pb-4 space-y-5 overflow-y-auto overscroll-contain">
           {navGroups.map((group) => (
             <div key={group.label}>
               <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60 px-3 mb-1.5">

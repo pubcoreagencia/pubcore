@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { COMPANIES } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
+import { WorkspaceMembersPanel } from "@/components/WorkspaceMembersPanel";
 import { Bell, Lock, Palette, Building } from "lucide-react";
 
 export const Route = createFileRoute("/app/settings")({
@@ -10,6 +12,7 @@ export const Route = createFileRoute("/app/settings")({
 
 function SettingsPage() {
   const { user } = useAuth();
+  const { isMaster } = useWorkspace();
 
   return (
     <div className="p-6 lg:p-10 max-w-4xl mx-auto">
@@ -27,10 +30,12 @@ function SettingsPage() {
           <div className="grid md:grid-cols-2 gap-4">
             <Field label="Nome" value={user?.name ?? ""} />
             <Field label="E-mail" value={user?.email ?? ""} />
-            <Field label="Perfil" value={user?.role ?? ""} />
+            <Field label="Perfil" value={isMaster ? "MASTER" : (user?.role ?? "")} />
             <Field label="Holding" value="PUB Holding" />
           </div>
         </section>
+
+        <WorkspaceMembersPanel />
 
         <section className="rounded-xl border border-border bg-card shadow-card p-6">
           <div className="flex items-center gap-2 mb-5">
