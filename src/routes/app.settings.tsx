@@ -35,8 +35,6 @@ function SettingsPage() {
           </div>
         </section>
 
-        {isMaster && <WorkspaceMembersPanel />}
-
         <section className="rounded-xl border border-border bg-card shadow-card p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-info"><Building className="h-4 w-4" /></div>
