@@ -292,8 +292,13 @@ function NotesPage() {
     if (used > 0 && fallback) {
       await supabase.from("notes").update({ category: fallback }).eq("user_id", userId!).eq("category", c.name);
     }
+    // Optimistic removal
+    setCategories((cs) => cs.filter((x) => x.id !== id));
+    if (used > 0 && fallback) {
+      setNotes((ns) => ns.map((n) => (n.category === c.name ? { ...n, category: fallback! } : n)));
+    }
     const { error } = await supabase.from("note_categories" as never).delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(error.message); setCategories((cs) => (cs.some((x) => x.id === id) ? cs : [...cs, c])); return; }
     if (filter.kind === "category" && filter.name === c.name) setFilter({ kind: "all" });
   };
 
