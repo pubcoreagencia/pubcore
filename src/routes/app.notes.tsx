@@ -508,7 +508,7 @@ function NotesPage() {
             categories={categories}
             color={colorOf(selected.category)}
             iconName={iconOf(selected.category)}
-            saving={saving}
+            saveStatus={saveStatus}
             onChange={(patch) => queueSave(selected.id, patch)}
             onDelete={() => removeNote(selected.id)}
             onClose={() => setSelectedId(null)}
