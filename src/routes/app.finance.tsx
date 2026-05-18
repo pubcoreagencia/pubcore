@@ -53,6 +53,38 @@ const COMPANIES = ["Pub 3D", "Pub IA", "Pub RECORDS", "Pub Films", "Bricks", "T�
 const BRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
 
+/**
+ * Robust monetary parser. Accepts "2000", "2.000", "2,000", "2.000,50",
+ * "2,000.50", "R$ 2.000,50", "2000.50". Returns NaN for empty/invalid.
+ * The last "," or "." encountered is treated as the decimal separator; any
+ * earlier "." or "," are thousand separators and are stripped.
+ */
+function parseMoney(input: string | number | null | undefined): number {
+  if (input === null || input === undefined) return NaN;
+  if (typeof input === "number") return input;
+  const cleaned = String(input).replace(/[^\d.,-]/g, "");
+  if (!cleaned) return NaN;
+  const lastComma = cleaned.lastIndexOf(",");
+  const lastDot = cleaned.lastIndexOf(".");
+  let normalized: string;
+  if (lastComma === -1 && lastDot === -1) {
+    normalized = cleaned;
+  } else {
+    const decIdx = Math.max(lastComma, lastDot);
+    const intPart = cleaned.slice(0, decIdx).replace(/[.,]/g, "");
+    const decPart = cleaned.slice(decIdx + 1).replace(/[.,]/g, "");
+    // If "decimal" has more than 2 digits and the user only used one kind of
+    // separator, treat it as a thousand separator (e.g. "2.000" → 2000).
+    if (decPart.length > 2 && (lastComma === -1 || lastDot === -1)) {
+      normalized = (intPart + decPart) || "0";
+    } else {
+      normalized = `${intPart || "0"}.${decPart || "0"}`;
+    }
+  }
+  const n = parseFloat(normalized);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 // ---------------- Data hook ----------------
 function useFinanceData() {
   const { activeWorkspaceId } = useWorkspace();
@@ -474,7 +506,7 @@ function TransactionDialog({ initial, workspaceId, userId, onClose }: {
 
   const submit = async () => {
     if (!workspaceId) return;
-    const amount = parseFloat(form.amount.replace(",", "."));
+    const amount = parseMoney(form.amount);
     if (isNaN(amount) || amount < 0) { toast.error("Valor inválido"); return; }
     const payload = {
       workspace_id: workspaceId, user_id: userId,
@@ -671,7 +703,7 @@ function CostDialog({ initial, workspaceId, userId, onClose }: { initial: Cost |
 
   const submit = async () => {
     if (!workspaceId) return;
-    const amount_monthly = parseFloat(form.amount_monthly.replace(",", "."));
+    const amount_monthly = parseMoney(form.amount_monthly);
     if (!form.name.trim() || isNaN(amount_monthly)) { toast.error("Preencha nome e valor"); return; }
     const payload = {
       workspace_id: workspaceId, user_id: userId,
@@ -825,9 +857,9 @@ function ProductDialog({ initial, workspaceId, userId, onClose }: { initial: Pro
     const payload = {
       workspace_id: workspaceId, user_id: userId,
       name: form.name, company: form.company,
-      cost: parseFloat(form.cost.replace(",", ".")) || 0,
-      price: parseFloat(form.price.replace(",", ".")) || 0,
-      avg_demand_monthly: parseFloat(form.avg_demand_monthly.replace(",", ".")) || 0,
+      cost: parseMoney(form.cost) || 0,
+      price: parseMoney(form.price) || 0,
+      avg_demand_monthly: parseMoney(form.avg_demand_monthly) || 0,
       stock: parseInt(form.stock) || 0,
       category: form.category || null, notes: form.notes || null,
     };
