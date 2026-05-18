@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { COMPANIES } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
-import { WorkspaceMembersPanel } from "@/components/WorkspaceMembersPanel";
+
 import { Bell, Lock, Palette, Building } from "lucide-react";
 
 export const Route = createFileRoute("/app/settings")({
@@ -34,8 +34,6 @@ function SettingsPage() {
             <Field label="Holding" value="PUB Holding" />
           </div>
         </section>
-
-        {isMaster && <WorkspaceMembersPanel />}
 
         <section className="rounded-xl border border-border bg-card shadow-card p-6">
           <div className="flex items-center gap-2 mb-5">
