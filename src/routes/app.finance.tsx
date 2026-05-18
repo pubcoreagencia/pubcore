@@ -799,7 +799,7 @@ function ProductsTab({ products, companyOptions }: { products: Product[]; compan
           <SelectTrigger className="w-[180px] bg-card/60"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas empresas</SelectItem>
-            {COMPANIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            {companyOptions.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
