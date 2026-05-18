@@ -268,27 +268,20 @@ export function PontoProvider({ children }: { children: ReactNode }) {
 
   const end = async () => {
     const now = Date.now();
-    let ended: PontoSession | null = null;
-    setSession((s) => {
-      if (s.status === "off" || s.status === "ended") return s;
-      const pauses = [...s.pauses];
-      const last = pauses[pauses.length - 1];
-      if (last && !last.end) pauses[pauses.length - 1] = { ...last, end: now };
-      const next: PontoSession = { ...s, status: "ended", endedAt: now, pauses };
-      ended = next;
-      return next;
+    if (session.status === "off" || session.status === "ended") return;
+    const pauses = [...session.pauses];
+    const last = pauses[pauses.length - 1];
+    if (last && !last.end) pauses[pauses.length - 1] = { ...last, end: now };
+    const ended: PontoSession = { ...session, status: "ended", endedAt: now, pauses };
+    setSession(ended);
+    const { liveWorkMs, livePauseMs, productiveMs } = compute(ended, now);
+    const saved = await persistUpdate(ended, {
+      total_ms: liveWorkMs,
+      productive_ms: productiveMs,
+      pause_ms: livePauseMs,
     });
-    if (ended) {
-      const e = ended as PontoSession;
-      const { liveWorkMs, livePauseMs, productiveMs } = compute(e, now);
-      const saved = await persistUpdate(e, {
-        total_ms: liveWorkMs,
-        productive_ms: productiveMs,
-        pause_ms: livePauseMs,
-      });
-      if (saved && e.sessionId && e.ownerEmail) {
-        emit({ type: "ended", sessionId: e.sessionId, ownerEmail: e.ownerEmail });
-      }
+    if (saved && ended.sessionId && ended.ownerEmail) {
+      emit({ type: "ended", sessionId: ended.sessionId, ownerEmail: ended.ownerEmail });
     }
   };
 
