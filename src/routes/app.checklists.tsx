@@ -23,6 +23,7 @@ import { StatCard } from "@/components/StatCard";
 import { useAuth } from "@/lib/auth";
 import { usePonto, fmtTime } from "@/lib/ponto";
 import { useChecklist, type UserTask } from "@/lib/checklist-store";
+import { useWorkspace } from "@/lib/workspace";
 
 export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
@@ -690,6 +691,7 @@ interface PastSession {
 
 function PontoTab() {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const {
     session, liveWorkMs: liveWork, livePauseMs: livePause, productiveMs, isLive,
     start: startPonto, pause, resume, end, reset,
@@ -737,16 +739,18 @@ function PontoTab() {
   // Histórico de sessões anteriores
   const [history, setHistory] = useState<PastSession[]>([]);
   useEffect(() => {
-    if (!user?.email) return;
+    if (!user?.id || !activeWorkspaceId) { setHistory([]); return; }
     let cancelled = false;
     const load = async () => {
-      const { data: sessions } = await supabase
+      const { data: sessions, error } = await supabase
         .from("ponto_sessions")
         .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name")
-        .eq("owner_email", user.email)
+        .eq("workspace_id", activeWorkspaceId)
+        .eq("user_id", user.id)
         .eq("status", "ended")
         .order("started_at", { ascending: false })
         .limit(10);
+      if (error) console.error("[ponto] history load error", error);
       if (!sessions || cancelled) return;
       const ids = sessions.map((s) => s.id);
       let counts: Record<string, { count: number; companies: Set<string> }> = {};
@@ -776,15 +780,15 @@ function PontoTab() {
     };
     load();
     const ch = supabase
-      .channel(`ponto_sessions_history:${user.email}`)
+      .channel(`ponto_sessions_history:${activeWorkspaceId}:${user.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "ponto_sessions", filter: `owner_email=eq.${user.email}` },
+        { event: "*", schema: "public", table: "ponto_sessions", filter: `workspace_id=eq.${activeWorkspaceId}` },
         () => load()
       )
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [user?.email, session.status]);
+  }, [user?.id, activeWorkspaceId, session.status]);
 
   const fmtClock = (ts: number | string | null) =>
     ts ? new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
