@@ -4,8 +4,14 @@ import {
   TrendingUp, CheckCircle2, ListTodo, Factory, Clock, Timer,
   Activity, Calendar as CalendarIcon, Sparkles, ArrowRight,
   Boxes, Wallet, StickyNote, Zap, ChevronRight, BarChart3,
-  KanbanSquare, ListChecks, AlertTriangle,
+  KanbanSquare, ListChecks, AlertTriangle, Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
 } from "recharts";
