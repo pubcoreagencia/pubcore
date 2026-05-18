@@ -854,8 +854,8 @@ function CardDialog({
           <Field label="Descrição" icon={<FileText className="h-3.5 w-3.5" />}>
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={() => description !== (card.description ?? "") && onUpdate({ description: description || null })}
+              onChange={(e) => { setDescription(e.target.value); queueField("description", e.target.value || null); }}
+              onBlur={() => void flush()}
               rows={3}
               placeholder="Detalhes do card…"
               className="w-full bg-surface rounded px-2 py-2 text-sm resize-y"
