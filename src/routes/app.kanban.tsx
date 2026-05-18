@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Plus, Trash2, Pencil, X, GripVertical, CalendarDays, User, FileText, ListChecks, Layers, Paperclip } from "lucide-react";
 import { COMPANIES, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
@@ -10,6 +10,8 @@ import { getActivePontoSession } from "@/lib/ponto";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activity-log";
 import { KanbanAttachments } from "@/components/KanbanAttachments";
+import { SaveIndicator } from "@/components/SaveIndicator";
+import type { SaveStatus } from "@/hooks/use-autosave";
 
 export const Route = createFileRoute("/app/kanban")({ component: KanbanPage });
 
