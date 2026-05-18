@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getActiveWorkspaceId } from "@/lib/workspace";
 
 export type PontoStatus = "off" | "working" | "paused" | "ended";
 
@@ -168,14 +169,27 @@ export function PontoProvider({ children }: { children: ReactNode }) {
   const start = async (user?: string, ownerEmail?: string, userId?: string) => {
     const owner = ownerEmail ?? "guest@pubcore.local";
     const startedAt = Date.now();
+    const workspaceId = getActiveWorkspaceId();
+    let resolvedUserId = userId ?? null;
+    if (!resolvedUserId) {
+      try {
+        const { data } = await supabase.auth.getUser();
+        resolvedUserId = data.user?.id ?? null;
+      } catch {}
+    }
+    if (!workspaceId || !resolvedUserId) {
+      console.error("[ponto] start aborted: missing workspace_id or user_id", { workspaceId, resolvedUserId });
+      return;
+    }
     const payload: Record<string, unknown> = {
+      workspace_id: workspaceId,
+      user_id: resolvedUserId,
       owner_email: owner,
       user_name: user ?? null,
       started_at: new Date(startedAt).toISOString(),
       status: "working",
       pauses: [],
     };
-    if (userId) payload.user_id = userId;
     const { data, error } = await supabase
       .from("ponto_sessions")
       .insert(payload as never)
@@ -183,6 +197,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       .single();
     if (error) {
       console.error("[ponto] start error", error);
+      return;
     }
     const sessionId = (data?.id as string | undefined) ?? null;
     const next: PontoSession = {
