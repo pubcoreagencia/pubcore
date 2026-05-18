@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { SaveIndicator } from "@/components/SaveIndicator";
 
 export const Route = createFileRoute("/app/notes")({ component: NotesPage });
 
@@ -307,18 +308,53 @@ function NotesPage() {
     ]);
   };
 
-  // ---- Autosave editor ----
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const queueSave = useCallback(async (id: string, patch: Partial<Note>) => {
-    setNotes((ns) => ns.map((n) => (n.id === id ? { ...n, ...patch, updated_at: new Date().toISOString() } : n)));
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    setSaving(true);
-    saveTimer.current = setTimeout(async () => {
-      const { error } = await supabase.from("notes").update(patch as never).eq("id", id);
-      setSaving(false);
-      if (error) toast.error(error.message);
-    }, 500);
+  // ---- Autosave editor (per-id debounced, flushes on switch/unmount) ----
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const pendingRef = useRef<Map<string, Partial<Note>>>(new Map());
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flushNote = useCallback(async (id: string) => {
+    const t = timersRef.current.get(id);
+    if (t) { clearTimeout(t); timersRef.current.delete(id); }
+    const patch = pendingRef.current.get(id);
+    if (!patch) return;
+    pendingRef.current.delete(id);
+    setSaveStatus("saving");
+    const { error } = await supabase.from("notes").update(patch as never).eq("id", id);
+    if (error) { setSaveStatus("error"); toast.error(error.message); return; }
+    setSaveStatus("saved");
+    setSaving(false);
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setSaveStatus("idle"), 1500);
   }, []);
+
+  const queueSave = useCallback((id: string, patch: Partial<Note>) => {
+    setNotes((ns) => ns.map((n) => (n.id === id ? { ...n, ...patch, updated_at: new Date().toISOString() } : n)));
+    const merged = { ...(pendingRef.current.get(id) ?? {}), ...patch };
+    pendingRef.current.set(id, merged);
+    setSaving(true);
+    setSaveStatus("saving");
+    const prev = timersRef.current.get(id);
+    if (prev) clearTimeout(prev);
+    timersRef.current.set(id, setTimeout(() => { void flushNote(id); }, 600));
+  }, [flushNote]);
+
+  // Flush all pending writes on unmount
+  useEffect(() => () => {
+    const ids = Array.from(pendingRef.current.keys());
+    ids.forEach((id) => { void flushNote(id); });
+  }, [flushNote]);
+
+  // Flush previous note when selection changes
+  const prevSelectedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevSelectedRef.current;
+    if (prev && prev !== selectedId && pendingRef.current.has(prev)) {
+      void flushNote(prev);
+    }
+    prevSelectedRef.current = selectedId;
+  }, [selectedId, flushNote]);
 
   const filterLabel =
     filter.kind === "all" ? "Todas as notas"
@@ -473,7 +509,7 @@ function NotesPage() {
             categories={categories}
             color={colorOf(selected.category)}
             iconName={iconOf(selected.category)}
-            saving={saving}
+            saveStatus={saveStatus}
             onChange={(patch) => queueSave(selected.id, patch)}
             onDelete={() => removeNote(selected.id)}
             onClose={() => setSelectedId(null)}
@@ -631,13 +667,13 @@ function EmptyEditor({ onCreate }: { onCreate: () => void }) {
 }
 
 function Editor({
-  note, categories, color, iconName, saving, onChange, onDelete, onClose, onFav, onPin,
+  note, categories, color, iconName, saveStatus, onChange, onDelete, onClose, onFav, onPin,
 }: {
   note: Note;
   categories: NoteCategory[];
   color: string;
   iconName: IconName;
-  saving: boolean;
+  saveStatus: "idle" | "saving" | "saved" | "error";
   onChange: (patch: Partial<Note>) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -664,11 +700,7 @@ function Editor({
           </span>
           <span className="text-muted-foreground/40">·</span>
           <span className="text-[11px] text-muted-foreground">Editado {formatRelative(note.updated_at)}</span>
-          {saving && (
-            <span className="text-[11px] text-muted-foreground flex items-center gap-1 ml-2">
-              <Loader2 className="h-3 w-3 animate-spin" /> Salvando…
-            </span>
-          )}
+          <SaveIndicator status={saveStatus} className="ml-2" />
         </div>
         <div className="flex items-center gap-1">
           <button onClick={() => onPin(!note.pinned)} className="p-2 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" title="Fixar">
