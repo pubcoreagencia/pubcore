@@ -506,7 +506,7 @@ function TransactionDialog({ initial, workspaceId, userId, onClose }: {
 
   const submit = async () => {
     if (!workspaceId) return;
-    const amount = parseFloat(form.amount.replace(",", "."));
+    const amount = parseMoney(form.amount);
     if (isNaN(amount) || amount < 0) { toast.error("Valor inválido"); return; }
     const payload = {
       workspace_id: workspaceId, user_id: userId,
