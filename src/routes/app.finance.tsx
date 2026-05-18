@@ -447,7 +447,7 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
           <SelectTrigger className="w-[160px] bg-card/60"><SelectValue placeholder="Empresa" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas empresas</SelectItem>
-            {COMPANIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+            {companyOptions.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
           </SelectContent>
         </Select>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
