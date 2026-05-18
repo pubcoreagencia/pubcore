@@ -92,6 +92,31 @@ function KanbanPage() {
   const [columns, setColumns] = useState<Column[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const boardRef = useRef<HTMLDivElement | null>(null);
+
+  // Horizontal wheel scrolling (Trello/Linear-like)
+  useEffect(() => {
+    const el = boardRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      // Let trackpads handling horizontal scroll natively
+      if (e.deltaX !== 0) return;
+      if (e.deltaY === 0) return;
+      // Don't hijack when the user is scrolling inside a vertical scroller (e.g. card list)
+      let node = e.target as HTMLElement | null;
+      while (node && node !== el) {
+        const style = window.getComputedStyle(node);
+        const oy = style.overflowY;
+        if ((oy === "auto" || oy === "scroll") && node.scrollHeight > node.clientHeight) return;
+        node = node.parentElement;
+      }
+      if (el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollBy({ left: e.deltaY, behavior: "auto" });
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [loaded, activeFunnelId]);
 
   // dnd
   const [draggingCard, setDraggingCard] = useState<string | null>(null);
@@ -517,7 +542,11 @@ function KanbanPage() {
       </div>
 
       {/* BOARD */}
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div
+        ref={boardRef}
+        className="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-proximity [scrollbar-width:thin] overscroll-x-contain"
+        style={{ scrollBehavior: "smooth" }}
+      >
         {funnelCols.map((col) => {
           const list = funnelCards.filter(c => c.column_id === col.id).sort((a, b) => a.position - b.position);
           const isOver = overCol === col.id;
