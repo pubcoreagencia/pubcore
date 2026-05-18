@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { Plus, Trash2, Pencil, Check, X, GripVertical, MoreVertical, CalendarDays, User, FileText, ListChecks } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Plus, Trash2, Pencil, X, GripVertical, CalendarDays, User, FileText, ListChecks, Layers, Paperclip } from "lucide-react";
 import { COMPANIES, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { useWorkspace } from "@/lib/workspace";
 import { getActivePontoSession } from "@/lib/ponto";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activity-log";
+import { KanbanAttachments } from "@/components/KanbanAttachments";
 
 export const Route = createFileRoute("/app/kanban")({ component: KanbanPage });
 
@@ -17,11 +18,21 @@ const PRIORITIES: Priority[] = ["Baixa", "Média", "Alta", "Crítica"];
 
 interface ChecklistItem { id: string; text: string; done: boolean; }
 
+interface Funnel {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string;
+  icon: string;
+  position: number;
+}
+
 interface Column {
   id: string;
   name: string;
   position: number;
   color: string | null;
+  funnel_id: string | null;
 }
 
 interface Card {
@@ -38,6 +49,7 @@ interface Card {
   due_date: string | null;
   notes: string | null;
   checklist: ChecklistItem[];
+  funnel_id: string | null;
 }
 
 const DEFAULT_COLUMNS = [
@@ -46,6 +58,15 @@ const DEFAULT_COLUMNS = [
   { name: "Em andamento", color: "oklch(0.75 0.16 80)" },
   { name: "Revisão", color: "oklch(0.72 0.18 320)" },
   { name: "Concluído", color: "oklch(0.7 0.15 145)" },
+];
+
+const FUNNEL_COLORS = [
+  "oklch(0.72 0.16 220)",
+  "oklch(0.75 0.16 80)",
+  "oklch(0.72 0.18 320)",
+  "oklch(0.7 0.15 145)",
+  "oklch(0.72 0.18 30)",
+  "oklch(0.65 0.18 280)",
 ];
 
 const PRIO_STYLE: Record<Priority, string> = {
@@ -63,13 +84,17 @@ function KanbanPage() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
+
+  const [funnels, setFunnels] = useState<Funnel[]>([]);
+  const [activeFunnelId, setActiveFunnelId] = useState<string | null>(null);
   const [columns, setColumns] = useState<Column[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [loaded, setLoaded] = useState(false);
 
-  // dnd state
+  // dnd
   const [draggingCard, setDraggingCard] = useState<string | null>(null);
   const [draggingCol, setDraggingCol] = useState<string | null>(null);
+  const [draggingFunnel, setDraggingFunnel] = useState<string | null>(null);
   const [overCol, setOverCol] = useState<string | null>(null);
 
   // editing
@@ -80,49 +105,82 @@ function KanbanPage() {
 
   const [adding, setAdding] = useState<string | null>(null);
   const [draft, setDraft] = useState({ title: "", company: COMPANIES[0] as Company });
-
   const [openCard, setOpenCard] = useState<Card | null>(null);
+
+  // funnel UI
+  const [newFunnelName, setNewFunnelName] = useState("");
+  const [addingFunnel, setAddingFunnel] = useState(false);
+  const [editingFunnel, setEditingFunnel] = useState<string | null>(null);
+  const [funnelDraft, setFunnelDraft] = useState("");
 
   // ----- LOAD -----
   useEffect(() => {
     if (!userId || !activeWorkspaceId) return;
     let cancelled = false;
     const load = async () => {
-      const [{ data: cols }, { data: cs }] = await Promise.all([
+      const [{ data: fs }, { data: cols }, { data: cs }] = await Promise.all([
+        supabase.from("kanban_funnels").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
         supabase.from("kanban_columns").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
         supabase.from("kanban_cards").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
       ]);
       if (cancelled) return;
-      let columnList = (cols ?? []) as Column[];
-      // Seed defaults
-      if (columnList.length === 0) {
-        const seed = DEFAULT_COLUMNS.map((c, i) => ({ workspace_id: activeWorkspaceId, user_id: userId, name: c.name, color: c.color, position: i }));
+
+      let funnelList = (fs ?? []) as Funnel[];
+      // seed default funnel
+      if (funnelList.length === 0) {
+        const { data: inserted } = await supabase.from("kanban_funnels").insert({
+          workspace_id: activeWorkspaceId, user_id: userId,
+          name: "Geral", position: 0, icon: "Layers", color: FUNNEL_COLORS[0],
+        } as never).select();
+        funnelList = (inserted ?? []) as Funnel[];
+      }
+      setFunnels(funnelList);
+      const firstFunnelId = funnelList[0]?.id ?? null;
+      setActiveFunnelId((prev) => prev && funnelList.some(f => f.id === prev) ? prev : firstFunnelId);
+
+      let columnList = ((cols ?? []) as Column[]);
+      // backfill: any column missing funnel_id → assign to first funnel
+      const orphanCols = columnList.filter(c => !c.funnel_id);
+      if (orphanCols.length > 0 && firstFunnelId) {
+        await Promise.all(orphanCols.map(c =>
+          supabase.from("kanban_columns").update({ funnel_id: firstFunnelId }).eq("id", c.id)
+        ));
+        columnList = columnList.map(c => c.funnel_id ? c : { ...c, funnel_id: firstFunnelId });
+      }
+
+      // seed default columns for the active funnel if it has none
+      const activeFid = firstFunnelId;
+      const hasColsForActive = activeFid && columnList.some(c => c.funnel_id === activeFid);
+      if (activeFid && !hasColsForActive) {
+        const seed = DEFAULT_COLUMNS.map((c, i) => ({
+          workspace_id: activeWorkspaceId, user_id: userId,
+          name: c.name, color: c.color, position: i, funnel_id: activeFid,
+        }));
         const { data: inserted } = await supabase.from("kanban_columns").insert(seed as never).select();
-        columnList = ((inserted ?? []) as Column[]).sort((a, b) => a.position - b.position);
+        columnList = [...columnList, ...((inserted ?? []) as Column[])];
       }
       setColumns(columnList);
 
-      // Migrate legacy cards: column_id null but column_name set
       const cardList = ((cs ?? []) as unknown[]).map(normalizeCard);
-      const legacy = cardList.filter((c) => !c.column_id && c.column_name);
-      if (legacy.length > 0) {
-        const byName = new Map(columnList.map((c) => [c.name, c.id]));
-        await Promise.all(legacy.map((c) => {
-          const colId = byName.get(c.column_name ?? "") ?? columnList[0]?.id;
-          if (!colId) return Promise.resolve();
-          return supabase.from("kanban_cards").update({ column_id: colId }).eq("id", c.id);
-        }));
-        const { data: refreshed } = await supabase.from("kanban_cards").select("*").eq("workspace_id", activeWorkspaceId).order("position");
-        setCards(((refreshed ?? []) as unknown[]).map(normalizeCard));
-      } else {
-        setCards(cardList);
+      // backfill cards without funnel_id
+      const orphanCards = cardList.filter(c => !c.funnel_id);
+      if (orphanCards.length > 0 && firstFunnelId) {
+        await Promise.all(orphanCards.map(c =>
+          supabase.from("kanban_cards").update({ funnel_id: firstFunnelId }).eq("id", c.id)
+        ));
+        cardList.forEach(c => { if (!c.funnel_id) c.funnel_id = firstFunnelId; });
       }
+      setCards(cardList);
       setLoaded(true);
     };
     load();
 
     const sfx = Math.random().toString(36).slice(2, 8);
     const ch = supabase.channel(`kanban:${activeWorkspaceId}:${sfx}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_funnels", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
+        const { data } = await supabase.from("kanban_funnels").select("*").eq("workspace_id", activeWorkspaceId).order("position");
+        setFunnels((data ?? []) as Funnel[]);
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "kanban_columns", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
         const { data } = await supabase.from("kanban_columns").select("*").eq("workspace_id", activeWorkspaceId).order("position");
         setColumns((data ?? []) as Column[]);
@@ -143,13 +201,65 @@ function KanbanPage() {
     };
   }
 
+  // ----- FUNNEL OPS -----
+  const createFunnel = async () => {
+    if (!newFunnelName.trim() || !userId || !activeWorkspaceId) return;
+    const position = funnels.length;
+    const { data, error } = await supabase.from("kanban_funnels").insert({
+      workspace_id: activeWorkspaceId, user_id: userId,
+      name: newFunnelName.trim(), position,
+      icon: "Layers",
+      color: FUNNEL_COLORS[position % FUNNEL_COLORS.length],
+    } as never).select().single();
+    if (error) { toast.error(error.message); return; }
+    setNewFunnelName(""); setAddingFunnel(false);
+    if (data) setActiveFunnelId((data as Funnel).id);
+  };
+
+  const renameFunnel = async (id: string, name: string) => {
+    if (!name.trim()) { setEditingFunnel(null); return; }
+    setFunnels(fs => fs.map(f => f.id === id ? { ...f, name: name.trim() } : f));
+    await supabase.from("kanban_funnels").update({ name: name.trim() }).eq("id", id);
+    setEditingFunnel(null);
+  };
+
+  const deleteFunnel = async (id: string) => {
+    if (funnels.length <= 1) { toast.error("Mantenha ao menos um funil"); return; }
+    const f = funnels.find(x => x.id === id);
+    const colsIn = columns.filter(c => c.funnel_id === id);
+    const cardsIn = cards.filter(c => c.funnel_id === id);
+    if (!confirm(`Excluir funil "${f?.name}" com ${colsIn.length} coluna(s) e ${cardsIn.length} card(s)?`)) return;
+    await supabase.from("kanban_cards").delete().eq("funnel_id", id);
+    await supabase.from("kanban_columns").delete().eq("funnel_id", id);
+    await supabase.from("kanban_funnels").delete().eq("id", id);
+    if (activeFunnelId === id) {
+      const next = funnels.find(x => x.id !== id);
+      setActiveFunnelId(next?.id ?? null);
+    }
+  };
+
+  const reorderFunnels = async (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    const ordered = [...funnels].sort((a, b) => a.position - b.position);
+    const fromIdx = ordered.findIndex(c => c.id === fromId);
+    const toIdx = ordered.findIndex(c => c.id === toId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const [moved] = ordered.splice(fromIdx, 1);
+    ordered.splice(toIdx, 0, moved);
+    const updates = ordered.map((c, i) => ({ ...c, position: i }));
+    setFunnels(updates);
+    await Promise.all(updates.map(c => supabase.from("kanban_funnels").update({ position: c.position }).eq("id", c.id)));
+  };
+
   // ----- COLUMN OPS -----
   const createColumn = async () => {
-    if (!newColName.trim() || !userId || !activeWorkspaceId) return;
-    const position = columns.length;
+    if (!newColName.trim() || !userId || !activeWorkspaceId || !activeFunnelId) return;
+    const colsInFunnel = columns.filter(c => c.funnel_id === activeFunnelId);
+    const position = colsInFunnel.length;
     await supabase.from("kanban_columns").insert({
-      workspace_id: activeWorkspaceId,
-      user_id: userId, name: newColName.trim(), position,
+      workspace_id: activeWorkspaceId, user_id: userId,
+      funnel_id: activeFunnelId,
+      name: newColName.trim(), position,
       color: DEFAULT_COLUMNS[position % DEFAULT_COLUMNS.length].color,
     } as never);
     setNewColName(""); setAddingCol(false);
@@ -157,14 +267,14 @@ function KanbanPage() {
 
   const renameColumn = async (id: string, name: string) => {
     if (!name.trim()) { setEditingCol(null); return; }
-    setColumns((cs) => cs.map((c) => c.id === id ? { ...c, name: name.trim() } : c));
+    setColumns(cs => cs.map(c => c.id === id ? { ...c, name: name.trim() } : c));
     await supabase.from("kanban_columns").update({ name: name.trim() }).eq("id", id);
     setEditingCol(null);
   };
 
   const deleteColumn = async (id: string) => {
-    const colCards = cards.filter((c) => c.column_id === id);
-    const col = columns.find((c) => c.id === id);
+    const colCards = cards.filter(c => c.column_id === id);
+    const col = columns.find(c => c.id === id);
     if (colCards.length > 0 && !confirm(`Excluir coluna com ${colCards.length} card(s)? Os cards também serão removidos.`)) return;
     await supabase.from("kanban_cards").delete().eq("column_id", id);
     await supabase.from("kanban_columns").delete().eq("id", id);
@@ -172,35 +282,33 @@ function KanbanPage() {
       entity_type: "kanban_column", entity_id: id, action: "deleted",
       title: col.name, payload: { card_count: colCards.length },
     });
-    for (const c of colCards) {
-      logActivity({
-        entity_type: "kanban_card", entity_id: c.id, action: "deleted",
-        title: c.title, company: c.company, payload: { cascade_from_column: col?.name, priority: c.priority },
-      });
-    }
   };
 
   const reorderColumns = async (fromId: string, toId: string) => {
-    if (fromId === toId) return;
-    const ordered = [...columns].sort((a, b) => a.position - b.position);
-    const fromIdx = ordered.findIndex((c) => c.id === fromId);
-    const toIdx = ordered.findIndex((c) => c.id === toId);
+    if (fromId === toId || !activeFunnelId) return;
+    const ordered = columns.filter(c => c.funnel_id === activeFunnelId).sort((a, b) => a.position - b.position);
+    const fromIdx = ordered.findIndex(c => c.id === fromId);
+    const toIdx = ordered.findIndex(c => c.id === toId);
     if (fromIdx < 0 || toIdx < 0) return;
     const [moved] = ordered.splice(fromIdx, 1);
     ordered.splice(toIdx, 0, moved);
     const updates = ordered.map((c, i) => ({ ...c, position: i }));
-    setColumns(updates);
-    await Promise.all(updates.map((c) => supabase.from("kanban_columns").update({ position: c.position }).eq("id", c.id)));
+    setColumns(cs => cs.map(c => {
+      const u = updates.find(x => x.id === c.id);
+      return u ? { ...c, position: u.position } : c;
+    }));
+    await Promise.all(updates.map(c => supabase.from("kanban_columns").update({ position: c.position }).eq("id", c.id)));
   };
 
   // ----- CARD OPS -----
   const createCard = async (colId: string) => {
-    if (!draft.title.trim() || !userId || !activeWorkspaceId) return;
-    const colCards = cards.filter((c) => c.column_id === colId);
-    const col = columns.find((c) => c.id === colId);
+    if (!draft.title.trim() || !userId || !activeWorkspaceId || !activeFunnelId) return;
+    const colCards = cards.filter(c => c.column_id === colId);
+    const col = columns.find(c => c.id === colId);
     const { error } = await supabase.from("kanban_cards").insert({
-      workspace_id: activeWorkspaceId,
-      user_id: userId, title: draft.title.trim(), company: draft.company,
+      workspace_id: activeWorkspaceId, user_id: userId,
+      funnel_id: activeFunnelId,
+      title: draft.title.trim(), company: draft.company,
       priority: "Média", column_id: colId, column_name: col?.name ?? "Backlog",
       position: colCards.length, status: "open", checklist: [],
     } as never);
@@ -209,7 +317,13 @@ function KanbanPage() {
   };
 
   const deleteCard = async (id: string) => {
-    const card = cards.find((c) => c.id === id);
+    const card = cards.find(c => c.id === id);
+    // delete attachments first
+    const { data: atts } = await supabase.from("kanban_attachments").select("storage_path").eq("card_id", id);
+    if (atts && atts.length > 0) {
+      await supabase.storage.from("kanban-attachments").remove(atts.map(a => a.storage_path));
+      await supabase.from("kanban_attachments").delete().eq("card_id", id);
+    }
     await supabase.from("kanban_cards").delete().eq("id", id);
     if (card) await logActivity({
       entity_type: "kanban_card", entity_id: id, action: "deleted",
@@ -221,17 +335,17 @@ function KanbanPage() {
   const updateCard = async (id: string, patch: Partial<Card>) => {
     const dbPatch: Record<string, unknown> = { ...patch };
     if (patch.checklist) dbPatch.checklist = patch.checklist as unknown;
-    setCards((cs) => cs.map((c) => c.id === id ? { ...c, ...patch } : c));
-    setOpenCard((c) => c && c.id === id ? { ...c, ...patch } : c);
+    setCards(cs => cs.map(c => c.id === id ? { ...c, ...patch } : c));
+    setOpenCard(c => c && c.id === id ? { ...c, ...patch } : c);
     await supabase.from("kanban_cards").update(dbPatch as never).eq("id", id);
   };
 
   const moveCard = async (cardId: string, targetColId: string, targetIdx?: number) => {
-    const card = cards.find((c) => c.id === cardId);
-    const col = columns.find((c) => c.id === targetColId);
+    const card = cards.find(c => c.id === cardId);
+    const col = columns.find(c => c.id === targetColId);
     if (!card || !col) return;
     const fromColId = card.column_id;
-    const targetCards = cards.filter((c) => c.column_id === targetColId && c.id !== cardId).sort((a, b) => a.position - b.position);
+    const targetCards = cards.filter(c => c.column_id === targetColId && c.id !== cardId).sort((a, b) => a.position - b.position);
     const insertAt = typeof targetIdx === "number" ? targetIdx : targetCards.length;
     targetCards.splice(insertAt, 0, { ...card, column_id: targetColId, column_name: col.name });
     const reposTarget = targetCards.map((c, i) => ({ id: c.id, position: i, column_id: targetColId, column_name: col.name }));
@@ -239,37 +353,34 @@ function KanbanPage() {
     let reposSource: { id: string; position: number }[] = [];
     if (fromColId && fromColId !== targetColId) {
       reposSource = cards
-        .filter((c) => c.column_id === fromColId && c.id !== cardId)
+        .filter(c => c.column_id === fromColId && c.id !== cardId)
         .sort((a, b) => a.position - b.position)
         .map((c, i) => ({ id: c.id, position: i }));
     }
 
-    setCards((cs) => cs.map((c) => {
-      const t = reposTarget.find((x) => x.id === c.id);
+    setCards(cs => cs.map(c => {
+      const t = reposTarget.find(x => x.id === c.id);
       if (t) return { ...c, position: t.position, column_id: t.column_id, column_name: t.column_name };
-      const s = reposSource.find((x) => x.id === c.id);
+      const s = reposSource.find(x => x.id === c.id);
       if (s) return { ...c, position: s.position };
       return c;
     }));
 
     await Promise.all([
-      ...reposTarget.map((p) => supabase.from("kanban_cards").update({ position: p.position, column_id: p.column_id, column_name: p.column_name }).eq("id", p.id)),
-      ...reposSource.map((p) => supabase.from("kanban_cards").update({ position: p.position }).eq("id", p.id)),
+      ...reposTarget.map(p => supabase.from("kanban_cards").update({ position: p.position, column_id: p.column_id, column_name: p.column_name }).eq("id", p.id)),
+      ...reposSource.map(p => supabase.from("kanban_cards").update({ position: p.position }).eq("id", p.id)),
     ]);
 
-    // Auto status + sync com Bater Ponto se entrou em coluna "Concluído"
     if (isDoneColumnName(col.name) && card.status !== "done") {
       await supabase.from("kanban_cards").update({ status: "done" }).eq("id", cardId);
       const active = getActivePontoSession();
       if (active.sessionId && userId && activeWorkspaceId) {
         await supabase.from("ponto_session_tasks").insert({
           workspace_id: activeWorkspaceId,
-          user_id: userId,
-          session_id: active.sessionId,
+          user_id: userId, session_id: active.sessionId,
           owner_email: active.ownerEmail ?? user?.email ?? "guest@pubcore.local",
           user_name: active.userName ?? user?.email ?? null,
-          company: card.company,
-          title: `[Kanban] ${card.title}`,
+          company: card.company, title: `[Kanban] ${card.title}`,
         } as never);
         toast.success("Card concluído e registrado no ponto");
       }
@@ -283,18 +394,20 @@ function KanbanPage() {
     return <div className="p-10 text-muted-foreground">Carregando Kanban…</div>;
   }
 
-  const sortedCols = [...columns].sort((a, b) => a.position - b.position);
-  const totalCards = cards.length;
-  const doneCards = cards.filter((c) => c.status === "done").length;
+  const sortedFunnels = [...funnels].sort((a, b) => a.position - b.position);
+  const funnelCols = columns.filter(c => c.funnel_id === activeFunnelId).sort((a, b) => a.position - b.position);
+  const funnelCards = cards.filter(c => c.funnel_id === activeFunnelId);
+  const totalCards = funnelCards.length;
+  const doneCards = funnelCards.filter(c => c.status === "done").length;
 
   return (
-    <div className="p-6 lg:p-10 max-w-[1800px] mx-auto">
-      <header className="mb-6 flex items-end justify-between gap-4 flex-wrap">
+    <div className="p-4 md:p-6 lg:p-10 max-w-[1800px] mx-auto">
+      <header className="mb-4 flex items-end justify-between gap-4 flex-wrap">
         <div>
           <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Fluxo operacional</div>
-          <h1 className="font-display text-4xl font-bold tracking-tight mt-1">Kanban</h1>
+          <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight mt-1">Kanban</h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {sortedCols.length} colunas · {totalCards} cards · {doneCards} concluídos · sincronia em tempo real
+            {sortedFunnels.length} funis · {funnelCols.length} colunas · {totalCards} cards · {doneCards} concluídos
           </p>
         </div>
         <button
@@ -305,9 +418,106 @@ function KanbanPage() {
         </button>
       </header>
 
+      {/* FUNNEL TABS */}
+      <div className="mb-5 flex items-center gap-2 overflow-x-auto pb-2 border-b border-border">
+        {sortedFunnels.map((f) => {
+          const isActive = f.id === activeFunnelId;
+          const count = cards.filter(c => c.funnel_id === f.id).length;
+          return (
+            <div
+              key={f.id}
+              draggable={editingFunnel !== f.id}
+              onDragStart={(e) => { setDraggingFunnel(f.id); e.dataTransfer.effectAllowed = "move"; }}
+              onDragEnd={() => setDraggingFunnel(null)}
+              onDragOver={(e) => { if (draggingFunnel) e.preventDefault(); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (draggingFunnel && draggingFunnel !== f.id) {
+                  reorderFunnels(draggingFunnel, f.id);
+                  setDraggingFunnel(null);
+                }
+              }}
+              className={`group flex-shrink-0 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 transition cursor-pointer ${
+                isActive
+                  ? "border-primary/60 bg-primary/10 shadow-glow"
+                  : "border-border bg-card/40 hover:border-primary/30"
+              }`}
+              onClick={() => { if (editingFunnel !== f.id) setActiveFunnelId(f.id); }}
+            >
+              <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: f.color }} />
+              <Layers className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+              {editingFunnel === f.id ? (
+                <input
+                  autoFocus
+                  value={funnelDraft}
+                  onChange={(e) => setFunnelDraft(e.target.value)}
+                  onBlur={() => renameFunnel(f.id, funnelDraft)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") renameFunnel(f.id, funnelDraft);
+                    if (e.key === "Escape") setEditingFunnel(null);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-surface rounded px-2 py-0.5 text-sm outline-none ring-1 ring-primary/40 w-32"
+                />
+              ) : (
+                <span
+                  className="text-sm font-semibold"
+                  onDoubleClick={(e) => { e.stopPropagation(); setEditingFunnel(f.id); setFunnelDraft(f.name); }}
+                >
+                  {f.name}
+                </span>
+              )}
+              <span className="text-[10px] text-muted-foreground font-mono">{count}</span>
+              {isActive && (
+                <div className="flex items-center gap-0.5 ml-1 opacity-0 group-hover:opacity-100 transition">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setEditingFunnel(f.id); setFunnelDraft(f.name); }}
+                    className="text-muted-foreground hover:text-foreground p-0.5"
+                  >
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteFunnel(f.id); }}
+                    className="text-muted-foreground hover:text-destructive p-0.5"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {addingFunnel ? (
+          <div className="flex-shrink-0 inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-card px-2 py-1">
+            <input
+              autoFocus
+              value={newFunnelName}
+              onChange={(e) => setNewFunnelName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") createFunnel();
+                if (e.key === "Escape") { setAddingFunnel(false); setNewFunnelName(""); }
+              }}
+              placeholder="Nome do funil"
+              className="bg-surface rounded px-2 py-0.5 text-sm outline-none w-36"
+            />
+            <button onClick={createFunnel} className="text-xs rounded bg-gradient-primary px-2 py-0.5 font-bold text-primary-foreground">OK</button>
+            <button onClick={() => { setAddingFunnel(false); setNewFunnelName(""); }} className="text-xs text-muted-foreground px-1">×</button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setAddingFunnel(true)}
+            className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition"
+          >
+            <Plus className="h-3.5 w-3.5" /> Novo funil
+          </button>
+        )}
+      </div>
+
+      {/* BOARD */}
       <div className="flex gap-4 overflow-x-auto pb-4">
-        {sortedCols.map((col) => {
-          const list = cards.filter((c) => c.column_id === col.id).sort((a, b) => a.position - b.position);
+        {funnelCols.map((col) => {
+          const list = funnelCards.filter(c => c.column_id === col.id).sort((a, b) => a.position - b.position);
           const isOver = overCol === col.id;
           return (
             <div
@@ -319,10 +529,7 @@ function KanbanPage() {
                 e.dataTransfer.effectAllowed = "move";
               }}
               onDragEnd={() => setDraggingCol(null)}
-              onDragOver={(e) => {
-                e.preventDefault();
-                if (draggingCard) setOverCol(col.id);
-              }}
+              onDragOver={(e) => { e.preventDefault(); if (draggingCard) setOverCol(col.id); }}
               onDragLeave={() => { if (overCol === col.id) setOverCol(null); }}
               onDrop={(e) => {
                 e.preventDefault();
@@ -335,7 +542,7 @@ function KanbanPage() {
                 }
                 setOverCol(null);
               }}
-              className={`flex-shrink-0 w-[300px] rounded-xl border bg-surface/40 p-3 min-h-[500px] transition ${
+              className={`flex-shrink-0 w-[280px] md:w-[300px] rounded-xl border bg-surface/40 p-3 min-h-[500px] transition ${
                 isOver ? "border-primary/60 bg-primary/5" : "border-border"
               }`}
             >
@@ -377,7 +584,7 @@ function KanbanPage() {
 
               <div className="space-y-2">
                 {list.map((c) => {
-                  const checklistDone = c.checklist.filter((i) => i.done).length;
+                  const checklistDone = c.checklist.filter(i => i.done).length;
                   return (
                     <article
                       key={c.id}
@@ -463,7 +670,7 @@ function KanbanPage() {
         })}
 
         {addingCol ? (
-          <div className="flex-shrink-0 w-[300px] rounded-xl border border-primary/40 bg-card p-3 h-fit space-y-2">
+          <div className="flex-shrink-0 w-[280px] md:w-[300px] rounded-xl border border-primary/40 bg-card p-3 h-fit space-y-2">
             <input
               autoFocus
               value={newColName}
@@ -480,7 +687,7 @@ function KanbanPage() {
         ) : (
           <button
             onClick={() => setAddingCol(true)}
-            className="flex-shrink-0 w-[300px] rounded-xl border border-dashed border-border h-[120px] text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition flex items-center justify-center gap-1"
+            className="flex-shrink-0 w-[280px] md:w-[300px] rounded-xl border border-dashed border-border h-[120px] text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition flex items-center justify-center gap-1"
           >
             <Plus className="h-4 w-4" /> Nova coluna
           </button>
@@ -490,7 +697,7 @@ function KanbanPage() {
       {openCard && (
         <CardDialog
           card={openCard}
-          columns={sortedCols}
+          columns={funnelCols}
           onClose={() => setOpenCard(null)}
           onUpdate={(patch) => updateCard(openCard.id, patch)}
           onMove={(colId) => { moveCard(openCard.id, colId); setOpenCard(null); }}
@@ -532,12 +739,12 @@ function CardDialog({
   const removeItem = (id: string) => onUpdate({ checklist: card.checklist.filter((i) => i.id !== id) });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 md:p-4" onClick={onClose}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
+        className="w-full max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
       >
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card z-10">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -619,6 +826,10 @@ function CardDialog({
             />
           </Field>
 
+          <Field label="Anexos" icon={<Paperclip className="h-3.5 w-3.5" />}>
+            <KanbanAttachments cardId={card.id} />
+          </Field>
+
           <Field label="Checklist interno" icon={<ListChecks className="h-3.5 w-3.5" />}>
             <div className="space-y-1.5">
               {card.checklist.map((i) => (
@@ -655,7 +866,7 @@ function CardDialog({
           </Field>
         </div>
 
-        <div className="flex justify-between items-center p-4 border-t border-border">
+        <div className="flex justify-between items-center p-4 border-t border-border sticky bottom-0 bg-card">
           <button onClick={onDelete} className="inline-flex items-center gap-1.5 text-sm text-destructive hover:underline">
             <Trash2 className="h-3.5 w-3.5" /> Excluir card
           </button>

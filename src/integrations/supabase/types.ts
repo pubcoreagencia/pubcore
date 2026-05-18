@@ -338,6 +338,45 @@ export type Database = {
         }
         Relationships: []
       }
+      kanban_attachments: {
+        Row: {
+          card_id: string
+          created_at: string
+          id: string
+          mime_type: string | null
+          name: string
+          size: number
+          storage_path: string
+          uploader_name: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          name: string
+          size?: number
+          storage_path: string
+          uploader_name?: string | null
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          id?: string
+          mime_type?: string | null
+          name?: string
+          size?: number
+          storage_path?: string
+          uploader_name?: string | null
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       kanban_cards: {
         Row: {
           assignee: string | null
@@ -348,6 +387,7 @@ export type Database = {
           created_at: string
           description: string | null
           due_date: string | null
+          funnel_id: string | null
           id: string
           notes: string | null
           position: number
@@ -367,6 +407,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          funnel_id?: string | null
           id?: string
           notes?: string | null
           position?: number
@@ -386,6 +427,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          funnel_id?: string | null
           id?: string
           notes?: string | null
           position?: number
@@ -410,6 +452,7 @@ export type Database = {
         Row: {
           color: string | null
           created_at: string
+          funnel_id: string | null
           id: string
           name: string
           position: number
@@ -420,6 +463,7 @@ export type Database = {
         Insert: {
           color?: string | null
           created_at?: string
+          funnel_id?: string | null
           id?: string
           name: string
           position?: number
@@ -430,6 +474,46 @@ export type Database = {
         Update: {
           color?: string | null
           created_at?: string
+          funnel_id?: string | null
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      kanban_funnels: {
+        Row: {
+          color: string
+          created_at: string
+          description: string | null
+          icon: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          description?: string | null
+          icon?: string
           id?: string
           name?: string
           position?: number
