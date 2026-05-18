@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { COMPANIES } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
-import { WorkspaceMembersPanel } from "@/components/WorkspaceMembersPanel";
+
 import { Bell, Lock, Palette, Building } from "lucide-react";
 
 export const Route = createFileRoute("/app/settings")({
