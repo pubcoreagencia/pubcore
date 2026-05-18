@@ -666,13 +666,13 @@ function EmptyEditor({ onCreate }: { onCreate: () => void }) {
 }
 
 function Editor({
-  note, categories, color, iconName, saving, onChange, onDelete, onClose, onFav, onPin,
+  note, categories, color, iconName, saveStatus, onChange, onDelete, onClose, onFav, onPin,
 }: {
   note: Note;
   categories: NoteCategory[];
   color: string;
   iconName: IconName;
-  saving: boolean;
+  saveStatus: "idle" | "saving" | "saved" | "error";
   onChange: (patch: Partial<Note>) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -699,11 +699,7 @@ function Editor({
           </span>
           <span className="text-muted-foreground/40">·</span>
           <span className="text-[11px] text-muted-foreground">Editado {formatRelative(note.updated_at)}</span>
-          {saving && (
-            <span className="text-[11px] text-muted-foreground flex items-center gap-1 ml-2">
-              <Loader2 className="h-3 w-3 animate-spin" /> Salvando…
-            </span>
-          )}
+          <SaveIndicator status={saveStatus} className="ml-2" />
         </div>
         <div className="flex items-center gap-1">
           <button onClick={() => onPin(!note.pinned)} className="p-2 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" title="Fixar">
