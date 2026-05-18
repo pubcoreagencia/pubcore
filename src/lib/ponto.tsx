@@ -281,12 +281,12 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     if (ended) {
       const e = ended as PontoSession;
       const { liveWorkMs, livePauseMs, productiveMs } = compute(e, now);
-      persistUpdate(e, {
+      const saved = await persistUpdate(e, {
         total_ms: liveWorkMs,
         productive_ms: productiveMs,
         pause_ms: livePauseMs,
       });
-      if (e.sessionId && e.ownerEmail) {
+      if (saved && e.sessionId && e.ownerEmail) {
         emit({ type: "ended", sessionId: e.sessionId, ownerEmail: e.ownerEmail });
       }
     }
