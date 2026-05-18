@@ -542,7 +542,11 @@ function KanbanPage() {
       </div>
 
       {/* BOARD */}
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div
+        ref={boardRef}
+        className="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-proximity [scrollbar-width:thin] overscroll-x-contain"
+        style={{ scrollBehavior: "smooth" }}
+      >
         {funnelCols.map((col) => {
           const list = funnelCards.filter(c => c.column_id === col.id).sort((a, b) => a.position - b.position);
           const isOver = overCol === col.id;
