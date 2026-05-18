@@ -1,71 +1,61 @@
-## Refactor Estoque — multi-empresa 100% editável
+## Refatoração do Kanban — Funis + Upload de Arquivos
 
-Transforma `/app/stock` em um workspace por empresa, com schema dinâmico (estilo Airtable) e hierarquia grupo → categoria. Tudo persistido no Supabase com realtime.
+Vou transformar o Kanban atual (1 board único) em um sistema multi-funis com anexos completos.
 
-### 1. Banco de dados (migration)
+### 1. Banco de dados (migração)
 
-Novas tabelas (todas com `workspace_id`, RLS `is_workspace_member OR master`, realtime):
+**Nova tabela `kanban_funnels`** (funis/boards independentes)
+- `name`, `description`, `color`, `icon`, `position`, `workspace_id`, `user_id`
 
-- **`stock_companies`** — `name`, `slug`, `color`, `icon`, `position`. Substitui o array fixo `COMPANIES`. Seeded com as 6 empresas no primeiro acesso (front-side, idempotente).
-- **`stock_groups`** — `company_id`, `name`, `color`, `icon`, `position`.
-- **`stock_field_defs`** — `company_id`, `key`, `label`, `type` (`text`|`number`|`currency`|`select`|`date`|`boolean`|`textarea`), `options` jsonb (para select), `position`, `required`, `visible`, `is_system` (campos base não excluíveis).
+**Nova tabela `kanban_attachments`** (anexos por card)
+- `card_id`, `name`, `url`, `storage_path`, `mime_type`, `size`, `uploaded_by`, `uploader_name`, `workspace_id`
 
-Alterações em tabelas existentes:
+**Alterar `kanban_columns` e `kanban_cards`**
+- Adicionar `funnel_id uuid` (FK lógica para `kanban_funnels`)
+- Backfill: criar funil "Geral" por workspace existente e atribuir colunas/cards a ele
 
-- **`stock_categories`** — adicionar `company_id uuid`, `group_id uuid`.
-- **`stock_items`** — adicionar `company_id uuid`, `group_id uuid`, `category_id uuid`, `data jsonb DEFAULT '{}'` (valores dos campos custom). Mantém `name`, `quantity`, `cost`, `price`, `sku`, `supplier`, `location`, `notes`, `min_quantity` como campos base.
-- **`stock_movements`** — adicionar `company_id uuid` para escopar histórico.
+**RLS**: políticas `ws_*` baseadas em `is_workspace_member` (mesmo padrão atual).
 
-Sem foreign keys (segue padrão do projeto). Limpezas de órfãos via lógica no front.
+**Storage**: criar bucket privado `kanban-attachments` + policies (membros do workspace podem ler/escrever no path `{workspace_id}/{card_id}/...`).
 
-### 2. Frontend — `src/routes/app.stock.tsx` (rewrite)
+### 2. UI — Funis
 
-```text
-┌────────────────────────────────────────────────────────────┐
-│ [Pub 3D] [Pub IA] [Pub RECORDS] [Films] [Bricks] [+ Add]  │  ← abas de empresa (editáveis)
-├────────────────────────────────────────────────────────────┤
-│ ⚙ Configurar empresa  |  Grupos  |  Categorias  |  Campos │
-├────────────────────────────────────────────────────────────┤
-│ 🔍 busca   filtros: grupo▾ categoria▾   [Tabela|Cards]    │
-│ ┌────────────────────────────────────────────────────────┐ │
-│ │ ≡  Item        Qtd  Custo  Preço  SKU  Fornec  ⋯     │ │
-│ │ ≡  ●  Resina   12   R$80   R$200  R-1  X        ⋯     │ │
-│ └────────────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────┘
-```
+- Barra superior com **tabs de funis** (selecionar funil ativo). Cada tab mostra nome + ícone + contador de cards.
+- Botões: **+ Novo funil**, editar (nome/cor/ícone), excluir, reordenar (drag).
+- Só o funil ativo é renderizado (board completo de colunas).
+- Quando não há nenhum funil, criar "Geral" automaticamente.
 
-**Componentes principais:**
+### 3. UI — Anexos (modal do card)
 
-- `CompanyTabs` — lista de `stock_companies`, drag-to-reorder, dialog para criar/renomear/excluir. Aba ativa salva em `localStorage`.
-- `CompanyConfigDialog` — gerencia grupos, categorias, campos custom da empresa selecionada (3 sub-abas internas).
-- `FieldsManager` — CRUD dos `stock_field_defs`: tipo, label, options (para select), reordenar via drag, toggle visível.
-- `GroupsManager` / `CategoriesManager` — CRUD com cor/ícone, drag-to-reorder. Categoria pertence a um grupo.
-- `ItemsView` — alterna tabela / cards. Tabela renderiza colunas dinamicamente a partir de `field_defs.visible` + base. Edição inline (click na célula → input → blur autosave). Drag-to-reorder linhas. Filtros por grupo/categoria, busca em tempo real (debounce 200ms).
-- `MovementDialog` — registrar entrada/saída/ajuste. Atualiza `stock_items.quantity` + insere `stock_movements`.
+Adicionar seção **Anexos** dentro do modal `openCard`:
+- Drag-and-drop zone + botão "Adicionar arquivo"
+- Upload múltiplo com **barra de progresso**
+- Lista de anexos: ícone por tipo, nome, tamanho, autor, data
+- Ações: preview (imagens/PDF abrem em nova aba), download, excluir
+- Sincronização realtime via canal `kanban_attachments`
 
-**Persistência / realtime:**
+Aceita: imagens, PDFs, docs, vídeos, áudios, ZIPs. Limite por arquivo: 50 MB.
 
-- Hook `useStockData(companyId)` — fetch + canal `stock:${workspaceId}:${companyId}` ouvindo as 6 tabelas com filtro por workspace; refetch on change.
-- Autosave: cada edição inline faz `update` direto no Supabase, com optimistic UI e toast em erro.
-- Drag-and-drop: usa `@dnd-kit/core` + `@dnd-kit/sortable` (já usado no projeto se disponível; senão instalo) para reordenar abas, grupos, categorias, campos e linhas. Salva `position` em batch.
+### 4. Realtime e persistência
 
-**Seed inicial (idempotente):**
+- Canais Supabase Realtime para `kanban_funnels`, `kanban_columns`, `kanban_cards`, `kanban_attachments` filtrados por `workspace_id`.
+- Autosave em todos os edits inline (já é o padrão).
+- Ordem dos funis/colunas/cards persistida em `position`.
 
-Quando o usuário abre a aba pela primeira vez e `stock_companies` está vazia para o workspace, cria as 6 empresas padrão + os campos base (`name`, `quantity`, `min_quantity`, `cost`, `price`, `sku`, `supplier`, `location`, `notes`) marcados como `is_system=true`. Itens já existentes (com `company` text) são migrados via SQL na própria migration mapeando `company` → `company_id`.
+### 5. Visual
 
-### 3. Visual
+Mantém o dark mode atual (tokens semânticos). Tabs de funis com glow sutil no ativo, cards de anexo modulares, ícones por tipo de arquivo.
 
-Mantém o dark premium do resto da PUB CORE. Tabs de empresa com cor própria (chip arredondado, border colorido quando ativa). Tabela com linhas hover, células editáveis com ring no focus. Drag handle só aparece on hover. Cards (modo alternativo) em grid responsivo.
+### Arquivos afetados
 
-### 4. Fora do escopo
+- `supabase/migrations/<nova>.sql` — tabelas + bucket + policies
+- `src/routes/app.kanban.tsx` — refator completo (funis + anexos no modal)
+- `src/components/KanbanFunnelTabs.tsx` (novo) — barra de funis
+- `src/components/KanbanAttachments.tsx` (novo) — seção de anexos no modal
 
-- Importação CSV / exportação avançada (mantém só a operação CRUD).
-- Permissões granulares por empresa (continua usando RLS de workspace).
-- Histórico/undo de edições inline além do `stock_movements`.
-- Anexos de arquivo nos itens.
+### Fora do escopo desta entrega
 
-### 5. Observação técnica
+- Drag-and-drop **entre funis diferentes** (cards permanecem dentro do funil ativo) — pode ser adicionado depois via menu "Mover para funil…".
+- Múltiplos layouts (lista/calendário) — só Kanban por enquanto.
 
-A migration faz `ALTER TABLE` adicionando colunas nullable + tabelas novas — não quebra dados existentes. O seed roda no client e é idempotente (`upsert` por `slug`).
-
-Confirme e eu aplico a migration + escrevo o módulo (rota inteira reescrita, ~1.5k linhas distribuídas em arquivos `src/routes/app.stock.tsx` + helpers em `src/lib/stock/`).
+Confirma para eu seguir?
