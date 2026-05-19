@@ -88,6 +88,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Reseta o pick automático ao trocar de usuário (evita herdar workspace de outra conta)
+  useEffect(() => {
+    initRef.current = false;
+  }, [userId]);
+
   // Pick a default workspace once loaded
   useEffect(() => {
     if (loading || !userId) return;
