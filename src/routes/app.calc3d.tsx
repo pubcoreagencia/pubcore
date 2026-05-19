@@ -1,9 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Box, Save, Plus, Trash2, Copy, History, Sparkles,
-  Zap, Wrench, Package, Clock, DollarSign, TrendingUp, Percent,
-  ChevronDown, X,
+  Box,
+  Save,
+  Plus,
+  Trash2,
+  Copy,
+  History,
+  Sparkles,
+  Zap,
+  Wrench,
+  Package,
+  Clock,
+  DollarSign,
+  TrendingUp,
+  Percent,
+  ChevronDown,
+  X,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
@@ -79,8 +92,7 @@ const DEFAULTS: Inputs = {
 const STORAGE_KEY = "pubcore:calc3d:projects";
 const CURRENT_KEY = "pubcore:calc3d:current";
 
-const brl = (n: number) =>
-  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 function computeResults(i: Inputs) {
   const totalHours = i.printHours + i.printMinutes / 60;
@@ -93,9 +105,10 @@ function computeResults(i: Inputs) {
   const complexityMultiplier = 1 + (i.complexity - 1) * 0.08;
 
   const baseCostUnit =
-    (materialPerUnit + energyPerUnit + machinePerUnit + laborPerUnit) *
-      complexityMultiplier +
-    i.postProcessing + i.packaging + i.extras;
+    (materialPerUnit + energyPerUnit + machinePerUnit + laborPerUnit) * complexityMultiplier +
+    i.postProcessing +
+    i.packaging +
+    i.extras;
 
   const costUnit = baseCostUnit;
   const costTotal = costUnit * qty + i.shipping;
@@ -111,16 +124,30 @@ function computeResults(i: Inputs) {
   const breakeven = profitUnit > 0 ? Math.ceil(i.shipping / profitUnit) : 0;
 
   return {
-    materialPerUnit, energyPerUnit, machinePerUnit, laborPerUnit,
-    costUnit, costTotal, idealPrice, minPrice, markupPct,
-    profitUnit, profitTotal, operationalMarginPct, breakeven, totalHours,
+    materialPerUnit,
+    energyPerUnit,
+    machinePerUnit,
+    laborPerUnit,
+    costUnit,
+    costTotal,
+    idealPrice,
+    minPrice,
+    markupPct,
+    profitUnit,
+    profitTotal,
+    operationalMarginPct,
+    breakeven,
+    totalHours,
   };
 }
 
 function loadProjects(): Project[] {
   if (typeof window === "undefined") return [];
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
-  catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  } catch {
+    return [];
+  }
 }
 
 function Calc3DPage() {
@@ -141,7 +168,9 @@ function Calc3DPage() {
   const r = useMemo(() => computeResults(inputs), [inputs]);
 
   useEffect(() => {
-    try { localStorage.setItem(CURRENT_KEY, JSON.stringify(inputs)); } catch {}
+    try {
+      localStorage.setItem(CURRENT_KEY, JSON.stringify(inputs));
+    } catch {}
   }, [inputs]);
 
   const update = <K extends keyof Inputs>(k: K, v: Inputs[K]) =>
@@ -158,12 +187,18 @@ function Calc3DPage() {
     const now = Date.now();
     if (currentId) {
       const next = projects.map((p) =>
-        p.id === currentId ? { ...p, name, inputs, updatedAt: now } : p
+        p.id === currentId ? { ...p, name, inputs, updatedAt: now } : p,
       );
       setProjects(next);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } else {
-      const proj: Project = { id: crypto.randomUUID(), name, inputs, createdAt: now, updatedAt: now };
+      const proj: Project = {
+        id: crypto.randomUUID(),
+        name,
+        inputs,
+        createdAt: now,
+        updatedAt: now,
+      };
       const next = [proj, ...projects];
       setProjects(next);
       setCurrentId(proj.id);
@@ -180,9 +215,11 @@ function Calc3DPage() {
 
   const duplicateProject = (p: Project) => {
     const proj: Project = {
-      ...p, id: crypto.randomUUID(),
+      ...p,
+      id: crypto.randomUUID(),
       name: `${p.name} (cópia)`,
-      createdAt: Date.now(), updatedAt: Date.now(),
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     };
     const next = [proj, ...projects];
     setProjects(next);
@@ -193,7 +230,10 @@ function Calc3DPage() {
     const next = projects.filter((p) => p.id !== id);
     setProjects(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    if (currentId === id) { setCurrentId(null); setProjectName(""); }
+    if (currentId === id) {
+      setCurrentId(null);
+      setProjectName("");
+    }
   };
 
   const newProject = () => {
@@ -224,7 +264,8 @@ function Calc3DPage() {
             onClick={() => setShowHistory(true)}
             className="min-w-0 h-10 sm:h-9 px-2 sm:px-3 rounded-lg border border-border/60 bg-card/60 hover:bg-card active:scale-[0.98] text-xs font-medium flex items-center justify-center gap-1.5"
           >
-            <History className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Projetos ({projects.length})</span>
+            <History className="h-3.5 w-3.5 shrink-0" />{" "}
+            <span className="truncate">Projetos ({projects.length})</span>
           </button>
           <button
             onClick={newProject}
@@ -243,12 +284,15 @@ function Calc3DPage() {
         >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-[10px] uppercase tracking-wider text-primary/80">Preço ideal</div>
+              <div className="text-[10px] uppercase tracking-wider text-primary/80">
+                Preço ideal
+              </div>
               <div className="text-xl sm:text-2xl font-display tabular-nums text-foreground break-words leading-tight">
                 {brl(r.idealPrice)}
               </div>
               <div className="text-[11px] text-muted-foreground break-words leading-tight">
-                Custo {brl(r.costUnit)} · Lucro <span className="text-emerald-400">{brl(r.profitUnit)}</span>
+                Custo {brl(r.costUnit)} · Lucro{" "}
+                <span className="text-emerald-400">{brl(r.profitUnit)}</span>
               </div>
             </div>
             <ChevronDown
@@ -277,14 +321,54 @@ function Calc3DPage() {
         <div className="space-y-3 sm:space-y-4 min-w-0">
           <Section icon={<Clock className="h-4 w-4" />} title="Impressão" defaultOpen>
             <Grid>
-              <NumField label="Peso (g)" value={inputs.weight} onChange={(v) => update("weight", v)} step={1} />
-              <NumField label="Qtd." value={inputs.quantity} onChange={(v) => update("quantity", v)} step={1} min={1} />
-              <NumField label="Horas" value={inputs.printHours} onChange={(v) => update("printHours", v)} step={1} min={0} />
-              <NumField label="Minutos" value={inputs.printMinutes} onChange={(v) => update("printMinutes", v)} step={1} min={0} max={59} />
+              <NumField
+                label="Peso (g)"
+                value={inputs.weight}
+                onChange={(v) => update("weight", v)}
+                step={1}
+              />
+              <NumField
+                label="Qtd."
+                value={inputs.quantity}
+                onChange={(v) => update("quantity", v)}
+                step={1}
+                min={1}
+              />
+              <NumField
+                label="Horas"
+                value={inputs.printHours}
+                onChange={(v) => update("printHours", v)}
+                step={1}
+                min={0}
+              />
+              <NumField
+                label="Minutos"
+                value={inputs.printMinutes}
+                onChange={(v) => update("printMinutes", v)}
+                step={1}
+                min={0}
+                max={59}
+              />
             </Grid>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-              <SliderField label="Taxa de falha" value={inputs.failureRate} onChange={(v) => update("failureRate", v)} min={0} max={50} step={1} suffix="%" />
-              <SliderField label="Complexidade" value={inputs.complexity} onChange={(v) => update("complexity", v)} min={1} max={5} step={1} suffix="/5" />
+              <SliderField
+                label="Taxa de falha"
+                value={inputs.failureRate}
+                onChange={(v) => update("failureRate", v)}
+                min={0}
+                max={50}
+                step={1}
+                suffix="%"
+              />
+              <SliderField
+                label="Complexidade"
+                value={inputs.complexity}
+                onChange={(v) => update("complexity", v)}
+                min={1}
+                max={5}
+                step={1}
+                suffix="/5"
+              />
             </div>
           </Section>
 
@@ -307,36 +391,113 @@ function Calc3DPage() {
               </div>
             </div>
             <Grid>
-              <NumField label="Custo kg (R$)" value={inputs.filamentCostKg} onChange={(v) => update("filamentCostKg", v)} step={5} />
-              <ReadField label="Consumo est." value={`${(inputs.weight * (1 + inputs.failureRate / 100)).toFixed(1)} g`} />
+              <NumField
+                label="Custo kg (R$)"
+                value={inputs.filamentCostKg}
+                onChange={(v) => update("filamentCostKg", v)}
+                step={5}
+              />
+              <ReadField
+                label="Consumo est."
+                value={`${(inputs.weight * (1 + inputs.failureRate / 100)).toFixed(1)} g`}
+              />
             </Grid>
           </Section>
 
           <Section icon={<Zap className="h-4 w-4" />} title="Máquina & Energia">
             <Grid>
-              <NumField label="Potência (W)" value={inputs.powerW} onChange={(v) => update("powerW", v)} step={10} />
-              <NumField label="kWh (R$)" value={inputs.kwhPrice} onChange={(v) => update("kwhPrice", v)} step={0.05} />
-              <NumField label="Custo/h máq." value={inputs.machineHourCost} onChange={(v) => update("machineHourCost", v)} step={0.5} />
+              <NumField
+                label="Potência (W)"
+                value={inputs.powerW}
+                onChange={(v) => update("powerW", v)}
+                step={10}
+              />
+              <NumField
+                label="kWh (R$)"
+                value={inputs.kwhPrice}
+                onChange={(v) => update("kwhPrice", v)}
+                step={0.05}
+              />
+              <NumField
+                label="Custo/h máq."
+                value={inputs.machineHourCost}
+                onChange={(v) => update("machineHourCost", v)}
+                step={0.5}
+              />
             </Grid>
           </Section>
 
           <Section icon={<Wrench className="h-4 w-4" />} title="Operacional">
             <Grid>
-              <NumField label="M.obra (R$/h)" value={inputs.laborHourCost} onChange={(v) => update("laborHourCost", v)} step={5} />
-              <NumField label="M.obra (min)" value={inputs.laborMinutes} onChange={(v) => update("laborMinutes", v)} step={5} />
-              <NumField label="Embalagem" value={inputs.packaging} onChange={(v) => update("packaging", v)} step={0.5} />
-              <NumField label="Pós-proc." value={inputs.postProcessing} onChange={(v) => update("postProcessing", v)} step={0.5} />
-              <NumField label="Frete" value={inputs.shipping} onChange={(v) => update("shipping", v)} step={1} />
-              <NumField label="Extras" value={inputs.extras} onChange={(v) => update("extras", v)} step={1} />
+              <NumField
+                label="M.obra (R$/h)"
+                value={inputs.laborHourCost}
+                onChange={(v) => update("laborHourCost", v)}
+                step={5}
+              />
+              <NumField
+                label="M.obra (min)"
+                value={inputs.laborMinutes}
+                onChange={(v) => update("laborMinutes", v)}
+                step={5}
+              />
+              <NumField
+                label="Embalagem"
+                value={inputs.packaging}
+                onChange={(v) => update("packaging", v)}
+                step={0.5}
+              />
+              <NumField
+                label="Pós-proc."
+                value={inputs.postProcessing}
+                onChange={(v) => update("postProcessing", v)}
+                step={0.5}
+              />
+              <NumField
+                label="Frete"
+                value={inputs.shipping}
+                onChange={(v) => update("shipping", v)}
+                step={1}
+              />
+              <NumField
+                label="Extras"
+                value={inputs.extras}
+                onChange={(v) => update("extras", v)}
+                step={1}
+              />
             </Grid>
           </Section>
 
           <Section icon={<Percent className="h-4 w-4" />} title="Financeiro" defaultOpen>
             <div className="space-y-3">
-              <SliderField label="Margem de lucro" value={inputs.marginPct} onChange={(v) => update("marginPct", v)} min={0} max={300} step={5} suffix="%" />
+              <SliderField
+                label="Margem de lucro"
+                value={inputs.marginPct}
+                onChange={(v) => update("marginPct", v)}
+                min={0}
+                max={300}
+                step={5}
+                suffix="%"
+              />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <SliderField label="Comissão" value={inputs.commissionPct} onChange={(v) => update("commissionPct", v)} min={0} max={30} step={0.5} suffix="%" />
-                <SliderField label="Impostos / taxas" value={inputs.taxesPct} onChange={(v) => update("taxesPct", v)} min={0} max={30} step={0.5} suffix="%" />
+                <SliderField
+                  label="Comissão"
+                  value={inputs.commissionPct}
+                  onChange={(v) => update("commissionPct", v)}
+                  min={0}
+                  max={30}
+                  step={0.5}
+                  suffix="%"
+                />
+                <SliderField
+                  label="Impostos / taxas"
+                  value={inputs.taxesPct}
+                  onChange={(v) => update("taxesPct", v)}
+                  min={0}
+                  max={30}
+                  step={0.5}
+                  suffix="%"
+                />
               </div>
             </div>
           </Section>
@@ -361,8 +522,12 @@ function Calc3DPage() {
         {/* Desktop results panel */}
         <aside className="hidden lg:block lg:sticky lg:top-4 self-start space-y-4">
           <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/15 to-card/40 backdrop-blur p-4 shadow-xl shadow-primary/10">
-            <div className="text-[11px] uppercase tracking-wider text-primary/80 mb-1">Preço ideal</div>
-            <div className="text-3xl sm:text-4xl font-display text-foreground tabular-nums">{brl(r.idealPrice)}</div>
+            <div className="text-[11px] uppercase tracking-wider text-primary/80 mb-1">
+              Preço ideal
+            </div>
+            <div className="text-3xl sm:text-4xl font-display text-foreground tabular-nums">
+              {brl(r.idealPrice)}
+            </div>
             <div className="text-xs text-muted-foreground mt-1">
               por peça · markup {r.markupPct.toFixed(0)}%
             </div>
@@ -373,16 +538,56 @@ function Calc3DPage() {
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-card/40 backdrop-blur p-4 space-y-2.5">
-            <Row icon={<Package className="h-3.5 w-3.5" />} label="Material" value={brl(r.materialPerUnit)} />
-            <Row icon={<Zap className="h-3.5 w-3.5" />} label="Energia" value={brl(r.energyPerUnit)} />
-            <Row icon={<Wrench className="h-3.5 w-3.5" />} label="Máquina" value={brl(r.machinePerUnit)} />
-            <Row icon={<Clock className="h-3.5 w-3.5" />} label="Mão de obra" value={brl(r.laborPerUnit)} />
+            <Row
+              icon={<Package className="h-3.5 w-3.5" />}
+              label="Material"
+              value={brl(r.materialPerUnit)}
+            />
+            <Row
+              icon={<Zap className="h-3.5 w-3.5" />}
+              label="Energia"
+              value={brl(r.energyPerUnit)}
+            />
+            <Row
+              icon={<Wrench className="h-3.5 w-3.5" />}
+              label="Máquina"
+              value={brl(r.machinePerUnit)}
+            />
+            <Row
+              icon={<Clock className="h-3.5 w-3.5" />}
+              label="Mão de obra"
+              value={brl(r.laborPerUnit)}
+            />
             <div className="border-t border-border/40 pt-2.5 space-y-2.5">
-              <Row icon={<DollarSign className="h-3.5 w-3.5" />} label="Custo total" value={brl(r.costTotal)} bold />
-              <Row icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-400" />} label="Lucro/peça" value={brl(r.profitUnit)} bold accent />
-              <Row icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-400" />} label="Lucro total" value={brl(r.profitTotal)} accent />
-              <Row icon={<Percent className="h-3.5 w-3.5" />} label="Margem operacional" value={`${r.operationalMarginPct.toFixed(1)}%`} />
-              <Row icon={<Clock className="h-3.5 w-3.5" />} label="Tempo total" value={`${r.totalHours.toFixed(2)} h`} />
+              <Row
+                icon={<DollarSign className="h-3.5 w-3.5" />}
+                label="Custo total"
+                value={brl(r.costTotal)}
+                bold
+              />
+              <Row
+                icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
+                label="Lucro/peça"
+                value={brl(r.profitUnit)}
+                bold
+                accent
+              />
+              <Row
+                icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-400" />}
+                label="Lucro total"
+                value={brl(r.profitTotal)}
+                accent
+              />
+              <Row
+                icon={<Percent className="h-3.5 w-3.5" />}
+                label="Margem operacional"
+                value={`${r.operationalMarginPct.toFixed(1)}%`}
+              />
+              <Row
+                icon={<Clock className="h-3.5 w-3.5" />}
+                label="Tempo total"
+                value={`${r.totalHours.toFixed(2)} h`}
+              />
             </div>
           </div>
         </aside>
@@ -418,7 +623,10 @@ function Calc3DPage() {
               <ul className="divide-y divide-border/40 overflow-y-auto -mx-1 px-1">
                 {projects.map((p) => (
                   <li key={p.id} className="py-2 flex items-center justify-between gap-2">
-                    <button onClick={() => loadProject(p)} className="flex-1 text-left min-w-0 py-1">
+                    <button
+                      onClick={() => loadProject(p)}
+                      className="flex-1 text-left min-w-0 py-1"
+                    >
                       <div className="text-sm font-medium truncate">{p.name}</div>
                       <div className="text-[11px] text-muted-foreground">
                         {brl(computeResults(p.inputs).idealPrice)} ·{" "}
@@ -455,9 +663,15 @@ function Calc3DPage() {
 /* ---------- helpers ---------- */
 
 function Section({
-  icon, title, children, defaultOpen = false,
+  icon,
+  title,
+  children,
+  defaultOpen = false,
 }: {
-  icon: React.ReactNode; title: string; children: React.ReactNode; defaultOpen?: boolean;
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -468,16 +682,16 @@ function Section({
         className="w-full flex items-center justify-between gap-2 p-4 lg:cursor-default"
       >
         <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-          <span className="h-6 w-6 rounded-md bg-primary/15 grid place-items-center text-primary">{icon}</span>
+          <span className="h-6 w-6 rounded-md bg-primary/15 grid place-items-center text-primary">
+            {icon}
+          </span>
           {title}
         </h3>
         <ChevronDown
           className={`h-4 w-4 text-muted-foreground transition-transform lg:hidden ${open ? "rotate-180" : ""}`}
         />
       </button>
-      <div className={`px-4 pb-4 ${open ? "block" : "hidden"} lg:block`}>
-        {children}
-      </div>
+      <div className={`px-4 pb-4 ${open ? "block" : "hidden"} lg:block`}>{children}</div>
     </section>
   );
 }
@@ -487,14 +701,25 @@ function Grid({ children }: { children: React.ReactNode }) {
 }
 
 function NumField({
-  label, value, onChange, step = 1, min, max,
+  label,
+  value,
+  onChange,
+  step = 1,
+  min,
+  max,
 }: {
-  label: string; value: number; onChange: (v: number) => void;
-  step?: number; min?: number; max?: number;
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  step?: number;
+  min?: number;
+  max?: number;
 }) {
   return (
     <label className="block min-w-0">
-      <span className="block text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground mb-1 truncate">{label}</span>
+      <span className="block text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground mb-1 truncate">
+        {label}
+      </span>
       <input
         type="number"
         inputMode="decimal"
@@ -513,7 +738,9 @@ function NumField({
 function ReadField({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <span className="block text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground mb-1 truncate">{label}</span>
+      <span className="block text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground mb-1 truncate">
+        {label}
+      </span>
       <div className="w-full min-w-0 h-11 sm:h-10 px-2.5 sm:px-3 rounded-lg bg-background/30 border border-border/30 text-sm tabular-nums flex items-center text-muted-foreground truncate">
         {value}
       </div>
@@ -522,17 +749,31 @@ function ReadField({ label, value }: { label: string; value: string }) {
 }
 
 function SliderField({
-  label, value, onChange, min, max, step, suffix,
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  suffix,
 }: {
-  label: string; value: number; onChange: (v: number) => void;
-  min: number; max: number; step: number; suffix?: string;
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  suffix?: string;
 }) {
   return (
     <div className="min-w-0">
       <div className="flex items-center justify-between mb-2 gap-2">
-        <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground truncate min-w-0">{label}</span>
+        <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground truncate min-w-0">
+          {label}
+        </span>
         <span className="text-xs font-medium tabular-nums text-foreground flex-shrink-0">
-          {value}{suffix}
+          {value}
+          {suffix}
         </span>
       </div>
       <Slider
@@ -548,17 +789,27 @@ function SliderField({
 }
 
 function Row({
-  icon, label, value, bold, accent,
+  icon,
+  label,
+  value,
+  bold,
+  accent,
 }: {
-  icon: React.ReactNode; label: string; value: string;
-  bold?: boolean; accent?: boolean;
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  bold?: boolean;
+  accent?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between text-sm gap-2">
       <span className="flex items-center gap-2 text-muted-foreground min-w-0 truncate">
-        {icon}{label}
+        {icon}
+        {label}
       </span>
-      <span className={`tabular-nums flex-shrink-0 ${bold ? "font-semibold" : ""} ${accent ? "text-emerald-400" : "text-foreground"}`}>
+      <span
+        className={`tabular-nums flex-shrink-0 ${bold ? "font-semibold" : ""} ${accent ? "text-emerald-400" : "text-foreground"}`}
+      >
         {value}
       </span>
     </div>
@@ -568,8 +819,12 @@ function Row({
 function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-background/40 border border-border/40 p-2 min-w-0">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{label}</div>
-      <div className="text-xs sm:text-sm font-medium tabular-nums text-foreground break-words leading-tight">{value}</div>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">
+        {label}
+      </div>
+      <div className="text-xs sm:text-sm font-medium tabular-nums text-foreground break-words leading-tight">
+        {value}
+      </div>
     </div>
   );
 }

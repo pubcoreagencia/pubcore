@@ -34,16 +34,14 @@ function AppLayout() {
     <WorkspaceProvider>
       <PontoProvider>
         <ChecklistProvider>
-            <PontoAutoTracker />
-            <div className="hidden md:block">
-              <CalculatorWidget />
-            </div>
+          <PontoAutoTracker />
+          <div className="hidden md:block">
+            <CalculatorWidget />
+          </div>
 
           <div className="flex min-h-dvh w-full max-w-[100dvw] bg-background overflow-x-hidden">
             <Sidebar />
-            <main
-              className="relative flex w-full min-w-0 max-w-[100dvw] flex-1 flex-col overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+64px)] md:max-w-full md:pb-0"
-            >
+            <main className="relative flex w-full min-w-0 max-w-[100dvw] flex-1 flex-col overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+64px)] md:max-w-full md:pb-0">
               <MobileNav />
               <PontoHeader />
               <div className="w-full min-w-0 max-w-full overflow-x-hidden">
