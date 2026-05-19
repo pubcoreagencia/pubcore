@@ -127,9 +127,11 @@
     overflow-x: hidden;
     overscroll-behavior-x: none;
   }
-  /* Prevent any page from horizontally overflowing the viewport on mobile */
+  /* Prevent any page from horizontally overflowing the viewport on mobile.
+     IMPORTANT: do NOT use `body > div` here — TanStack Start renders the app
+     shell AND fixed widgets (calculator, toasts) as direct body children, and
+     forcing width:100% on them breaks fixed positioning. */
   body { min-width: 0; }
-  body > div { width: 100%; max-width: 100%; overflow-x: hidden; }
 
   body {
     background-image:
