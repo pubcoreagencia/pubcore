@@ -23,6 +23,7 @@ import { Route as AppCrmRouteImport } from './routes/app.crm'
 import { Route as AppChecklistsRouteImport } from './routes/app.checklists'
 import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 import { Route as AppCalculatorRouteImport } from './routes/app.calculator'
+import { Route as AppCalc3dRouteImport } from './routes/app.calc3d'
 
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
@@ -94,12 +95,18 @@ const AppCalculatorRoute = AppCalculatorRouteImport.update({
   path: '/calculator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCalc3dRoute = AppCalc3dRouteImport.update({
+  id: '/calc3d',
+  path: '/calc3d',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/app/calc3d': typeof AppCalc3dRoute
   '/app/calculator': typeof AppCalculatorRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/app/calc3d': typeof AppCalc3dRoute
   '/app/calculator': typeof AppCalculatorRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/app/calc3d': typeof AppCalc3dRoute
   '/app/calculator': typeof AppCalculatorRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
@@ -150,6 +159,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/login'
     | '/reset-password'
+    | '/app/calc3d'
     | '/app/calculator'
     | '/app/calendar'
     | '/app/checklists'
@@ -165,6 +175,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/reset-password'
+    | '/app/calc3d'
     | '/app/calculator'
     | '/app/calendar'
     | '/app/checklists'
@@ -181,6 +192,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/login'
     | '/reset-password'
+    | '/app/calc3d'
     | '/app/calculator'
     | '/app/calendar'
     | '/app/checklists'
@@ -300,10 +312,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCalculatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/calc3d': {
+      id: '/app/calc3d'
+      path: '/calc3d'
+      fullPath: '/app/calc3d'
+      preLoaderRoute: typeof AppCalc3dRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppCalc3dRoute: typeof AppCalc3dRoute
   AppCalculatorRoute: typeof AppCalculatorRoute
   AppCalendarRoute: typeof AppCalendarRoute
   AppChecklistsRoute: typeof AppChecklistsRoute
@@ -317,6 +337,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppCalc3dRoute: AppCalc3dRoute,
   AppCalculatorRoute: AppCalculatorRoute,
   AppCalendarRoute: AppCalendarRoute,
   AppChecklistsRoute: AppChecklistsRoute,
