@@ -542,7 +542,7 @@ function CompanyView({
           onMove={(i) => setMovingItem(i)}
         />
       ) : (
-        <ItemsCards items={filtered} fields={fields} onEdit={setEditingItem} onMove={setMovingItem} accent={company.color} />
+        <ItemsCards items={filtered} allItems={items} fields={fields} onEdit={setEditingItem} onMove={setMovingItem} accent={company.color} />
       )}
 
       {(editingItem || creatingItem) && (
