@@ -22,7 +22,7 @@ function SettingsPage() {
       </header>
 
       <div className="space-y-4 sm:space-y-6">
-        <section className="rounded-xl border border-border bg-card shadow-card p-6">
+        <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-primary"><Building className="h-4 w-4" /></div>
             <h2 className="font-display font-bold text-lg">Perfil</h2>
@@ -35,7 +35,7 @@ function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-card shadow-card p-6">
+        <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-info"><Building className="h-4 w-4" /></div>
             <h2 className="font-display font-bold text-lg">Empresas da holding</h2>
@@ -45,7 +45,7 @@ function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-card shadow-card p-6">
+        <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-warning"><Bell className="h-4 w-4" /></div>
             <h2 className="font-display font-bold text-lg">Notificações</h2>
@@ -57,7 +57,7 @@ function SettingsPage() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-border bg-card shadow-card p-6">
+        <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-success"><Palette className="h-4 w-4" /></div>
             <h2 className="font-display font-bold text-lg">Aparência</h2>
@@ -65,7 +65,7 @@ function SettingsPage() {
           <div className="text-sm text-muted-foreground">PUB CORE usa tema dark premium otimizado para uso prolongado em ambientes executivos.</div>
         </section>
 
-        <section className="rounded-xl border border-border bg-card shadow-card p-6">
+        <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-destructive"><Lock className="h-4 w-4" /></div>
             <h2 className="font-display font-bold text-lg">Segurança</h2>
