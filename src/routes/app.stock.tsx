@@ -876,7 +876,7 @@ function ItemsCards({ items, allItems, fields, onEdit, onMove, accent }: {
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 min-w-0">
           {items.map((i) => (
             <SortableCard key={i.id} item={i} visibleFields={visibleFields} onEdit={onEdit} onMove={onMove} accent={accent} />
           ))}
@@ -892,16 +892,16 @@ function SortableCard({ item: i, visibleFields, onEdit, onMove, accent }: {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: i.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
   return (
-    <div ref={setNodeRef} style={style} className="rounded-xl border border-border bg-card/50 p-4 hover:border-primary/40 transition-colors group">
+    <div ref={setNodeRef} style={style} className="min-w-0 rounded-xl border border-border bg-card/50 p-3 sm:p-4 hover:border-primary/40 transition-colors group overflow-hidden">
       <div className="flex items-start justify-between gap-2 mb-3">
         <div className="flex items-start gap-1.5 min-w-0">
           <button {...attributes} {...listeners}
             className="opacity-40 group-hover:opacity-100 hover:opacity-100 cursor-grab active:cursor-grabbing p-0.5 -ml-0.5 touch-none" aria-label="Reordenar">
             <GripVertical className="h-4 w-4" />
           </button>
-          <div className="font-medium leading-tight truncate">{i.name}</div>
+          <div className="font-medium leading-tight truncate min-w-0">{i.name}</div>
         </div>
-        <div className="flex gap-0.5 opacity-60 group-hover:opacity-100">
+        <div className="flex gap-0.5 opacity-60 group-hover:opacity-100 shrink-0">
           <Button size="sm" variant="ghost" onClick={() => onMove(i)}><ArrowDownToLine className="h-3.5 w-3.5" /></Button>
           <Button size="sm" variant="ghost" onClick={() => onEdit(i)}><Pencil className="h-3.5 w-3.5" /></Button>
         </div>
@@ -913,9 +913,9 @@ function SortableCard({ item: i, visibleFields, onEdit, onMove, accent }: {
           const v = isSystem ? (i as any)[f.key] : i.data?.[f.key];
           const display = f.type === "currency" ? BRL(Number(v || 0)) : (v == null || v === "" ? "—" : String(v));
           return (
-            <div key={f.id} className="flex items-center justify-between">
-              <span className="text-muted-foreground">{f.label}</span>
-              <span className="font-medium" style={f.key === "quantity" && Number(v) <= Number(i.min_quantity) ? { color: "oklch(0.65 0.22 25)" } : undefined}>{display}</span>
+            <div key={f.id} className="flex items-center justify-between gap-2 min-w-0">
+              <span className="text-muted-foreground truncate min-w-0">{f.label}</span>
+              <span className="font-medium truncate text-right shrink-0 max-w-[58%]" style={f.key === "quantity" && Number(v) <= Number(i.min_quantity) ? { color: "oklch(0.65 0.22 25)" } : undefined}>{display}</span>
             </div>
           );
         })}
