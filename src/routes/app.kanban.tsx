@@ -545,7 +545,7 @@ function KanbanPage() {
       {/* BOARD */}
       <div
         ref={boardRef}
-        className="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-proximity [scrollbar-width:thin] overscroll-x-contain"
+        className="flex gap-3 sm:gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory md:snap-proximity [scrollbar-width:thin] overscroll-x-contain -mx-3 sm:mx-0 px-3 sm:px-0"
         style={{ scrollBehavior: "smooth" }}
       >
         {funnelCols.map((col) => {
