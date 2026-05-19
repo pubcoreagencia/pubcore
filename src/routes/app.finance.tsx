@@ -1133,25 +1133,29 @@ function ReportsTab({ tx, products }: { tx: Tx[]; products: Product[] }) {
       </div>
 
       <div className="rounded-2xl border border-border/40 bg-card/60 overflow-hidden">
-        <div className="p-5 border-b border-border/40"><h3 className="font-display text-base font-semibold">Métricas por produto</h3></div>
-        <div className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-5 py-2.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/30">
-          <div>Produto</div><div>Empresa</div><div className="text-right">Margem</div><div className="text-right">Demanda</div><div className="text-right">Lucro/mês</div>
+        <div className="p-4 sm:p-5 border-b border-border/40"><h3 className="font-display text-base font-semibold">Métricas por produto</h3></div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <div className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-5 py-2.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/30">
+              <div>Produto</div><div>Empresa</div><div className="text-right">Margem</div><div className="text-right">Demanda</div><div className="text-right">Lucro/mês</div>
+            </div>
+            {products.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Sem produtos cadastrados.</div> :
+              [...products].sort((a, b) => ((+b.price-+b.cost)*+b.avg_demand_monthly) - ((+a.price-+a.cost)*+a.avg_demand_monthly)).map(p => {
+                const margin = +p.price > 0 ? ((+p.price - +p.cost) / +p.price) * 100 : 0;
+                const monthly = (+p.price - +p.cost) * +p.avg_demand_monthly;
+                return (
+                  <div key={p.id} className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-5 py-3 text-sm border-b border-border/20 last:border-0">
+                    <div className="truncate">{p.name}</div>
+                    <div className="text-muted-foreground text-xs truncate">{p.company}</div>
+                    <div className="text-right text-primary">{margin.toFixed(1)}%</div>
+                    <div className="text-right text-muted-foreground">{+p.avg_demand_monthly}</div>
+                    <div className="text-right font-display text-success">{BRL(monthly)}</div>
+                  </div>
+                );
+              })
+            }
+          </div>
         </div>
-        {products.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Sem produtos cadastrados.</div> :
-          [...products].sort((a, b) => ((+b.price-+b.cost)*+b.avg_demand_monthly) - ((+a.price-+a.cost)*+a.avg_demand_monthly)).map(p => {
-            const margin = +p.price > 0 ? ((+p.price - +p.cost) / +p.price) * 100 : 0;
-            const monthly = (+p.price - +p.cost) * +p.avg_demand_monthly;
-            return (
-              <div key={p.id} className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-5 py-3 text-sm border-b border-border/20 last:border-0">
-                <div className="truncate">{p.name}</div>
-                <div className="text-muted-foreground text-xs">{p.company}</div>
-                <div className="text-right text-primary">{margin.toFixed(1)}%</div>
-                <div className="text-right text-muted-foreground">{+p.avg_demand_monthly}</div>
-                <div className="text-right font-display text-success">{BRL(monthly)}</div>
-              </div>
-            );
-          })
-        }
       </div>
     </div>
   );
