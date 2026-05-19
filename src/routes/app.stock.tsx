@@ -296,10 +296,10 @@ function CompanyTabs({
 
   return (
     <>
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+      <div className="flex w-full max-w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain pb-2 -mx-1 px-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={companies.map((c) => c.id)} strategy={horizontalListSortingStrategy}>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               {companies.map((c) => (
                 <CompanyChip
                   key={c.id} company={c}
@@ -335,7 +335,7 @@ function CompanyChip({ company, active, onSelect, onEdit }: {
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
   return (
     <div ref={setNodeRef} style={style}
-      className={`group flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all cursor-pointer shrink-0 ${
+      className={`group flex max-w-[72vw] items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all cursor-pointer shrink-0 ${
         active ? "border-2 shadow-sm" : "border-border bg-card/50 hover:bg-card text-muted-foreground"
       }`}
       onClick={onSelect}
@@ -346,7 +346,7 @@ function CompanyChip({ company, active, onSelect, onEdit }: {
         <GripVertical className="h-3.5 w-3.5" />
       </button>
       <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: company.color }} />
-      <span className="truncate">{company.name}</span>
+      <span className="truncate min-w-0">{company.name}</span>
       <button onClick={(e) => { e.stopPropagation(); onEdit(); }}
         className="opacity-60 md:opacity-0 md:group-hover:opacity-60 hover:opacity-100 flex-shrink-0" aria-label="Editar">
         <Pencil className="h-3 w-3" />
