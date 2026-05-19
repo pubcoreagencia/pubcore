@@ -813,20 +813,20 @@ function PontoTab() {
   return (
     <div className="space-y-5">
       {/* 1 + 2: Status + Timer Operacional */}
-      <div className="rounded-2xl border border-border bg-card p-8 shadow-card relative overflow-hidden">
+      <div className="rounded-2xl border border-border bg-card p-5 sm:p-8 shadow-card relative overflow-hidden">
         <div className="absolute inset-0 bg-glow opacity-50 pointer-events-none" />
         <div className="relative">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${statusColor}`}>
               <span className={`h-1.5 w-1.5 rounded-full ${isLive ? "bg-current animate-pulse" : "bg-current opacity-60"}`} />
               {statusLabel}
             </span>
-            {user && <span className="text-xs text-muted-foreground">{user.name} · {user.role}</span>}
+            {user && <span className="text-[11px] sm:text-xs text-muted-foreground truncate">{user.name} · {user.role}</span>}
           </div>
 
-          <div className="mt-6">
+          <div className="mt-5 sm:mt-6">
             <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Tempo de expediente</div>
-            <div className="font-display text-6xl md:text-7xl font-bold tracking-tight tabular-nums mt-1">
+            <div className="font-display text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight tabular-nums mt-1">
               {fmtTime(liveWork)}
             </div>
           </div>
