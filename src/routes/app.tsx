@@ -39,7 +39,9 @@ function AppLayout() {
 
           <div className="flex min-h-screen w-full bg-background">
             <Sidebar />
-            <main className="flex-1 min-w-0 relative flex flex-col">
+            <main
+              className="flex-1 min-w-0 relative flex flex-col pb-[calc(env(safe-area-inset-bottom)+56px)] md:pb-0"
+            >
               <MobileNav />
               <PontoHeader />
               <Outlet />
