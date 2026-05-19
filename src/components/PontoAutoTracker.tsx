@@ -139,5 +139,29 @@ export function PontoAutoTracker() {
     };
   }, [user, isLive, end]);
 
+  // Heartbeat: enquanto o expediente está ativo, mantém updated_at fresco
+  // no Supabase para que a detecção de abandono em outro browser/aba funcione.
+  useEffect(() => {
+    if (!user || !isLive || !session.sessionId) return;
+    const sid = session.sessionId;
+    const beat = async () => {
+      // Só bate o coração se houve atividade recente nesta aba
+      const idle = Date.now() - readLastActivity();
+      if (idle > IDLE_LIMIT_MS) return;
+      try {
+        await supabase
+          .from("ponto_sessions")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", sid);
+      } catch (e) {
+        console.error("[ponto-auto] heartbeat error", e);
+      }
+    };
+    beat();
+    const id = window.setInterval(beat, 60_000);
+    return () => window.clearInterval(id);
+  }, [user, isLive, session.sessionId]);
+
   return null;
 }
+
