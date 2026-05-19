@@ -122,16 +122,23 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    min-width: 0;
     width: 100%;
     max-width: 100%;
     overflow-x: hidden;
     overscroll-behavior-x: none;
   }
+  #root, [data-reactroot] {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   /* Prevent any page from horizontally overflowing the viewport on mobile.
      IMPORTANT: do NOT use `body > div` here — TanStack Start renders the app
      shell AND fixed widgets (calculator, toasts) as direct body children, and
      forcing width:100% on them breaks fixed positioning. */
-  body { min-width: 0; }
+  *, ::before, ::after { min-width: 0; }
 
   body {
     background-image:
