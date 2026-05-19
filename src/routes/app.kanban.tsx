@@ -118,6 +118,7 @@ function KanbanPage() {
     if (shouldIgnoreBoardPan(e.target)) return;
     const el = boardRef.current;
     if (!el || el.scrollWidth <= el.clientWidth) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
     boardPointerRef.current = { active: true, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, startLeft: el.scrollLeft, moved: false };
     boardDragMovedRef.current = false;
   };
@@ -139,6 +140,7 @@ function KanbanPage() {
   const handleBoardPointerEnd = (e: PointerEvent<HTMLDivElement>) => {
     const state = boardPointerRef.current;
     if (state.pointerId !== e.pointerId) return;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     boardPointerRef.current = { ...state, active: false };
     if (state.moved) window.setTimeout(() => { boardDragMovedRef.current = false; }, 80);
     else boardDragMovedRef.current = false;
