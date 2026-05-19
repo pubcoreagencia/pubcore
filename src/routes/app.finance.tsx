@@ -1086,12 +1086,12 @@ function ReportsTab({ tx, products }: { tx: Tx[]; products: Product[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
+      <div className="flex flex-wrap justify-between items-start sm:items-center gap-3">
+        <div className="min-w-0">
           <h3 className="font-display text-lg font-semibold">Relatórios e métricas</h3>
           <p className="text-xs text-muted-foreground">Exporte e analise o histórico financeiro completo.</p>
         </div>
-        <Button variant="outline" className="gap-2" onClick={exportCsv}><Download className="h-4 w-4" /> Exportar CSV</Button>
+        <Button variant="outline" size="sm" className="gap-2 flex-shrink-0" onClick={exportCsv}><Download className="h-4 w-4" /> <span className="hidden sm:inline">Exportar </span>CSV</Button>
       </div>
 
       <div className="rounded-2xl border border-border/40 bg-card/60 p-6">
