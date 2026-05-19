@@ -634,7 +634,7 @@ function KanbanPage() {
                         <h4 className={`font-medium text-sm leading-snug flex-1 ${c.status === "done" ? "line-through text-muted-foreground" : ""}`}>{c.title}</h4>
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteCard(c.id); }}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition flex-shrink-0"
+                          className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition flex-shrink-0 p-1 -m-1"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
