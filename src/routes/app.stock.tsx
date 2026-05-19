@@ -341,13 +341,13 @@ function CompanyChip({ company, active, onSelect, onEdit }: {
       {...(active ? { style: { ...style, borderColor: company.color, backgroundColor: `color-mix(in oklab, ${company.color} 12%, transparent)`, color: company.color } } : {})}
     >
       <button {...attributes} {...listeners} onClick={(e) => e.stopPropagation()}
-        className="opacity-0 group-hover:opacity-60 hover:opacity-100 cursor-grab" aria-label="Reordenar">
+        className="hidden md:inline-flex opacity-0 group-hover:opacity-60 hover:opacity-100 cursor-grab" aria-label="Reordenar">
         <GripVertical className="h-3.5 w-3.5" />
       </button>
-      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: company.color }} />
-      {company.name}
+      <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: company.color }} />
+      <span className="truncate">{company.name}</span>
       <button onClick={(e) => { e.stopPropagation(); onEdit(); }}
-        className="opacity-0 group-hover:opacity-60 hover:opacity-100" aria-label="Editar">
+        className="opacity-60 md:opacity-0 md:group-hover:opacity-60 hover:opacity-100 flex-shrink-0" aria-label="Editar">
         <Pencil className="h-3 w-3" />
       </button>
     </div>
