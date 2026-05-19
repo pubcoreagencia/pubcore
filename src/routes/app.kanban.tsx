@@ -545,8 +545,8 @@ function KanbanPage() {
       {/* BOARD */}
       <div
         ref={boardRef}
-        className="flex gap-3 sm:gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory md:snap-proximity [scrollbar-width:thin] overscroll-x-contain -mx-3 sm:mx-0 px-3 sm:px-0"
-        style={{ scrollBehavior: "smooth" }}
+        className="flex gap-3 sm:gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-proximity [scrollbar-width:thin] overscroll-x-contain -mx-3 sm:mx-0 pl-3 pr-6 sm:px-0 touch-pan-x"
+        style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" }}
       >
         {funnelCols.map((col) => {
           const list = funnelCards.filter(c => c.column_id === col.id).sort((a, b) => a.position - b.position);
@@ -724,6 +724,7 @@ function KanbanPage() {
             <Plus className="h-4 w-4" /> Nova coluna
           </button>
         )}
+        <div aria-hidden className="flex-shrink-0 w-3 sm:w-6" />
       </div>
 
       {openCard && (
