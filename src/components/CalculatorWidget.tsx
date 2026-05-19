@@ -105,11 +105,14 @@ export function CalculatorWidget() {
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) d.moved = true;
     const w = containerRef.current?.offsetWidth ?? 64;
     const h = containerRef.current?.offsetHeight ?? 64;
-    const maxX = window.innerWidth - w - 8;
-    const maxY = window.innerHeight - h - 8;
+    const mobile = isMobile();
+    const bottomReserve = mobile ? BOTTOM_NAV_RESERVE : 8;
+    const sideMargin = 8;
+    const maxX = window.innerWidth - w - sideMargin;
+    const maxY = window.innerHeight - h - bottomReserve;
     setPos({
-      x: Math.max(8, Math.min(d.origX + dx, maxX)),
-      y: Math.max(8, Math.min(d.origY + dy, maxY)),
+      x: Math.max(sideMargin, Math.min(d.origX + dx, maxX)),
+      y: Math.max(TOP_RESERVE, Math.min(d.origY + dy, maxY)),
     });
   }, []);
 
