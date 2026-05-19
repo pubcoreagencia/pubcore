@@ -205,26 +205,26 @@ function StockPage() {
   const activeCompany = data.companies.find((c) => c.id === activeCompanyId) ?? null;
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-[1700px] mx-auto">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            <Boxes className="h-3.5 w-3.5" /> Estoque · {activeWorkspace?.name}
+    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-[1700px] mx-auto">
+      <header className="flex flex-wrap items-start sm:items-end justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <Boxes className="h-3.5 w-3.5 flex-shrink-0" /> <span className="truncate">Estoque · {activeWorkspace?.name}</span>
           </div>
-          <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-tight mt-1">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight mt-1">
             Central de Estoque
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 hidden sm:block">
             Cada empresa tem seu próprio inventário, grupos, categorias e campos.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="gap-2">
-            <History className="h-4 w-4" /> Histórico
+            <History className="h-4 w-4" /> <span className="hidden sm:inline">Histórico</span>
           </Button>
           {activeCompany && (
             <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)} className="gap-2">
-              <Settings2 className="h-4 w-4" /> Configurar empresa
+              <Settings2 className="h-4 w-4" /> <span className="hidden sm:inline">Configurar empresa</span>
             </Button>
           )}
         </div>
