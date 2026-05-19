@@ -1069,7 +1069,7 @@ function MetricsTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card shadow-card">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl border border-border bg-card shadow-card">
         <div className="flex gap-1 p-1 rounded-lg bg-surface">
           {(["diario","semanal","mensal"] as const).map((p) => (
             <button
@@ -1081,8 +1081,8 @@ function MetricsTab() {
             >{p}</button>
           ))}
         </div>
-        <span className="ml-auto text-xs text-muted-foreground font-mono">
-          {loading ? "Carregando…" : `${tasksCount} tarefas · ${hours.toFixed(1)}h trabalhadas`}
+        <span className="ml-auto text-[11px] sm:text-xs text-muted-foreground font-mono">
+          {loading ? "Carregando…" : `${tasksCount} tarefas · ${hours.toFixed(1)}h`}
         </span>
       </div>
 
