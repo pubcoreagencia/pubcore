@@ -335,12 +335,27 @@ export function PontoProvider({ children }: { children: ReactNode }) {
 
   const reset = () => setSession(initial);
 
+  const adoptSession = (row: PontoRemoteRow) => {
+    const pauses: PontoPause[] = Array.isArray(row.pauses) ? (row.pauses as PontoPause[]) : [];
+    const status: PontoStatus = row.status === "paused" ? "paused" : row.status === "ended" ? "ended" : "working";
+    const next: PontoSession = {
+      status,
+      startedAt: new Date(row.started_at).getTime(),
+      endedAt: row.ended_at ? new Date(row.ended_at).getTime() : null,
+      pauses,
+      user: row.user_name ?? undefined,
+      ownerEmail: row.owner_email,
+      sessionId: row.id,
+    };
+    setSession(next);
+  };
+
   const now = Date.now();
   const { liveWorkMs, livePauseMs, productiveMs } = compute(session, now);
   const isLive = session.status === "working" || session.status === "paused";
 
   return (
-    <Ctx.Provider value={{ session, liveWorkMs, livePauseMs, productiveMs, isLive, start, pause, resume, end, reset }}>
+    <Ctx.Provider value={{ session, liveWorkMs, livePauseMs, productiveMs, isLive, start, pause, resume, end, reset, adoptSession }}>
       {children}
     </Ctx.Provider>
   );
