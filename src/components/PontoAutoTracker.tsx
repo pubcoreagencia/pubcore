@@ -1,0 +1,146 @@
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { usePonto, type PontoRemoteRow } from "@/lib/ponto";
+import { getActiveWorkspaceId } from "@/lib/workspace";
+
+const IDLE_LIMIT_MS = 30 * 60 * 1000; // 30 minutos
+const ACTIVITY_KEY = "pubcore_ponto_last_activity";
+const CHECK_INTERVAL_MS = 30_000;
+
+function startOfTodayISO() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
+
+function readLastActivity(): number {
+  if (typeof window === "undefined") return Date.now();
+  const raw = localStorage.getItem(ACTIVITY_KEY);
+  const v = raw ? Number(raw) : NaN;
+  return Number.isFinite(v) ? v : Date.now();
+}
+
+function writeLastActivity(ts: number) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(ACTIVITY_KEY, String(ts));
+}
+
+export function PontoAutoTracker() {
+  const { user } = useAuth();
+  const { session, isLive, start, end, adoptSession } = usePonto();
+  const bootstrappedForUser = useRef<string | null>(null);
+  const endingRef = useRef(false);
+
+  // Atividade do usuário → reseta o timer de inatividade
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mark = () => writeLastActivity(Date.now());
+    const events: (keyof WindowEventMap)[] = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    events.forEach((e) => window.addEventListener(e, mark, { passive: true }));
+    mark();
+    return () => events.forEach((e) => window.removeEventListener(e, mark));
+  }, []);
+
+  // Bootstrap automático: ao logar, recupera ou cria sessão do dia
+  useEffect(() => {
+    if (!user) {
+      bootstrappedForUser.current = null;
+      return;
+    }
+    if (bootstrappedForUser.current === user.id) return;
+
+    let cancelled = false;
+    (async () => {
+      // Aguarda workspace ativo (resolvido pelo WorkspaceProvider)
+      let tries = 0;
+      while (!getActiveWorkspaceId() && tries < 20) {
+        await new Promise((r) => setTimeout(r, 150));
+        tries++;
+      }
+      if (cancelled) return;
+
+      try {
+        const { data, error } = await supabase
+          .from("ponto_sessions")
+          .select("id, started_at, ended_at, status, pauses, user_name, owner_email")
+          .eq("user_id", user.id)
+          .gte("started_at", startOfTodayISO())
+          .in("status", ["working", "paused"])
+          .order("started_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (cancelled) return;
+        if (error) {
+          console.error("[ponto-auto] lookup error", error);
+          return;
+        }
+        if (data) {
+          // Já existe sessão ativa hoje → adota
+          const startedTs = new Date(data.started_at).getTime();
+          const lastAct = readLastActivity();
+          const idle = Date.now() - lastAct;
+          if (idle > IDLE_LIMIT_MS) {
+            // Encerra a antiga e abre nova
+            adoptSession(data as PontoRemoteRow);
+            await end();
+            toast("Expediente anterior encerrado por inatividade", { duration: 3500 });
+            await start(user.name, user.email, user.id);
+            toast("Novo expediente iniciado", { duration: 2500 });
+          } else if (session.sessionId !== data.id) {
+            adoptSession(data as PontoRemoteRow);
+            if (startedTs && Date.now() - startedTs < 60_000) {
+              // já tinha acabado de iniciar
+            }
+          }
+        } else if (!isLive) {
+          await start(user.name, user.email, user.id);
+          toast("Expediente iniciado automaticamente", { duration: 2500 });
+        }
+        writeLastActivity(Date.now());
+        bootstrappedForUser.current = user.id;
+      } catch (e) {
+        console.error("[ponto-auto] bootstrap exception", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user, isLive, session.sessionId, start, end, adoptSession]);
+
+  // Verifica inatividade periodicamente e ao retornar à aba
+  useEffect(() => {
+    if (!user) return;
+
+    const checkIdle = async () => {
+      if (endingRef.current) return;
+      if (!isLive) return;
+      const idle = Date.now() - readLastActivity();
+      if (idle <= IDLE_LIMIT_MS) return;
+      endingRef.current = true;
+      try {
+        await end();
+        toast("Expediente encerrado automaticamente por inatividade", { duration: 4000 });
+      } finally {
+        endingRef.current = false;
+      }
+    };
+
+    const interval = window.setInterval(checkIdle, CHECK_INTERVAL_MS);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkIdle();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [user, isLive, end]);
+
+  return null;
+}
