@@ -86,39 +86,39 @@ function CRMPage() {
   const closed = leads.filter((l) => l.stage === "Fechado").reduce((s, l) => s + Number(l.value), 0);
 
   return (
-    <div className="p-6 lg:p-10 max-w-[1600px] mx-auto">
-      <header className="flex items-end justify-between mb-6 flex-wrap gap-3">
-        <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pipeline comercial</div>
-          <h1 className="font-display text-4xl font-bold tracking-tight mt-1">CRM</h1>
-          <p className="text-muted-foreground mt-1">{leads.length} oportunidades · pipeline de R$ {(total/1000).toFixed(0)}k</p>
+    <div className="p-3 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
+      <header className="flex items-start sm:items-end justify-between mb-4 sm:mb-6 flex-wrap gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">Pipeline comercial</div>
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mt-1">CRM</h1>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm">{leads.length} oportunidades · R$ {(total/1000).toFixed(0)}k</p>
         </div>
-        <button onClick={() => setOpen(true)} className="rounded-lg bg-gradient-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-glow flex items-center gap-2">
-          <Plus className="h-4 w-4" /> Novo lead
+        <button onClick={() => setOpen(true)} className="rounded-lg bg-gradient-primary px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-primary-foreground shadow-glow flex items-center gap-2 flex-shrink-0">
+          <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo lead</span><span className="sm:hidden">Lead</span>
         </button>
       </header>
 
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <section className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-5 sm:mb-8">
         {[
           { l: "Pipeline total", v: `R$ ${(total/1000).toFixed(0)}k`, c: "text-primary" },
           { l: "Fechado", v: `R$ ${(closed/1000).toFixed(0)}k`, c: "text-success" },
           { l: "Em negociação", v: leads.filter((l) => l.stage === "Negociação").length, c: "text-warning" },
           { l: "Conversão", v: `${leads.length ? Math.round((leads.filter((l) => l.stage === "Fechado").length / leads.length) * 100) : 0}%`, c: "text-info" },
         ].map((k) => (
-          <div key={k.l} className="rounded-xl border border-border bg-card p-5 shadow-card">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">{k.l}</div>
-            <div className={`mt-2 font-display text-2xl font-bold ${k.c}`}>{k.v}</div>
+          <div key={k.l} className="rounded-xl border border-border bg-card p-3 sm:p-5 shadow-card min-w-0">
+            <div className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground truncate">{k.l}</div>
+            <div className={`mt-1.5 sm:mt-2 font-display text-lg sm:text-2xl font-bold truncate ${k.c}`}>{k.v}</div>
           </div>
         ))}
       </section>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="flex md:grid md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 overflow-x-auto md:overflow-visible snap-x snap-mandatory md:snap-none -mx-3 sm:mx-0 px-3 sm:px-0 pb-2">
         {STAGES.map((stage) => {
           const items = leads.filter((l) => l.stage === stage);
           const sum = items.reduce((s, l) => s + Number(l.value), 0);
           return (
             <div key={stage} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(stage)}
-              className="rounded-xl border border-border bg-surface/40 p-3 min-h-[300px]">
+              className="snap-start flex-shrink-0 w-[85vw] max-w-[320px] md:w-auto md:max-w-none rounded-xl border border-border bg-surface/40 p-3 min-h-[280px] sm:min-h-[300px]">
               <div className="flex items-center justify-between px-1 py-2 mb-2">
                 <h3 className={`font-semibold text-sm uppercase tracking-wider ${stageColor[stage]}`}>{stage}</h3>
                 <span className="text-xs text-muted-foreground font-mono">{items.length}</span>
@@ -138,11 +138,11 @@ function CRMPage() {
                           <Building2 className="h-3 w-3 shrink-0" /> {l.company || "—"}
                         </div>
                       </div>
-                      <button onClick={() => remove(l.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
+                      <button onClick={() => remove(l.id)} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 -m-1 flex-shrink-0">
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
-                    <div className="mt-3 flex items-center justify-between">
+                    <div className="mt-3 flex items-center justify-between gap-2">
                       {l.owner && <CompanyTag company={l.owner} />}
                       <span className="text-xs font-mono font-semibold">R$ {(Number(l.value)/1000).toFixed(0)}k</span>
                     </div>
