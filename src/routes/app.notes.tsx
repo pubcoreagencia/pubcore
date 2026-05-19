@@ -704,7 +704,7 @@ function Editor({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="h-14 px-6 border-b border-border/60 flex items-center justify-between gap-3 bg-card/20">
+      <div className="h-14 pl-6 pr-6 md:pr-[230px] border-b border-border/60 flex items-center justify-between gap-3 bg-card/20">
         <div className="flex items-center gap-2 min-w-0">
           <Icon className="h-3.5 w-3.5" style={{ color }} />
           <span className="text-[10px] uppercase tracking-wider font-semibold truncate" style={{ color }}>
