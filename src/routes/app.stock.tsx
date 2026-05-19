@@ -1262,8 +1262,8 @@ function FieldRow({ field, onToggle, onEdit, onDelete }: {
         {field.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
       </Button>
       <Button size="sm" variant="ghost" onClick={onEdit}><Pencil className="h-3.5 w-3.5" /></Button>
-      {!field.is_system && (
-        <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+      {field.key !== "name" && (
+        <Button size="sm" variant="ghost" onClick={onDelete} title="Excluir campo"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
       )}
     </div>
   );
