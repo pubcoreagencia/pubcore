@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { PontoHeader } from "@/components/PontoHeader";
+import { PontoAutoTracker } from "@/components/PontoAutoTracker";
 import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
@@ -32,6 +33,7 @@ function AppLayout() {
     <WorkspaceProvider>
       <PontoProvider>
         <ChecklistProvider>
+          <PontoAutoTracker />
           <div className="flex min-h-screen w-full bg-background">
             <Sidebar />
             <main className="flex-1 min-w-0 relative flex flex-col">
