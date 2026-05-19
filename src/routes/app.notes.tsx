@@ -376,9 +376,9 @@ function NotesPage() {
     : filter.name;
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] w-full overflow-hidden">
-      {/* ============ Notes Sidebar ============ */}
-      <aside className="w-64 shrink-0 border-r border-border/60 bg-card/30 backdrop-blur-sm flex flex-col">
+    <div className="flex h-[calc(100vh-3.5rem-64px-env(safe-area-inset-bottom))] md:h-[calc(100vh-3.5rem)] w-full overflow-hidden">
+      {/* ============ Notes Sidebar (desktop) ============ */}
+      <aside className="hidden md:flex w-64 shrink-0 border-r border-border/60 bg-card/30 backdrop-blur-sm flex-col">
         <div className="px-4 pt-5 pb-3">
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -441,25 +441,43 @@ function NotesPage() {
       </aside>
 
       {/* ============ List Pane ============ */}
-      <section className="w-[360px] shrink-0 border-r border-border/60 flex flex-col bg-background">
-        <div className="px-4 pt-5 pb-3 space-y-3 border-b border-border/60">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display font-semibold text-sm tracking-tight capitalize">{filterLabel}</h3>
-            <div className="flex items-center gap-0.5 rounded-md bg-secondary/60 p-0.5">
+      <section className={`${selectedId ? "hidden md:flex" : "flex"} w-full md:w-[360px] shrink-0 border-r border-border/60 flex-col bg-background`}>
+        <div className="px-4 pt-4 md:pt-5 pb-3 space-y-3 border-b border-border/60">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <button
-                onClick={() => setView("grid")}
-                className={`p-1.5 rounded transition-colors ${view === "grid" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                aria-label="Grid"
+                onClick={() => setMobileFiltersOpen(true)}
+                className="md:hidden p-2 -ml-2 rounded-md hover:bg-secondary text-muted-foreground"
+                aria-label="Filtros"
               >
-                <Grid2x2 className="h-3.5 w-3.5" />
+                <Settings2 className="h-4 w-4" />
               </button>
+              <h3 className="font-display font-semibold text-sm tracking-tight capitalize truncate">{filterLabel}</h3>
+            </div>
+            <div className="flex items-center gap-1">
               <button
-                onClick={() => setView("list")}
-                className={`p-1.5 rounded transition-colors ${view === "list" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                aria-label="Lista"
+                onClick={createNote}
+                className="md:hidden p-2 rounded-md bg-primary text-primary-foreground"
+                aria-label="Nova nota"
               >
-                <ListIcon className="h-3.5 w-3.5" />
+                <Plus className="h-4 w-4" />
               </button>
+              <div className="flex items-center gap-0.5 rounded-md bg-secondary/60 p-0.5">
+                <button
+                  onClick={() => setView("grid")}
+                  className={`p-1.5 rounded transition-colors ${view === "grid" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  aria-label="Grid"
+                >
+                  <Grid2x2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => setView("list")}
+                  className={`p-1.5 rounded transition-colors ${view === "list" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  aria-label="Lista"
+                >
+                  <ListIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
           <div className="relative">
