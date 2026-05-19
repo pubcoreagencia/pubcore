@@ -1212,9 +1212,14 @@ function FieldsManager({ fields, workspaceId, userId, companyId }: {
     await sb.from("stock_field_defs").update({ visible: !f.visible }).eq("id", f.id);
   };
   const remove = async (f: FieldDef) => {
-    if (f.is_system) return toast.error("Campos do sistema não podem ser excluídos");
-    if (!confirm(`Excluir campo "${f.label}"?`)) return;
-    await sb.from("stock_field_defs").delete().eq("id", f.id);
+    if (f.key === "name") return toast.error('O campo "Nome" é obrigatório e não pode ser excluído');
+    const msg = f.is_system
+      ? `Excluir o campo de sistema "${f.label}"? Ele deixará de aparecer nas colunas e formulários (os dados existentes na tabela não serão apagados).`
+      : `Excluir campo "${f.label}"? Esta ação não pode ser desfeita.`;
+    if (!confirm(msg)) return;
+    const { error } = await sb.from("stock_field_defs").delete().eq("id", f.id);
+    if (error) return toast.error("Não foi possível excluir o campo");
+    toast.success("Campo excluído");
   };
 
   return (
@@ -1257,8 +1262,8 @@ function FieldRow({ field, onToggle, onEdit, onDelete }: {
         {field.visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
       </Button>
       <Button size="sm" variant="ghost" onClick={onEdit}><Pencil className="h-3.5 w-3.5" /></Button>
-      {!field.is_system && (
-        <Button size="sm" variant="ghost" onClick={onDelete}><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
+      {field.key !== "name" && (
+        <Button size="sm" variant="ghost" onClick={onDelete} title="Excluir campo"><Trash2 className="h-3.5 w-3.5 text-destructive" /></Button>
       )}
     </div>
   );
