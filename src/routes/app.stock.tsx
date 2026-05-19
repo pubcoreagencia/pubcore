@@ -758,41 +758,75 @@ function InlineCell({ item, field, lowStock }: { item: Item; field: FieldDef; lo
 }
 
 // ---------------- Cards view ----------------
-function ItemsCards({ items, fields, onEdit, onMove, accent }: {
-  items: Item[]; fields: FieldDef[]; onEdit: (i: Item) => void; onMove: (i: Item) => void; accent: string;
+function ItemsCards({ items, allItems, fields, onEdit, onMove, accent }: {
+  items: Item[]; allItems: Item[]; fields: FieldDef[]; onEdit: (i: Item) => void; onMove: (i: Item) => void; accent: string;
 }) {
-  if (items.length === 0) return <div className="rounded-xl border border-border bg-card/30 py-16 text-center text-muted-foreground">Nenhum item.</div>;
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const visibleFields = fields.filter((f) => f.visible && f.key !== "name").slice(0, 6);
+
+  const onDragEnd = async (e: DragEndEvent) => {
+    if (!e.over || e.active.id === e.over.id) return;
+    const oldIdx = allItems.findIndex((i) => i.id === e.active.id);
+    const newIdx = allItems.findIndex((i) => i.id === e.over!.id);
+    if (oldIdx < 0 || newIdx < 0) return;
+    const reordered = arrayMove(allItems, oldIdx, newIdx);
+    await Promise.all(reordered.map((it, i) =>
+      sb.from("stock_items").update({ position: i }).eq("id", it.id)
+    ));
+  };
+
+  if (items.length === 0) return <div className="rounded-xl border border-border bg-card/30 py-16 text-center text-muted-foreground">Nenhum item.</div>;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-      {items.map((i) => (
-        <div key={i.id} className="rounded-xl border border-border bg-card/50 p-4 hover:border-primary/40 transition-colors group">
-          <div className="flex items-start justify-between gap-2 mb-3">
-            <div className="font-medium leading-tight">{i.name}</div>
-            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100">
-              <Button size="sm" variant="ghost" onClick={() => onMove(i)}><ArrowDownToLine className="h-3.5 w-3.5" /></Button>
-              <Button size="sm" variant="ghost" onClick={() => onEdit(i)}><Pencil className="h-3.5 w-3.5" /></Button>
-            </div>
-          </div>
-          <div className="space-y-1 text-xs">
-            {visibleFields.map((f) => {
-              const isSystem = SYSTEM_KEYS.has(f.key);
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const v = isSystem ? (i as any)[f.key] : i.data?.[f.key];
-              const display = f.type === "currency" ? BRL(Number(v || 0)) : (v == null || v === "" ? "—" : String(v));
-              return (
-                <div key={f.id} className="flex items-center justify-between">
-                  <span className="text-muted-foreground">{f.label}</span>
-                  <span className="font-medium" style={f.key === "quantity" && Number(v) <= Number(i.min_quantity) ? { color: "oklch(0.65 0.22 25)" } : undefined}>{display}</span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-3 pt-3 border-t border-border/50 text-[10px] uppercase tracking-wider" style={{ color: accent }}>
-            {i.sku ?? "sem SKU"}
-          </div>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {items.map((i) => (
+            <SortableCard key={i.id} item={i} visibleFields={visibleFields} onEdit={onEdit} onMove={onMove} accent={accent} />
+          ))}
         </div>
-      ))}
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function SortableCard({ item: i, visibleFields, onEdit, onMove, accent }: {
+  item: Item; visibleFields: FieldDef[]; onEdit: (i: Item) => void; onMove: (i: Item) => void; accent: string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: i.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
+  return (
+    <div ref={setNodeRef} style={style} className="rounded-xl border border-border bg-card/50 p-4 hover:border-primary/40 transition-colors group">
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div className="flex items-start gap-1.5 min-w-0">
+          <button {...attributes} {...listeners}
+            className="opacity-40 group-hover:opacity-100 hover:opacity-100 cursor-grab active:cursor-grabbing p-0.5 -ml-0.5 touch-none" aria-label="Reordenar">
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <div className="font-medium leading-tight truncate">{i.name}</div>
+        </div>
+        <div className="flex gap-0.5 opacity-60 group-hover:opacity-100">
+          <Button size="sm" variant="ghost" onClick={() => onMove(i)}><ArrowDownToLine className="h-3.5 w-3.5" /></Button>
+          <Button size="sm" variant="ghost" onClick={() => onEdit(i)}><Pencil className="h-3.5 w-3.5" /></Button>
+        </div>
+      </div>
+      <div className="space-y-1 text-xs">
+        {visibleFields.map((f) => {
+          const isSystem = SYSTEM_KEYS.has(f.key);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const v = isSystem ? (i as any)[f.key] : i.data?.[f.key];
+          const display = f.type === "currency" ? BRL(Number(v || 0)) : (v == null || v === "" ? "—" : String(v));
+          return (
+            <div key={f.id} className="flex items-center justify-between">
+              <span className="text-muted-foreground">{f.label}</span>
+              <span className="font-medium" style={f.key === "quantity" && Number(v) <= Number(i.min_quantity) ? { color: "oklch(0.65 0.22 25)" } : undefined}>{display}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div className="mt-3 pt-3 border-t border-border/50 text-[10px] uppercase tracking-wider" style={{ color: accent }}>
+        {i.sku ?? "sem SKU"}
+      </div>
     </div>
   );
 }
