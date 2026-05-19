@@ -203,7 +203,7 @@ function Calc3DPage() {
   };
 
   return (
-    <div className="flex-1 w-full min-w-0 max-w-[1600px] p-3 sm:p-4 md:p-8">
+    <div className="w-full min-w-0 max-w-full xl:max-w-[1600px] xl:mx-auto p-3 sm:p-4 md:p-8 overflow-x-hidden">
       {/* Header */}
       <header className="mb-3 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -219,18 +219,18 @@ function Calc3DPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center min-w-0">
           <button
             onClick={() => setShowHistory(true)}
-            className="flex-1 sm:flex-initial h-10 sm:h-9 px-3 rounded-lg border border-border/60 bg-card/60 hover:bg-card active:scale-[0.98] text-xs font-medium flex items-center justify-center gap-1.5"
+            className="min-w-0 h-10 sm:h-9 px-2 sm:px-3 rounded-lg border border-border/60 bg-card/60 hover:bg-card active:scale-[0.98] text-xs font-medium flex items-center justify-center gap-1.5"
           >
-            <History className="h-3.5 w-3.5" /> Projetos ({projects.length})
+            <History className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Projetos ({projects.length})</span>
           </button>
           <button
             onClick={newProject}
-            className="flex-1 sm:flex-initial h-10 sm:h-9 px-3 rounded-lg border border-border/60 bg-card/60 hover:bg-card active:scale-[0.98] text-xs font-medium flex items-center justify-center gap-1.5"
+            className="min-w-0 h-10 sm:h-9 px-2 sm:px-3 rounded-lg border border-border/60 bg-card/60 hover:bg-card active:scale-[0.98] text-xs font-medium flex items-center justify-center gap-1.5"
           >
-            <Plus className="h-3.5 w-3.5" /> Novo
+            <Plus className="h-3.5 w-3.5 shrink-0" /> <span className="truncate">Novo</span>
           </button>
         </div>
       </header>
@@ -239,15 +239,15 @@ function Calc3DPage() {
       <div className="lg:hidden sticky top-14 z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pb-2 pt-1 bg-background/85 backdrop-blur-md mb-3">
         <button
           onClick={() => setExpandedMobile((v) => !v)}
-          className="w-full text-left rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/15 to-card/60 backdrop-blur p-3 shadow-lg shadow-primary/10 active:scale-[0.99] transition"
+          className="w-full min-w-0 text-left rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/15 to-card/60 backdrop-blur p-3 shadow-lg shadow-primary/10 active:scale-[0.99] transition"
         >
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className="text-[10px] uppercase tracking-wider text-primary/80">Preço ideal</div>
-              <div className="text-2xl font-display tabular-nums text-foreground truncate">
+              <div className="text-xl sm:text-2xl font-display tabular-nums text-foreground break-words leading-tight">
                 {brl(r.idealPrice)}
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-[11px] text-muted-foreground break-words leading-tight">
                 Custo {brl(r.costUnit)} · Lucro <span className="text-emerald-400">{brl(r.profitUnit)}</span>
               </div>
             </div>
