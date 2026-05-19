@@ -628,7 +628,7 @@ function GroupSection({
             <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{items.length}</Badge>
             {critical > 0 && <Badge variant="destructive" className="text-[10px] h-5 px-1.5">{critical} crítico{critical > 1 ? "s" : ""}</Badge>}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5 hidden sm:block">
+          <div className="text-[11px] text-muted-foreground mt-0.5">
             {totalUnits.toLocaleString("pt-BR")} un · {BRL(totalValue)}
           </div>
         </div>
@@ -667,9 +667,14 @@ function GroupSection({
 
 function Kpi({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card/50 p-3 sm:p-4 min-w-0">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground truncate">{label}</div>
-      <div className="font-display text-lg sm:text-2xl font-semibold mt-1 sm:mt-1.5 tracking-tight truncate" style={accent ? { color: accent } : undefined}>{value}</div>
+    <div className="rounded-xl border border-border bg-card/50 p-2.5 sm:p-4 min-w-0">
+      <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.2em] text-muted-foreground truncate">{label}</div>
+      <div
+        className="font-display text-base sm:text-2xl font-semibold mt-1 sm:mt-1.5 tracking-tight break-words leading-tight"
+        style={accent ? { color: accent } : undefined}
+      >
+        {value}
+      </div>
     </div>
   );
 }
