@@ -235,11 +235,11 @@ function Dashboard() {
         </div>
       </section>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-4 md:gap-6 min-w-0">
         {/* Produtividade semanal */}
-        <Link to="/app" className="lg:col-span-2 rounded-xl border border-border bg-card shadow-card p-5 block hover:border-primary/30 hover:shadow-[0_0_24px_-8px_rgba(79,70,229,0.12)] transition-all duration-300 cursor-pointer group">
+        <Link to="/app" className="min-w-0 lg:col-span-2 rounded-xl border border-border bg-card shadow-card p-3 sm:p-5 block hover:border-primary/30 hover:shadow-[0_0_24px_-8px_rgba(79,70,229,0.12)] transition-all duration-300 cursor-pointer group">
           <div className="flex items-center justify-between mb-4">
-            <div>
+            <div className="min-w-0">
               <h2 className="font-display text-lg font-bold flex items-center gap-2">
                 <BarChart3 className="h-4 w-4 text-primary" /> Produtividade semanal
               </h2>
@@ -270,7 +270,7 @@ function Dashboard() {
         </Link>
 
         {/* Progresso por empresa */}
-        <Link to="/app/kanban" className="rounded-xl border border-border bg-card shadow-card p-5 block hover:border-primary/30 hover:shadow-[0_0_24px_-8px_rgba(79,70,229,0.12)] transition-all duration-300 cursor-pointer group">
+        <Link to="/app/kanban" className="min-w-0 rounded-xl border border-border bg-card shadow-card p-3 sm:p-5 block hover:border-primary/30 hover:shadow-[0_0_24px_-8px_rgba(79,70,229,0.12)] transition-all duration-300 cursor-pointer group">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h2 className="font-display text-lg font-bold">Tarefas por empresa</h2>
@@ -300,9 +300,9 @@ function Dashboard() {
       </div>
 
       {/* Atividade recente + próximos eventos + estoque + notas */}
-      <div className="grid lg:grid-cols-4 gap-6">
+      <div className="grid lg:grid-cols-4 gap-4 md:gap-6 min-w-0">
         {/* Atividade recente */}
-        <section className="lg:col-span-2 rounded-xl border border-border bg-card shadow-card p-5">
+        <section className="min-w-0 lg:col-span-2 rounded-xl border border-border bg-card shadow-card p-3 sm:p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-lg font-bold flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" /> Atividade recente
@@ -370,7 +370,7 @@ function Dashboard() {
         </section>
 
         {/* Próximos eventos */}
-        <Link to="/app/calendar" className="rounded-xl border border-border bg-card shadow-card p-5 block hover:border-primary/30 hover:shadow-[0_0_24px_-8px_rgba(79,70,229,0.12)] transition-all duration-300 cursor-pointer group">
+        <Link to="/app/calendar" className="min-w-0 rounded-xl border border-border bg-card shadow-card p-3 sm:p-5 block hover:border-primary/30 hover:shadow-[0_0_24px_-8px_rgba(79,70,229,0.12)] transition-all duration-300 cursor-pointer group">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-display text-lg font-bold flex items-center gap-2">
               <CalendarIcon className="h-4 w-4 text-info" /> Próximos eventos
@@ -406,8 +406,8 @@ function Dashboard() {
         </Link>
 
         {/* Estoque Baixo + Notas Recentes */}
-        <div className="space-y-6">
-          <Link to="/app/stock" className="rounded-xl border border-border bg-card shadow-card p-5 block hover:border-rose-500/30 hover:shadow-[0_0_24px_-8px_rgba(244,63,94,0.12)] transition-all duration-300 cursor-pointer group">
+        <div className="min-w-0 space-y-4 md:space-y-6">
+          <Link to="/app/stock" className="min-w-0 rounded-xl border border-border bg-card shadow-card p-3 sm:p-5 block hover:border-rose-500/30 hover:shadow-[0_0_24px_-8px_rgba(244,63,94,0.12)] transition-all duration-300 cursor-pointer group">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-lg font-bold flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-rose-400" /> Estoque baixo
@@ -433,7 +433,7 @@ function Dashboard() {
             )}
           </Link>
 
-          <Link to="/app/notes" className="rounded-xl border border-border bg-card shadow-card p-5 block hover:border-amber-500/30 hover:shadow-[0_0_24px_-8px_rgba(245,158,11,0.12)] transition-all duration-300 cursor-pointer group">
+          <Link to="/app/notes" className="min-w-0 rounded-xl border border-border bg-card shadow-card p-3 sm:p-5 block hover:border-amber-500/30 hover:shadow-[0_0_24px_-8px_rgba(245,158,11,0.12)] transition-all duration-300 cursor-pointer group">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-display text-lg font-bold flex items-center gap-2">
                 <StickyNote className="h-4 w-4 text-amber-400" /> Notas recentes
@@ -462,7 +462,7 @@ function Dashboard() {
       </div>
 
       {/* Resumo operacional do dia */}
-      <section className="rounded-xl border border-border bg-card shadow-card p-5 hover:border-primary/20 transition-colors duration-300">
+      <section className="min-w-0 rounded-xl border border-border bg-card shadow-card p-3 sm:p-5 hover:border-primary/20 transition-colors duration-300">
         <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" /> Resumo operacional de hoje
         </h2>
@@ -491,15 +491,15 @@ function DailySummary() {
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-2.5 sm:gap-3 min-w-0">
       {items.map((i) => (
         <Link
           key={i.label}
           to={i.to}
-          className="group rounded-lg border border-border bg-surface/40 px-3 py-3 hover:border-primary/30 hover:bg-surface/60 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+          className="group min-w-0 rounded-lg border border-border bg-surface/40 px-2.5 sm:px-3 py-3 hover:border-primary/30 hover:bg-surface/60 hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
         >
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{i.label}</div>
-          <div className="font-display text-2xl font-bold tabular-nums mt-1">{i.value}</div>
+          <div className="text-[9px] sm:text-[10px] uppercase tracking-wider sm:tracking-widest text-muted-foreground break-words leading-tight">{i.label}</div>
+          <div className="font-display text-xl sm:text-2xl font-bold tabular-nums mt-1 break-words leading-tight">{i.value}</div>
           <ChevronRight className="h-3 w-3 text-muted-foreground/30 mt-2 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" />
         </Link>
       ))}
