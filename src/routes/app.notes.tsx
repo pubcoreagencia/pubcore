@@ -103,6 +103,7 @@ function NotesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const catByName = useMemo(() => {
     const m = new Map<string, NoteCategory>();
