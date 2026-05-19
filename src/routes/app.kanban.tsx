@@ -110,7 +110,7 @@ function KanbanPage() {
   }, []);
 
   const shouldIgnoreBoardPan = (target: EventTarget | null) => {
-    return target instanceof HTMLElement && Boolean(target.closest("button,a,input,textarea,select,[role='button'],[contenteditable='true']"));
+    return target instanceof HTMLElement && Boolean(target.closest("input,textarea,select,[contenteditable='true'],[data-board-pan-lock='true']"));
   };
 
   const handleBoardPointerDown = (e: PointerEvent<HTMLDivElement>) => {
