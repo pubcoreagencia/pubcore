@@ -205,26 +205,26 @@ function StockPage() {
   const activeCompany = data.companies.find((c) => c.id === activeCompanyId) ?? null;
 
   return (
-    <div className="p-6 md:p-8 space-y-6 max-w-[1700px] mx-auto">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-            <Boxes className="h-3.5 w-3.5" /> Estoque · {activeWorkspace?.name}
+    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-[1700px] mx-auto">
+      <header className="flex flex-wrap items-start sm:items-end justify-between gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            <Boxes className="h-3.5 w-3.5 flex-shrink-0" /> <span className="truncate">Estoque · {activeWorkspace?.name}</span>
           </div>
-          <h1 className="font-display text-3xl md:text-4xl font-semibold tracking-tight mt-1">
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight mt-1">
             Central de Estoque
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 hidden sm:block">
             Cada empresa tem seu próprio inventário, grupos, categorias e campos.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="gap-2">
-            <History className="h-4 w-4" /> Histórico
+            <History className="h-4 w-4" /> <span className="hidden sm:inline">Histórico</span>
           </Button>
           {activeCompany && (
             <Button variant="outline" size="sm" onClick={() => setConfigOpen(true)} className="gap-2">
-              <Settings2 className="h-4 w-4" /> Configurar empresa
+              <Settings2 className="h-4 w-4" /> <span className="hidden sm:inline">Configurar empresa</span>
             </Button>
           )}
         </div>
@@ -341,13 +341,13 @@ function CompanyChip({ company, active, onSelect, onEdit }: {
       {...(active ? { style: { ...style, borderColor: company.color, backgroundColor: `color-mix(in oklab, ${company.color} 12%, transparent)`, color: company.color } } : {})}
     >
       <button {...attributes} {...listeners} onClick={(e) => e.stopPropagation()}
-        className="opacity-0 group-hover:opacity-60 hover:opacity-100 cursor-grab" aria-label="Reordenar">
+        className="hidden md:inline-flex opacity-0 group-hover:opacity-60 hover:opacity-100 cursor-grab" aria-label="Reordenar">
         <GripVertical className="h-3.5 w-3.5" />
       </button>
-      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: company.color }} />
-      {company.name}
+      <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ backgroundColor: company.color }} />
+      <span className="truncate">{company.name}</span>
       <button onClick={(e) => { e.stopPropagation(); onEdit(); }}
-        className="opacity-0 group-hover:opacity-60 hover:opacity-100" aria-label="Editar">
+        className="opacity-60 md:opacity-0 md:group-hover:opacity-60 hover:opacity-100 flex-shrink-0" aria-label="Editar">
         <Pencil className="h-3 w-3" />
       </button>
     </div>
@@ -460,6 +460,15 @@ function CompanyView({
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [view, setView] = useState<"table" | "cards">("table");
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  const effectiveView = isMobile ? "cards" : view;
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [creatingItem, setCreatingItem] = useState(false);
   const [movingItem, setMovingItem] = useState<Item | null>(null);
@@ -483,7 +492,7 @@ function CompanyView({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         <Kpi label="Itens" value={String(items.length)} accent={company.color} />
         <Kpi label="Unidades" value={totalUnits.toLocaleString("pt-BR")} accent={company.color} />
         <Kpi label="Valor total" value={BRL(totalValue)} accent={company.color} />
@@ -491,25 +500,25 @@ function CompanyView({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px]">
+        <div className="relative w-full md:flex-1 md:min-w-[220px] order-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nome, SKU, fornecedor, local…" className="pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nome, SKU, fornecedor…" className="pl-9" />
         </div>
         <Select value={groupFilter} onValueChange={setGroupFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Grupo" /></SelectTrigger>
+          <SelectTrigger className="flex-1 md:flex-none md:w-44 order-2"><SelectValue placeholder="Grupo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os grupos</SelectItem>
             {groups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
+          <SelectTrigger className="flex-1 md:flex-none md:w-44 order-3"><SelectValue placeholder="Categoria" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas categorias</SelectItem>
             {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <div className="flex rounded-md border border-border overflow-hidden">
+        <div className="hidden md:flex rounded-md border border-border overflow-hidden order-4">
           <button onClick={() => setView("table")} className={`px-2 py-1.5 ${view === "table" ? "bg-secondary text-foreground" : "text-muted-foreground"}`}>
             <TableIcon className="h-4 w-4" />
           </button>
@@ -517,12 +526,12 @@ function CompanyView({
             <LayoutGrid className="h-4 w-4" />
           </button>
         </div>
-        <Button onClick={() => { setEditingItem(null); setCreatingItem(true); }} className="gap-2">
+        <Button onClick={() => { setEditingItem(null); setCreatingItem(true); }} className="gap-2 order-5 w-full md:w-auto">
           <Plus className="h-4 w-4" /> Novo item
         </Button>
       </div>
 
-      {view === "table" ? (
+      {effectiveView === "table" ? (
         <ItemsTable
           items={filtered}
           allItems={items}
@@ -567,9 +576,9 @@ function CompanyView({
 
 function Kpi({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card/50 p-4">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{label}</div>
-      <div className="font-display text-2xl font-semibold mt-1.5 tracking-tight" style={accent ? { color: accent } : undefined}>{value}</div>
+    <div className="rounded-xl border border-border bg-card/50 p-3 sm:p-4 min-w-0">
+      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground truncate">{label}</div>
+      <div className="font-display text-lg sm:text-2xl font-semibold mt-1 sm:mt-1.5 tracking-tight truncate" style={accent ? { color: accent } : undefined}>{value}</div>
     </div>
   );
 }
