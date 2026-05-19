@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, type PointerEvent } from "react";
 import { Plus, Trash2, Pencil, X, GripVertical, CalendarDays, User, FileText, ListChecks, Layers, Paperclip } from "lucide-react";
 import { COMPANIES, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
@@ -93,6 +93,56 @@ function KanbanPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [loaded, setLoaded] = useState(false);
   const boardRef = useRef<HTMLDivElement | null>(null);
+  const boardPointerRef = useRef({ active: false, pointerId: -1, startX: 0, startY: 0, startLeft: 0, moved: false });
+  const boardDragMovedRef = useRef(false);
+  const [nativeDragEnabled, setNativeDragEnabled] = useState(true);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: coarse)");
+    const update = () => setNativeDragEnabled(!mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", update);
+      else mq.removeListener(update);
+    };
+  }, []);
+
+  const shouldIgnoreBoardPan = (target: EventTarget | null) => {
+    return target instanceof HTMLElement && Boolean(target.closest("button,a,input,textarea,select,[role='button'],[contenteditable='true']"));
+  };
+
+  const handleBoardPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (shouldIgnoreBoardPan(e.target)) return;
+    const el = boardRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+    boardPointerRef.current = { active: true, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, startLeft: el.scrollLeft, moved: false };
+    boardDragMovedRef.current = false;
+  };
+
+  const handleBoardPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const state = boardPointerRef.current;
+    const el = boardRef.current;
+    if (!state.active || state.pointerId !== e.pointerId || !el) return;
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+    if (!state.moved && Math.abs(dx) < 6) return;
+    if (Math.abs(dx) < Math.abs(dy)) return;
+    state.moved = true;
+    boardDragMovedRef.current = true;
+    e.preventDefault();
+    el.scrollLeft = state.startLeft - dx;
+  };
+
+  const handleBoardPointerEnd = (e: PointerEvent<HTMLDivElement>) => {
+    const state = boardPointerRef.current;
+    if (state.pointerId !== e.pointerId) return;
+    boardPointerRef.current = { ...state, active: false };
+    if (state.moved) window.setTimeout(() => { boardDragMovedRef.current = false; }, 80);
+    else boardDragMovedRef.current = false;
+  };
 
   // Horizontal wheel scrolling (Trello/Linear-like)
   useEffect(() => {
