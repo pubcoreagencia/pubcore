@@ -804,26 +804,26 @@ function CardDialog({
   const removeItem = (id: string) => onUpdate({ checklist: card.checklist.filter((i) => i.id !== id) });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 md:p-4" onClick={() => { void flush(); onClose(); }}>
+    <div className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4" onClick={() => { void flush(); onClose(); }}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
+        className="w-full max-w-2xl h-[100dvh] md:h-auto md:max-h-[90vh] overflow-y-auto md:rounded-2xl border border-border bg-card shadow-2xl"
       >
-        <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card z-10 gap-3">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border sticky top-0 bg-card z-10 gap-2 sm:gap-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
           <input
             value={title}
             onChange={(e) => { setTitle(e.target.value); queueField("title", e.target.value.trim() || card.title); }}
             onBlur={() => void flush()}
-            className="flex-1 min-w-0 bg-transparent text-xl font-display font-bold outline-none"
+            className="flex-1 min-w-0 bg-transparent text-lg sm:text-xl font-display font-bold outline-none"
           />
           <SaveIndicator status={saveStatus} />
-          <button onClick={() => { void flush(); onClose(); }} className="text-muted-foreground hover:text-foreground p-1">
+          <button onClick={() => { void flush(); onClose(); }} className="text-muted-foreground hover:text-foreground p-1 flex-shrink-0">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-4 space-y-5">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="p-3 sm:p-4 space-y-4 sm:space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Coluna">
               <select
                 value={card.column_id ?? ""}
