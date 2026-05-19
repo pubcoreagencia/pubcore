@@ -702,7 +702,7 @@ function KanbanPage() {
         })}
 
         {addingCol ? (
-          <div className="flex-shrink-0 w-[280px] md:w-[300px] rounded-xl border border-primary/40 bg-card p-3 h-fit space-y-2">
+          <div className="snap-start flex-shrink-0 w-[85vw] max-w-[320px] md:w-[300px] rounded-xl border border-primary/40 bg-card p-3 h-fit space-y-2">
             <input
               autoFocus
               value={newColName}
@@ -719,7 +719,7 @@ function KanbanPage() {
         ) : (
           <button
             onClick={() => setAddingCol(true)}
-            className="flex-shrink-0 w-[280px] md:w-[300px] rounded-xl border border-dashed border-border h-[120px] text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition flex items-center justify-center gap-1"
+            className="snap-start flex-shrink-0 w-[85vw] max-w-[320px] md:w-[300px] rounded-xl border border-dashed border-border h-[120px] text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition flex items-center justify-center gap-1"
           >
             <Plus className="h-4 w-4" /> Nova coluna
           </button>
