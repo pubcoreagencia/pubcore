@@ -492,7 +492,7 @@ function CompanyView({
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         <Kpi label="Itens" value={String(items.length)} accent={company.color} />
         <Kpi label="Unidades" value={totalUnits.toLocaleString("pt-BR")} accent={company.color} />
         <Kpi label="Valor total" value={BRL(totalValue)} accent={company.color} />
@@ -500,25 +500,25 @@ function CompanyView({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px]">
+        <div className="relative w-full md:flex-1 md:min-w-[220px] order-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nome, SKU, fornecedor, local…" className="pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nome, SKU, fornecedor…" className="pl-9" />
         </div>
         <Select value={groupFilter} onValueChange={setGroupFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Grupo" /></SelectTrigger>
+          <SelectTrigger className="flex-1 md:flex-none md:w-44 order-2"><SelectValue placeholder="Grupo" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os grupos</SelectItem>
             {groups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-44"><SelectValue placeholder="Categoria" /></SelectTrigger>
+          <SelectTrigger className="flex-1 md:flex-none md:w-44 order-3"><SelectValue placeholder="Categoria" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas categorias</SelectItem>
             {categories.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <div className="flex rounded-md border border-border overflow-hidden">
+        <div className="hidden md:flex rounded-md border border-border overflow-hidden order-4">
           <button onClick={() => setView("table")} className={`px-2 py-1.5 ${view === "table" ? "bg-secondary text-foreground" : "text-muted-foreground"}`}>
             <TableIcon className="h-4 w-4" />
           </button>
@@ -526,12 +526,12 @@ function CompanyView({
             <LayoutGrid className="h-4 w-4" />
           </button>
         </div>
-        <Button onClick={() => { setEditingItem(null); setCreatingItem(true); }} className="gap-2">
+        <Button onClick={() => { setEditingItem(null); setCreatingItem(true); }} className="gap-2 order-5 w-full md:w-auto">
           <Plus className="h-4 w-4" /> Novo item
         </Button>
       </div>
 
-      {view === "table" ? (
+      {effectiveView === "table" ? (
         <ItemsTable
           items={filtered}
           allItems={items}
