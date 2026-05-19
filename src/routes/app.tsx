@@ -18,6 +18,7 @@ export const Route = createFileRoute("/app")({
 function AppLayout() {
   const { user, loading } = useAuth();
   const nav = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!loading && !user) nav({ to: "/login" });
@@ -36,7 +37,7 @@ function AppLayout() {
       <PontoProvider>
         <ChecklistProvider>
             <PontoAutoTracker />
-            <CalculatorWidget />
+            {!isMobile && <CalculatorWidget />}
 
           <div className="flex min-h-dvh w-full max-w-[100dvw] bg-background overflow-x-hidden">
             <Sidebar />
