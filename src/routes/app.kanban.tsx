@@ -724,6 +724,7 @@ function KanbanPage() {
             <Plus className="h-4 w-4" /> Nova coluna
           </button>
         )}
+        <div aria-hidden className="flex-shrink-0 w-3 sm:w-6" />
       </div>
 
       {openCard && (
