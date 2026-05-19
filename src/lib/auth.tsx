@@ -82,6 +82,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);
+    // Limpa estado local sensível para não vazar entre usuários no mesmo navegador
+    if (typeof window !== "undefined") {
+      try {
+        const keys: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("pubcore")) keys.push(k);
+        }
+        keys.forEach((k) => localStorage.removeItem(k));
+        sessionStorage.removeItem("pubcore_calc_open");
+      } catch {}
+    }
   };
 
   return (
