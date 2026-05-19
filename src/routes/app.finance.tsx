@@ -194,38 +194,38 @@ function FinancePage() {
   }, [transactions, costs, products]);
 
   return (
-    <div className="px-6 lg:px-10 py-8 max-w-[1500px] mx-auto">
+    <div className="px-3 sm:px-6 lg:px-10 py-4 sm:py-8 max-w-[1500px] mx-auto">
       {/* Sugestões compartilhadas de empresa para inputs de texto livre */}
       <datalist id="finance-company-suggestions">
         {companyOptions.map(c => <option key={c} value={c} />)}
       </datalist>
 
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-4 mb-5 sm:mb-8">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1 truncate">
             {activeWorkspace?.name ?? "Workspace"}
           </div>
-          <h1 className="font-display text-4xl font-semibold tracking-tight flex items-center gap-3">
-            <Wallet className="h-8 w-8 text-primary" />
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight flex items-center gap-2 sm:gap-3">
+            <Wallet className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
             Finanças
           </h1>
-          <p className="text-muted-foreground text-sm mt-2 max-w-xl">
+          <p className="text-muted-foreground text-xs sm:text-sm mt-2 max-w-xl hidden sm:block">
             Central financeira da holding — entradas, saídas, custos, produtos e breakeven em tempo real.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Activity className="h-3.5 w-3.5 text-success" /> Sincronizado · Realtime
+        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
+          <Activity className="h-3.5 w-3.5 text-success" /> <span className="hidden sm:inline">Sincronizado · </span>Realtime
         </div>
       </header>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="bg-card/60 border border-border/40 mb-6 h-auto p-1 flex-wrap">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="tx">Entradas/Saídas</TabsTrigger>
-          <TabsTrigger value="costs">Custos</TabsTrigger>
-          <TabsTrigger value="products">Produtos</TabsTrigger>
-          <TabsTrigger value="breakeven">Breakeven</TabsTrigger>
-          <TabsTrigger value="reports">Relatórios</TabsTrigger>
+        <TabsList className="bg-card/60 border border-border/40 mb-4 sm:mb-6 h-auto p-1 w-full overflow-x-auto flex md:flex-wrap justify-start md:justify-center gap-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsTrigger value="dashboard" className="flex-shrink-0">Dashboard</TabsTrigger>
+          <TabsTrigger value="tx" className="flex-shrink-0">Entradas/Saídas</TabsTrigger>
+          <TabsTrigger value="costs" className="flex-shrink-0">Custos</TabsTrigger>
+          <TabsTrigger value="products" className="flex-shrink-0">Produtos</TabsTrigger>
+          <TabsTrigger value="breakeven" className="flex-shrink-0">Breakeven</TabsTrigger>
+          <TabsTrigger value="reports" className="flex-shrink-0">Relatórios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard"><DashboardTab kpis={kpis} tx={transactions} products={products} /></TabsContent>
