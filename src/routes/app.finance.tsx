@@ -249,14 +249,14 @@ function KpiCard({ label, value, sub, icon, tone = "default", glow = false }: {
     tone === "danger" ? "text-destructive" :
     tone === "primary" ? "text-primary" : "text-foreground";
   return (
-    <div className={`relative rounded-2xl border border-border/40 bg-card/60 p-5 overflow-hidden ${glow ? "shadow-[0_0_60px_-20px_color-mix(in oklab, var(--primary) 40%, transparent)]" : ""}`}>
+    <div className={`relative rounded-2xl border border-border/40 bg-card/60 p-3 sm:p-5 overflow-hidden min-w-0 ${glow ? "shadow-[0_0_60px_-20px_color-mix(in oklab, var(--primary) 40%, transparent)]" : ""}`}>
       {glow && <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />}
-      <div className="relative flex items-start justify-between">
-        <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
-        <div className="text-muted-foreground">{icon}</div>
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="text-[10px] sm:text-xs uppercase tracking-[0.16em] text-muted-foreground truncate">{label}</div>
+        <div className="text-muted-foreground flex-shrink-0">{icon}</div>
       </div>
-      <div className={`relative font-display text-3xl font-semibold mt-3 ${toneText}`}>{value}</div>
-      {sub && <div className="relative text-xs text-muted-foreground mt-1.5">{sub}</div>}
+      <div className={`relative font-display text-xl sm:text-3xl font-semibold mt-2 sm:mt-3 truncate ${toneText}`}>{value}</div>
+      {sub && <div className="relative text-[10px] sm:text-xs text-muted-foreground mt-1 sm:mt-1.5 truncate">{sub}</div>}
     </div>
   );
 }
