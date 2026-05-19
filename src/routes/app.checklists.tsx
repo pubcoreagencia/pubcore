@@ -136,8 +136,8 @@ function DailyTab() {
   return (
     <div className="space-y-5">
       {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl border border-border bg-card shadow-card">
-        <Filter className="h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl border border-border bg-card shadow-card">
+        <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
         <Select
           label="Empresa"
           value={companyFilter}
@@ -150,13 +150,14 @@ function DailyTab() {
           onChange={(v) => setStatusFilter(v as StatusFilter)}
           options={["Todos", "Pendente", "Concluído"]}
         />
-        <div className="ml-auto flex items-center gap-3 text-xs">
-          <span className="text-muted-foreground font-mono">{totals.done}/{totals.total} concluídas</span>
+        <div className="ml-auto flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground font-mono hidden sm:inline">{totals.done}/{totals.total} concluídas</span>
+          <span className="text-muted-foreground font-mono sm:hidden">{totals.done}/{totals.total}</span>
           <span className="px-2 py-1 rounded-md bg-surface font-mono text-primary">{totals.pct}%</span>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
         {visibleCompanies.map((company) => (
           <CompanyChecklistCard
             key={company}
