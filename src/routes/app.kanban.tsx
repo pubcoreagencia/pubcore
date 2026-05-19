@@ -497,7 +497,7 @@ function KanbanPage() {
               )}
               <span className="text-[10px] text-muted-foreground font-mono">{count}</span>
               {isActive && (
-                <div className="flex items-center gap-0.5 ml-1 opacity-0 group-hover:opacity-100 transition">
+                <div className="flex items-center gap-0.5 ml-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">
                   <button
                     onClick={(e) => { e.stopPropagation(); setEditingFunnel(f.id); setFunnelDraft(f.name); }}
                     className="text-muted-foreground hover:text-foreground p-0.5"
