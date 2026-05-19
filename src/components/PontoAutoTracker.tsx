@@ -64,7 +64,7 @@ export function PontoAutoTracker() {
       try {
         const { data, error } = await supabase
           .from("ponto_sessions")
-          .select("id, started_at, ended_at, status, pauses, user_name, owner_email")
+          .select("id, started_at, ended_at, status, pauses, user_name, owner_email, updated_at")
           .eq("user_id", user.id)
           .gte("started_at", startOfTodayISO())
           .in("status", ["working", "paused"])
@@ -77,22 +77,19 @@ export function PontoAutoTracker() {
           return;
         }
         if (data) {
-          // Já existe sessão ativa hoje → adota
-          const startedTs = new Date(data.started_at).getTime();
-          const lastAct = readLastActivity();
-          const idle = Date.now() - lastAct;
+          // Inatividade real = tempo desde o último updated_at remoto.
+          // localStorage não serve aqui pois num browser/aba novo ele zera
+          // e fazia o sistema adotar sessões abandonadas (mostrando timer "fantasma").
+          const remoteUpdatedTs = data.updated_at ? new Date(data.updated_at).getTime() : new Date(data.started_at).getTime();
+          const idle = Date.now() - remoteUpdatedTs;
           if (idle > IDLE_LIMIT_MS) {
-            // Encerra a antiga e abre nova
+            // Sessão abandonada → encerra e abre uma nova zerada
             adoptSession(data as PontoRemoteRow);
             await end();
-            toast("Expediente anterior encerrado por inatividade", { duration: 3500 });
             await start(user.name, user.email, user.id);
-            toast("Novo expediente iniciado", { duration: 2500 });
+            toast("Expediente anterior encerrado por inatividade. Novo iniciado.", { duration: 3500 });
           } else if (session.sessionId !== data.id) {
             adoptSession(data as PontoRemoteRow);
-            if (startedTs && Date.now() - startedTs < 60_000) {
-              // já tinha acabado de iniciar
-            }
           }
         } else if (!isLive) {
           await start(user.name, user.email, user.id);
@@ -142,5 +139,29 @@ export function PontoAutoTracker() {
     };
   }, [user, isLive, end]);
 
+  // Heartbeat: enquanto o expediente está ativo, mantém updated_at fresco
+  // no Supabase para que a detecção de abandono em outro browser/aba funcione.
+  useEffect(() => {
+    if (!user || !isLive || !session.sessionId) return;
+    const sid = session.sessionId;
+    const beat = async () => {
+      // Só bate o coração se houve atividade recente nesta aba
+      const idle = Date.now() - readLastActivity();
+      if (idle > IDLE_LIMIT_MS) return;
+      try {
+        await supabase
+          .from("ponto_sessions")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", sid);
+      } catch (e) {
+        console.error("[ponto-auto] heartbeat error", e);
+      }
+    };
+    beat();
+    const id = window.setInterval(beat, 60_000);
+    return () => window.clearInterval(id);
+  }, [user, isLive, session.sessionId]);
+
   return null;
 }
+
