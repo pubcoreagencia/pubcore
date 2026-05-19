@@ -9,7 +9,6 @@ import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
 import { WorkspaceProvider } from "@/lib/workspace";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/app")({
   component: AppLayout,
@@ -18,7 +17,6 @@ export const Route = createFileRoute("/app")({
 function AppLayout() {
   const { user, loading } = useAuth();
   const nav = useNavigate();
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!loading && !user) nav({ to: "/login" });
@@ -36,17 +34,19 @@ function AppLayout() {
     <WorkspaceProvider>
       <PontoProvider>
         <ChecklistProvider>
-            <PontoAutoTracker />
-            {!isMobile && <CalculatorWidget />}
+          <PontoAutoTracker />
+          <div className="hidden md:block">
+            <CalculatorWidget />
+          </div>
 
           <div className="flex min-h-dvh w-full max-w-[100dvw] bg-background overflow-x-hidden">
             <Sidebar />
-            <main
-              className="relative flex w-full min-w-0 max-w-[100dvw] flex-1 flex-col overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+64px)] md:max-w-full md:pb-0"
-            >
+            <main className="relative flex w-full min-w-0 max-w-[100dvw] flex-1 flex-col overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+64px)] md:max-w-full md:pb-0">
               <MobileNav />
               <PontoHeader />
-              <Outlet />
+              <div className="w-full min-w-0 max-w-full overflow-x-hidden">
+                <Outlet />
+              </div>
             </main>
           </div>
         </ChecklistProvider>

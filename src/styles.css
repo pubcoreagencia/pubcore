@@ -106,64 +106,107 @@
   font-style: normal;
   font-weight: 300 700;
   font-display: swap;
-  src: url("https://fonts.gstatic.com/s/spacegrotesk/v16/V8mDoQDjQSkFtoMM3T6r8E7mPb1hHB8XewE.woff2") format("woff2");
+  src: url("https://fonts.gstatic.com/s/spacegrotesk/v16/V8mDoQDjQSkFtoMM3T6r8E7mPb1hHB8XewE.woff2")
+    format("woff2");
 }
 @font-face {
   font-family: "DM Sans";
   font-style: normal;
   font-weight: 300 700;
   font-display: swap;
-  src: url("https://fonts.gstatic.com/s/dmsans/v15/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAop6XQ.woff2") format("woff2");
+  src: url("https://fonts.gstatic.com/s/dmsans/v15/rP2tp2ywxg089UriI5-g4vlH9VoD8CmcqZG40F9JadbnoEwAop6XQ.woff2")
+    format("woff2");
 }
 
 @layer base {
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    min-width: 0;
     width: 100%;
     max-width: 100%;
     overflow-x: hidden;
     overscroll-behavior-x: none;
   }
+  #root,
+  [data-reactroot] {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
   /* Prevent any page from horizontally overflowing the viewport on mobile.
      IMPORTANT: do NOT use `body > div` here — TanStack Start renders the app
      shell AND fixed widgets (calculator, toasts) as direct body children, and
      forcing width:100% on them breaks fixed positioning. */
-  body { min-width: 0; }
+  *,
+  ::before,
+  ::after {
+    min-width: 0;
+  }
 
   body {
-    background-image:
-      radial-gradient(900px circle at 95% -10%, oklch(0.58 0.22 25 / 0.06), transparent 55%);
+    background-image: radial-gradient(
+      900px circle at 95% -10%,
+      oklch(0.58 0.22 25 / 0.06),
+      transparent 55%
+    );
     background-attachment: fixed;
   }
-  * { border-color: var(--color-border); }
+  * {
+    border-color: var(--color-border);
+  }
 
-  h1, h2, h3, h4 {
+  h1,
+  h2,
+  h3,
+  h4 {
     font-family: var(--font-display);
     letter-spacing: -0.02em;
     font-weight: 600;
   }
 
-  ::selection { background: oklch(0.58 0.22 25 / 0.3); color: oklch(0.99 0 0); }
+  ::selection {
+    background: oklch(0.58 0.22 25 / 0.3);
+    color: oklch(0.99 0 0);
+  }
 
-  ::-webkit-scrollbar { width: 10px; height: 10px; }
-  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
   ::-webkit-scrollbar-thumb {
     background: oklch(0.28 0 0);
     border-radius: 8px;
     border: 2px solid var(--color-background);
   }
-  ::-webkit-scrollbar-thumb:hover { background: oklch(0.38 0 0); }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.38 0 0);
+  }
 }
 
 @layer utilities {
-  .bg-gradient-primary { background: var(--gradient-primary); }
-  .bg-gradient-surface { background: var(--gradient-surface); }
-  .shadow-elegant { box-shadow: var(--shadow-elegant); }
-  .shadow-glow { box-shadow: var(--shadow-glow); }
-  .shadow-card { box-shadow: var(--shadow-card); }
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
+  .bg-gradient-surface {
+    background: var(--gradient-surface);
+  }
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
   .text-gradient {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
