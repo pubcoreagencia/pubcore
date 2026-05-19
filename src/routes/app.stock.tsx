@@ -924,11 +924,11 @@ function SortableCard({ item: i, visibleFields, onEdit, onMove, accent }: {
 
 // ---------------- Item Dialog ----------------
 function ItemDialog({
-  open, onClose, item, company, fields, groups, categories, workspaceId, userId, nextPosition,
+  open, onClose, item, company, fields, groups, categories, workspaceId, userId, nextPosition, defaultGroupId,
 }: {
   open: boolean; onClose: () => void; item: Item | null; company: Company;
   fields: FieldDef[]; groups: Group[]; categories: Category[];
-  workspaceId: string; userId: string; nextPosition: number;
+  workspaceId: string; userId: string; nextPosition: number; defaultGroupId?: string | null;
 }) {
   const sortedFields = [...fields].sort((a, b) => a.position - b.position);
   const [base, setBase] = useState<Record<string, unknown>>({});
@@ -950,10 +950,10 @@ function ItemDialog({
     } else {
       setBase({ name: "", quantity: 0, min_quantity: 0, cost: 0, price: 0 });
       setData({});
-      setGroupId(null);
+      setGroupId(defaultGroupId ?? null);
       setCategoryId(null);
     }
-  }, [open, item]);
+  }, [open, item, defaultGroupId]);
 
   const setField = (key: string, value: unknown) => {
     if (SYSTEM_KEYS.has(key)) setBase((b) => ({ ...b, [key]: value }));
