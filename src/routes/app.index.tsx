@@ -164,29 +164,29 @@ function Dashboard() {
   ];
 
   return (
-    <div className="p-6 lg:p-10 space-y-8 max-w-[1600px] mx-auto">
+    <div className="p-4 sm:p-6 lg:p-10 space-y-6 md:space-y-8 max-w-[1600px] mx-auto">
       <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Cockpit</div>
-          <h1 className="font-display text-4xl font-bold tracking-tight mt-1">
+        <div className="min-w-0">
+          <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">Cockpit</div>
+          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mt-1 truncate">
             Bem-vindo, <span className="text-gradient">{user?.name?.split(" ")[0] ?? "executivo"}</span>
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Visão consolidada da operação · {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Visão consolidada · {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link to="/app/checklists" className="rounded-lg border border-border bg-surface/60 px-4 py-2 text-sm font-medium hover:bg-surface transition">
+        <div className="flex gap-2 flex-wrap">
+          <Link to="/app/checklists" className="flex-1 md:flex-none text-center rounded-lg border border-border bg-surface/60 px-4 py-2 text-sm font-medium hover:bg-surface transition">
             Abrir operação
           </Link>
-          <Link to="/app/kanban" className="rounded-lg bg-gradient-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-glow inline-flex items-center gap-1.5">
+          <Link to="/app/kanban" className="flex-1 md:flex-none justify-center rounded-lg bg-gradient-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-glow inline-flex items-center gap-1.5">
             Kanban <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       </header>
 
       {/* KPIs */}
-      <section className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <section className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
         {KPI_DEFS.map((k) => (
           <Link
             key={k.label}
