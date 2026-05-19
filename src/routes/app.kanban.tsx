@@ -110,7 +110,7 @@ function KanbanPage() {
   }, []);
 
   const shouldIgnoreBoardPan = (target: EventTarget | null) => {
-    return target instanceof HTMLElement && Boolean(target.closest("button,a,input,textarea,select,[role='button'],[contenteditable='true']"));
+    return target instanceof HTMLElement && Boolean(target.closest("input,textarea,select,[contenteditable='true'],[data-board-pan-lock='true']"));
   };
 
   const handleBoardPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -480,7 +480,7 @@ function KanbanPage() {
   const doneCards = funnelCards.filter(c => c.status === "done").length;
 
   return (
-    <div className="p-3 sm:p-6 lg:p-10 max-w-[1800px] mx-auto">
+    <div className="w-full min-w-0 max-w-full overflow-hidden p-3 sm:p-6 lg:p-10">
       <header className="mb-4 flex items-start sm:items-end justify-between gap-3 flex-wrap">
         <div className="min-w-0 flex-1">
           <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">Fluxo operacional</div>
@@ -608,8 +608,8 @@ function KanbanPage() {
             e.stopPropagation();
           }
         }}
-        className="flex w-full max-w-full gap-3 sm:gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-proximity [scrollbar-width:thin] overscroll-x-contain touch-pan-y select-none cursor-grab active:cursor-grabbing"
-        style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch", paddingInline: "12px max(24px, env(safe-area-inset-right))", marginInline: "-12px" }}
+        className="flex w-full min-w-0 max-w-full gap-3 sm:gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth [scrollbar-width:thin] overscroll-x-contain touch-pan-x select-none cursor-grab active:cursor-grabbing"
+        style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch", touchAction: "pan-x", paddingInline: "0 max(28px, env(safe-area-inset-right))" }}
       >
         {funnelCols.map((col) => {
           const list = funnelCards.filter(c => c.column_id === col.id).sort((a, b) => a.position - b.position);
@@ -637,7 +637,7 @@ function KanbanPage() {
                 }
                 setOverCol(null);
               }}
-              className={`snap-start flex-shrink-0 w-[85vw] max-w-[320px] md:w-[300px] rounded-xl border bg-surface/40 p-3 min-h-[420px] md:min-h-[500px] transition ${
+              className={`flex-shrink-0 w-[calc(100dvw-32px)] max-w-[320px] md:w-[300px] rounded-xl border bg-surface/40 p-3 min-h-[420px] md:min-h-[500px] transition ${
                 isOver ? "border-primary/60 bg-primary/5" : "border-border"
               }`}
             >
@@ -765,7 +765,7 @@ function KanbanPage() {
         })}
 
         {addingCol ? (
-          <div className="snap-start flex-shrink-0 w-[85vw] max-w-[320px] md:w-[300px] rounded-xl border border-primary/40 bg-card p-3 h-fit space-y-2">
+          <div className="flex-shrink-0 w-[calc(100dvw-32px)] max-w-[320px] md:w-[300px] rounded-xl border border-primary/40 bg-card p-3 h-fit space-y-2">
             <input
               autoFocus
               value={newColName}
@@ -782,12 +782,12 @@ function KanbanPage() {
         ) : (
           <button
             onClick={() => setAddingCol(true)}
-            className="snap-start flex-shrink-0 w-[85vw] max-w-[320px] md:w-[300px] rounded-xl border border-dashed border-border h-[120px] text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition flex items-center justify-center gap-1"
+            className="flex-shrink-0 w-[calc(100dvw-32px)] max-w-[320px] md:w-[300px] rounded-xl border border-dashed border-border h-[120px] text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition flex items-center justify-center gap-1"
           >
             <Plus className="h-4 w-4" /> Nova coluna
           </button>
         )}
-        <div aria-hidden className="flex-shrink-0 w-1 sm:w-6" />
+        <div aria-hidden className="flex-shrink-0 w-6" />
       </div>
 
       {openCard && (
