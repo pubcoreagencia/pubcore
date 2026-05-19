@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, KanbanSquare, ListChecks, Calendar, Users2, Settings,
-  StickyNote, Wallet, Boxes, Calculator,
+  StickyNote, Wallet, Boxes, Calculator, Box,
 } from "lucide-react";
 
 export type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
@@ -27,6 +27,7 @@ export const navGroups: NavGroup[] = [
       { to: "/app/finance", label: "Finanças", icon: Wallet },
       { to: "/app/stock", label: "Estoque", icon: Boxes },
       { to: "/app/calculator", label: "Calculadora", icon: Calculator },
+      { to: "/app/calc3d", label: "Calculadora 3D", icon: Box },
       { to: "/app/settings", label: "Configurações", icon: Settings },
     ],
   },
