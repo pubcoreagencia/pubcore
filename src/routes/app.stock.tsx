@@ -576,9 +576,9 @@ function CompanyView({
 
 function Kpi({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card/50 p-4">
-      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{label}</div>
-      <div className="font-display text-2xl font-semibold mt-1.5 tracking-tight" style={accent ? { color: accent } : undefined}>{value}</div>
+    <div className="rounded-xl border border-border bg-card/50 p-3 sm:p-4 min-w-0">
+      <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground truncate">{label}</div>
+      <div className="font-display text-lg sm:text-2xl font-semibold mt-1 sm:mt-1.5 tracking-tight truncate" style={accent ? { color: accent } : undefined}>{value}</div>
     </div>
   );
 }
