@@ -428,20 +428,21 @@ function KanbanPage() {
   const doneCards = funnelCards.filter(c => c.status === "done").length;
 
   return (
-    <div className="p-4 md:p-6 lg:p-10 max-w-[1800px] mx-auto">
-      <header className="mb-4 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Fluxo operacional</div>
-          <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight mt-1">Kanban</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {sortedFunnels.length} funis · {funnelCols.length} colunas · {totalCards} cards · {doneCards} concluídos
+    <div className="p-3 sm:p-6 lg:p-10 max-w-[1800px] mx-auto">
+      <header className="mb-4 flex items-start sm:items-end justify-between gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">Fluxo operacional</div>
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mt-1">Kanban</h1>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm truncate">
+            <span className="hidden sm:inline">{sortedFunnels.length} funis · {funnelCols.length} colunas · {totalCards} cards · {doneCards} concluídos</span>
+            <span className="sm:hidden">{funnelCols.length} col · {totalCards} cards · {doneCards} feitos</span>
           </p>
         </div>
         <button
           onClick={() => setAddingCol(true)}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:border-primary/40 hover:shadow-glow transition"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs sm:text-sm font-medium hover:border-primary/40 hover:shadow-glow transition flex-shrink-0"
         >
-          <Plus className="h-4 w-4" /> Nova coluna
+          <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nova coluna</span><span className="sm:hidden">Coluna</span>
         </button>
       </header>
 
@@ -496,7 +497,7 @@ function KanbanPage() {
               )}
               <span className="text-[10px] text-muted-foreground font-mono">{count}</span>
               {isActive && (
-                <div className="flex items-center gap-0.5 ml-1 opacity-0 group-hover:opacity-100 transition">
+                <div className="flex items-center gap-0.5 ml-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">
                   <button
                     onClick={(e) => { e.stopPropagation(); setEditingFunnel(f.id); setFunnelDraft(f.name); }}
                     className="text-muted-foreground hover:text-foreground p-0.5"
@@ -544,7 +545,7 @@ function KanbanPage() {
       {/* BOARD */}
       <div
         ref={boardRef}
-        className="flex gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-proximity [scrollbar-width:thin] overscroll-x-contain"
+        className="flex gap-3 sm:gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-mandatory md:snap-proximity [scrollbar-width:thin] overscroll-x-contain -mx-3 sm:mx-0 px-3 sm:px-0"
         style={{ scrollBehavior: "smooth" }}
       >
         {funnelCols.map((col) => {
@@ -573,7 +574,7 @@ function KanbanPage() {
                 }
                 setOverCol(null);
               }}
-              className={`flex-shrink-0 w-[280px] md:w-[300px] rounded-xl border bg-surface/40 p-3 min-h-[500px] transition ${
+              className={`snap-start flex-shrink-0 w-[85vw] max-w-[320px] md:w-[300px] rounded-xl border bg-surface/40 p-3 min-h-[420px] md:min-h-[500px] transition ${
                 isOver ? "border-primary/60 bg-primary/5" : "border-border"
               }`}
             >
@@ -603,7 +604,7 @@ function KanbanPage() {
                   )}
                   <span className="text-xs text-muted-foreground font-mono">{list.length}</span>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover/col:opacity-100 transition">
+                <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover/col:opacity-100 transition">
                   <button onClick={() => { setEditingCol(col.id); setColDraft(col.name); }} className="text-muted-foreground hover:text-foreground p-1">
                     <Pencil className="h-3 w-3" />
                   </button>
@@ -633,7 +634,7 @@ function KanbanPage() {
                         <h4 className={`font-medium text-sm leading-snug flex-1 ${c.status === "done" ? "line-through text-muted-foreground" : ""}`}>{c.title}</h4>
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteCard(c.id); }}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition flex-shrink-0"
+                          className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive transition flex-shrink-0 p-1 -m-1"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -701,7 +702,7 @@ function KanbanPage() {
         })}
 
         {addingCol ? (
-          <div className="flex-shrink-0 w-[280px] md:w-[300px] rounded-xl border border-primary/40 bg-card p-3 h-fit space-y-2">
+          <div className="snap-start flex-shrink-0 w-[85vw] max-w-[320px] md:w-[300px] rounded-xl border border-primary/40 bg-card p-3 h-fit space-y-2">
             <input
               autoFocus
               value={newColName}
@@ -718,7 +719,7 @@ function KanbanPage() {
         ) : (
           <button
             onClick={() => setAddingCol(true)}
-            className="flex-shrink-0 w-[280px] md:w-[300px] rounded-xl border border-dashed border-border h-[120px] text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition flex items-center justify-center gap-1"
+            className="snap-start flex-shrink-0 w-[85vw] max-w-[320px] md:w-[300px] rounded-xl border border-dashed border-border h-[120px] text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition flex items-center justify-center gap-1"
           >
             <Plus className="h-4 w-4" /> Nova coluna
           </button>
@@ -803,26 +804,26 @@ function CardDialog({
   const removeItem = (id: string) => onUpdate({ checklist: card.checklist.filter((i) => i.id !== id) });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 md:p-4" onClick={() => { void flush(); onClose(); }}>
+    <div className="fixed inset-0 z-50 flex items-stretch md:items-center justify-center bg-black/60 backdrop-blur-sm p-0 md:p-4" onClick={() => { void flush(); onClose(); }}>
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl"
+        className="w-full max-w-2xl h-[100dvh] md:h-auto md:max-h-[90vh] overflow-y-auto md:rounded-2xl border border-border bg-card shadow-2xl"
       >
-        <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card z-10 gap-3">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border sticky top-0 bg-card z-10 gap-2 sm:gap-3" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
           <input
             value={title}
             onChange={(e) => { setTitle(e.target.value); queueField("title", e.target.value.trim() || card.title); }}
             onBlur={() => void flush()}
-            className="flex-1 min-w-0 bg-transparent text-xl font-display font-bold outline-none"
+            className="flex-1 min-w-0 bg-transparent text-lg sm:text-xl font-display font-bold outline-none"
           />
           <SaveIndicator status={saveStatus} />
-          <button onClick={() => { void flush(); onClose(); }} className="text-muted-foreground hover:text-foreground p-1">
+          <button onClick={() => { void flush(); onClose(); }} className="text-muted-foreground hover:text-foreground p-1 flex-shrink-0">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="p-4 space-y-5">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="p-3 sm:p-4 space-y-4 sm:space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Coluna">
               <select
                 value={card.column_id ?? ""}
@@ -901,7 +902,7 @@ function CardDialog({
                 <div key={i.id} className="flex items-center gap-2 group">
                   <input type="checkbox" checked={i.done} onChange={() => toggleItem(i.id)} className="h-4 w-4 rounded accent-primary" />
                   <span className={`flex-1 text-sm ${i.done ? "line-through text-muted-foreground" : ""}`}>{i.text}</span>
-                  <button onClick={() => removeItem(i.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
+                  <button onClick={() => removeItem(i.id)} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 -m-1">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
