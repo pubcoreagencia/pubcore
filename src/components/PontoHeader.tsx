@@ -14,10 +14,10 @@ export function PontoHeader() {
   return (
     <Link
       to="/app/checklists"
-      className="fixed top-[60px] right-3 md:top-3 z-40 group"
+      className="fixed top-[60px] right-2 md:top-3 md:right-3 z-40 group"
       aria-label="Abrir Bater Ponto"
     >
-      <div className={`flex items-center gap-3 rounded-full border px-3 py-1.5 backdrop-blur-md shadow-card transition ${
+      <div className={`flex items-center gap-2 md:gap-3 rounded-full border px-2 py-1 md:px-3 md:py-1.5 backdrop-blur-md shadow-card transition ${
         working
           ? "border-success/30 bg-success/10"
           : paused
@@ -33,10 +33,10 @@ export function PontoHeader() {
         <span className="text-[10px] uppercase tracking-[0.18em] font-bold hidden sm:inline">
           {working ? "Em expediente" : paused ? "Em pausa" : "Encerrado"}
         </span>
-        <span className="flex items-center gap-1.5 font-mono tabular-nums text-sm font-semibold">
-          {paused ? <Pause className="h-3.5 w-3.5 text-warning" /> :
-           ended ? <Timer className="h-3.5 w-3.5 text-muted-foreground" /> :
-           <Radio className="h-3.5 w-3.5 text-success" />}
+        <span className="flex items-center gap-1 md:gap-1.5 font-mono tabular-nums text-[11px] md:text-sm font-semibold">
+          {paused ? <Pause className="h-3 w-3 md:h-3.5 md:w-3.5 text-warning" /> :
+           ended ? <Timer className="h-3 w-3 md:h-3.5 md:w-3.5 text-muted-foreground" /> :
+           <Radio className="h-3 w-3 md:h-3.5 md:w-3.5 text-success" />}
           {fmtTime(liveWorkMs)}
         </span>
         <span className="hidden md:inline text-[10px] text-muted-foreground font-mono border-l border-border/60 pl-2">

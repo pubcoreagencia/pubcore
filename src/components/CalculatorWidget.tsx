@@ -17,15 +17,31 @@ function loadPos(): Pos | null {
   return null;
 }
 
+const MOBILE_BREAKPOINT = 768;
+const BOTTOM_NAV_RESERVE = 80; // bottom nav (~56) + folga
+const TOP_RESERVE = 12;
+
+function isMobile() {
+  return typeof window !== "undefined" && window.innerWidth < MOBILE_BREAKPOINT;
+}
+
+function defaultPos(width: number, height: number): Pos {
+  if (typeof window === "undefined") return { x: 24, y: 24 };
+  const margin = isMobile() ? 12 : 24;
+  const bottomReserve = isMobile() ? BOTTOM_NAV_RESERVE : margin;
+  return {
+    x: window.innerWidth - width - margin,
+    y: window.innerHeight - height - bottomReserve,
+  };
+}
+
 export function CalculatorWidget() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const [pos, setPos] = useState<Pos>(() => {
     if (typeof window === "undefined") return { x: 24, y: 24 };
     const saved = loadPos();
     if (saved) return saved;
-    const w = 48;
-    const h = 48;
-    return { x: window.innerWidth - w - 24, y: window.innerHeight - h - 24 };
+    return defaultPos(48, 48);
   });
   const [open, setOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -45,17 +61,20 @@ export function CalculatorWidget() {
     try { sessionStorage.setItem(OPEN_KEY, open ? "1" : "0"); } catch {}
   }, [open]);
 
-  // clamp position on resize
+  // clamp position on resize — respeita bottom nav no mobile
   useEffect(() => {
     const clamp = () => {
       setPos((p) => {
         const w = containerRef.current?.offsetWidth ?? 64;
         const h = containerRef.current?.offsetHeight ?? 64;
-        const maxX = window.innerWidth - w - 8;
-        const maxY = window.innerHeight - h - 8;
+        const mobile = isMobile();
+        const bottomReserve = mobile ? BOTTOM_NAV_RESERVE : 8;
+        const sideMargin = mobile ? 8 : 8;
+        const maxX = window.innerWidth - w - sideMargin;
+        const maxY = window.innerHeight - h - bottomReserve;
         return {
-          x: Math.max(8, Math.min(p.x, maxX)),
-          y: Math.max(8, Math.min(p.y, maxY)),
+          x: Math.max(sideMargin, Math.min(p.x, maxX)),
+          y: Math.max(TOP_RESERVE, Math.min(p.y, maxY)),
         };
       });
     };
@@ -86,11 +105,14 @@ export function CalculatorWidget() {
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) d.moved = true;
     const w = containerRef.current?.offsetWidth ?? 64;
     const h = containerRef.current?.offsetHeight ?? 64;
-    const maxX = window.innerWidth - w - 8;
-    const maxY = window.innerHeight - h - 8;
+    const mobile = isMobile();
+    const bottomReserve = mobile ? BOTTOM_NAV_RESERVE : 8;
+    const sideMargin = 8;
+    const maxX = window.innerWidth - w - sideMargin;
+    const maxY = window.innerHeight - h - bottomReserve;
     setPos({
-      x: Math.max(8, Math.min(d.origX + dx, maxX)),
-      y: Math.max(8, Math.min(d.origY + dy, maxY)),
+      x: Math.max(sideMargin, Math.min(d.origX + dx, maxX)),
+      y: Math.max(TOP_RESERVE, Math.min(d.origY + dy, maxY)),
     });
   }, []);
 
