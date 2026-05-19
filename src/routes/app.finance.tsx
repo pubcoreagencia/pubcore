@@ -1111,21 +1111,25 @@ function ReportsTab({ tx, products }: { tx: Tx[]; products: Product[] }) {
       </div>
 
       <div className="rounded-2xl border border-border/40 bg-card/60 overflow-hidden">
-        <div className="p-5 border-b border-border/40"><h3 className="font-display text-base font-semibold">Métricas por empresa</h3></div>
-        <div className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-2 px-5 py-2.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/30">
-          <div>Empresa</div><div className="text-right">Entradas</div><div className="text-right">Saídas</div><div className="text-right">Lucro</div><div className="text-right">Margem</div>
-        </div>
-        {byCompanyTotals.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Sem dados para reportar.</div> :
-          byCompanyTotals.map(r => (
-            <div key={r.company} className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-2 px-5 py-3 text-sm border-b border-border/20 last:border-0">
-              <div>{r.company}</div>
-              <div className="text-right text-success font-display">{BRL(r.income)}</div>
-              <div className="text-right text-destructive font-display">{BRL(r.expense)}</div>
-              <div className={`text-right font-display ${r.profit >= 0 ? "text-success" : "text-destructive"}`}>{BRL(r.profit)}</div>
-              <div className="text-right text-muted-foreground">{r.margin.toFixed(1)}%</div>
+        <div className="p-4 sm:p-5 border-b border-border/40"><h3 className="font-display text-base font-semibold">Métricas por empresa</h3></div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <div className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-2 px-5 py-2.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/30">
+              <div>Empresa</div><div className="text-right">Entradas</div><div className="text-right">Saídas</div><div className="text-right">Lucro</div><div className="text-right">Margem</div>
             </div>
-          ))
-        }
+            {byCompanyTotals.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Sem dados para reportar.</div> :
+              byCompanyTotals.map(r => (
+                <div key={r.company} className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-2 px-5 py-3 text-sm border-b border-border/20 last:border-0">
+                  <div className="truncate">{r.company}</div>
+                  <div className="text-right text-success font-display">{BRL(r.income)}</div>
+                  <div className="text-right text-destructive font-display">{BRL(r.expense)}</div>
+                  <div className={`text-right font-display ${r.profit >= 0 ? "text-success" : "text-destructive"}`}>{BRL(r.profit)}</div>
+                  <div className="text-right text-muted-foreground">{r.margin.toFixed(1)}%</div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-border/40 bg-card/60 overflow-hidden">
