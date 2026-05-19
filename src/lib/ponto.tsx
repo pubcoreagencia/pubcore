@@ -73,7 +73,7 @@ interface PontoCtx {
   start: (user?: string, ownerEmail?: string, userId?: string) => Promise<void>;
   pause: () => void;
   resume: () => void;
-  end: () => Promise<void>;
+  end: (endAtMs?: number) => Promise<void>;
   reset: () => void;
   adoptSession: (row: PontoRemoteRow) => void;
 }
