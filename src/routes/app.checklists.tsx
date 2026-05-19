@@ -44,16 +44,16 @@ function ChecklistsPage() {
   const completionPct = totals.pct;
 
   return (
-    <div className="p-6 lg:p-10 max-w-[1600px] mx-auto">
-      <header className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Operação diária</div>
-          <h1 className="font-display text-4xl font-bold tracking-tight mt-1">Centro Operacional</h1>
-          <p className="text-muted-foreground mt-1">
+    <div className="p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
+      <header className="mb-5 md:mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-3 md:gap-4">
+        <div className="min-w-0">
+          <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">Operação diária</div>
+          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mt-1">Centro Operacional</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Crie, organize e acompanhe suas próprias tarefas por empresa.
           </p>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-card">
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-card self-start md:self-auto">
           <div className="relative h-12 w-12">
             <svg viewBox="0 0 36 36" className="h-12 w-12 -rotate-90">
               <circle cx="18" cy="18" r="15" fill="none" stroke="oklch(0.28 0.014 240)" strokeWidth="3" />
@@ -78,25 +78,27 @@ function ChecklistsPage() {
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 p-1 mb-6 rounded-xl border border-border bg-card shadow-card w-fit">
-        {TABS.map((t) => {
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                active
-                  ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:text-foreground hover:bg-surface"
-              }`}
-            >
-              <t.icon className="h-4 w-4" />
-              {t.label}
-            </button>
-          );
-        })}
+      {/* Tabs — scroll horizontal no mobile */}
+      <div className="-mx-4 sm:mx-0 px-4 sm:px-0 mb-5 md:mb-6 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 p-1 rounded-xl border border-border bg-card shadow-card w-fit">
+          {TABS.map((t) => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex items-center gap-2 rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+                  active
+                    ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface"
+                }`}
+              >
+                <t.icon className="h-4 w-4" />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {tab === "diario" && <DailyTab />}
