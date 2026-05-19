@@ -130,7 +130,7 @@ export function CalculatorWidget() {
   return (
     <div
       ref={containerRef}
-      style={{ left: pos.x, top: pos.y }}
+      style={{ left: pos.x, top: pos.y, width: "max-content", maxWidth: "calc(100dvw - 16px)" }}
       className="fixed z-50 select-none"
     >
       {open ? (
