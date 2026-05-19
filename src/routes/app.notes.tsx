@@ -795,15 +795,18 @@ function Editor({
     <div className="flex flex-col h-full">
       <div className="h-14 px-3 md:pl-6 md:pr-[360px] border-b border-border/60 flex items-center justify-between gap-2 md:gap-3 bg-card/20 relative z-50">
         <div className="flex items-center gap-2 min-w-0">
-          <Icon className="h-3.5 w-3.5" style={{ color }} />
+          <button onClick={onClose} className="md:hidden p-1.5 -ml-1 rounded-md hover:bg-secondary text-muted-foreground" aria-label="Voltar">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <Icon className="h-3.5 w-3.5 flex-shrink-0" style={{ color }} />
           <span className="text-[10px] uppercase tracking-wider font-semibold truncate" style={{ color }}>
             {note.category}
           </span>
-          <span className="text-muted-foreground/40">·</span>
-          <span className="text-[11px] text-muted-foreground">Editado {formatRelative(note.updated_at)}</span>
-          <SaveIndicator status={saveStatus} className="ml-2" />
+          <span className="hidden sm:inline text-muted-foreground/40">·</span>
+          <span className="hidden sm:inline text-[11px] text-muted-foreground truncate">Editado {formatRelative(note.updated_at)}</span>
+          <SaveIndicator status={saveStatus} className="ml-1 md:ml-2" />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 md:gap-1 flex-shrink-0">
           <button onClick={() => onPin(!note.pinned)} className="p-2 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" title="Fixar">
             <Pin className={`h-4 w-4 ${note.pinned ? "fill-current text-primary" : ""}`} />
           </button>
@@ -813,20 +816,18 @@ function Editor({
           <button onClick={onDelete} className="p-2 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Excluir">
             <Trash2 className="h-4 w-4" />
           </button>
-          <button onClick={onClose} className="p-2 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors md:hidden">
-            <X className="h-4 w-4" />
-          </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-8 py-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 md:px-8 py-5 md:py-8">
           <input
             value={note.title}
             onChange={(e) => onChange({ title: e.target.value })}
             placeholder="Sem título"
-            className="w-full bg-transparent text-3xl font-display font-bold tracking-tight text-foreground placeholder:text-muted-foreground/40 outline-none mb-4"
+            className="w-full bg-transparent text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground placeholder:text-muted-foreground/40 outline-none mb-4"
           />
+
 
           <div className="flex flex-wrap items-center gap-2 mb-5">
             <select
