@@ -902,7 +902,7 @@ function CardDialog({
                 <div key={i.id} className="flex items-center gap-2 group">
                   <input type="checkbox" checked={i.done} onChange={() => toggleItem(i.id)} className="h-4 w-4 rounded accent-primary" />
                   <span className={`flex-1 text-sm ${i.done ? "line-through text-muted-foreground" : ""}`}>{i.text}</span>
-                  <button onClick={() => removeItem(i.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
+                  <button onClick={() => removeItem(i.id)} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 -m-1">
                     <X className="h-3.5 w-3.5" />
                   </button>
                 </div>
