@@ -114,11 +114,40 @@ export function PontoAutoTracker() {
     const checkIdle = async () => {
       if (endingRef.current) return;
       if (!isLive) return;
-      const idle = Date.now() - readLastActivity();
-      if (idle <= IDLE_LIMIT_MS) return;
+      const localLast = readLastActivity();
+      const localIdle = Date.now() - localLast;
+      if (localIdle <= IDLE_LIMIT_MS) return;
+
+      // Antes de encerrar, confere updated_at remoto: pode haver outra aba/
+      // dispositivo ativo batendo heartbeat. Se o remoto está fresco, abortamos.
+      let lastActivity = localLast;
+      if (session.sessionId) {
+        try {
+          const { data } = await supabase
+            .from("ponto_sessions")
+            .select("updated_at, status")
+            .eq("id", session.sessionId)
+            .maybeSingle();
+          if (data) {
+            if (data.status === "ended") return; // já encerrado por outro lado
+            const remoteTs = data.updated_at ? new Date(data.updated_at).getTime() : 0;
+            const remoteIdle = Date.now() - remoteTs;
+            if (remoteIdle <= IDLE_LIMIT_MS) {
+              // Outro dispositivo está ativo. Sincroniza nosso relógio local
+              // para não ficar tentando encerrar a cada ciclo.
+              writeLastActivity(remoteTs);
+              return;
+            }
+            lastActivity = Math.max(localLast, remoteTs);
+          }
+        } catch (e) {
+          console.error("[ponto-auto] remote idle check error", e);
+        }
+      }
+
       endingRef.current = true;
       try {
-        await end();
+        await end(lastActivity);
         toast("Expediente encerrado automaticamente por inatividade", { duration: 4000 });
       } finally {
         endingRef.current = false;
@@ -137,7 +166,7 @@ export function PontoAutoTracker() {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };
-  }, [user, isLive, end]);
+  }, [user, isLive, end, session.sessionId]);
 
   // Heartbeat: enquanto o expediente está ativo, mantém updated_at fresco
   // no Supabase para que a detecção de abandono em outro browser/aba funcione.

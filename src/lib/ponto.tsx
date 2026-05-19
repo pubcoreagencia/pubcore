@@ -73,7 +73,7 @@ interface PontoCtx {
   start: (user?: string, ownerEmail?: string, userId?: string) => Promise<void>;
   pause: () => void;
   resume: () => void;
-  end: () => Promise<void>;
+  end: (endAtMs?: number) => Promise<void>;
   reset: () => void;
   adoptSession: (row: PontoRemoteRow) => void;
 }
@@ -277,15 +277,18 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const end = async () => {
+  const end = async (endAtMs?: number) => {
     const now = Date.now();
     if (session.status === "off" || session.status === "ended") return;
+    // Clamp endAt: nunca antes do início, nunca depois de agora
+    const rawEnd = typeof endAtMs === "number" && Number.isFinite(endAtMs) ? endAtMs : now;
+    const endAt = Math.min(now, Math.max(rawEnd, session.startedAt ?? rawEnd));
     const pauses = [...session.pauses];
     const last = pauses[pauses.length - 1];
-    if (last && !last.end) pauses[pauses.length - 1] = { ...last, end: now };
-    const ended: PontoSession = { ...session, status: "ended", endedAt: now, pauses };
+    if (last && !last.end) pauses[pauses.length - 1] = { ...last, end: endAt };
+    const ended: PontoSession = { ...session, status: "ended", endedAt: endAt, pauses };
     setSession(ended);
-    const { liveWorkMs, livePauseMs, productiveMs } = compute(ended, now);
+    const { liveWorkMs, livePauseMs, productiveMs } = compute(ended, endAt);
     if (!ended.sessionId) {
       const { data: authData } = await supabase.auth.getUser();
       const resolvedUserId = authData.user?.id ?? null;
@@ -302,8 +305,8 @@ export function PontoProvider({ children }: { children: ReactNode }) {
           user_id: resolvedUserId,
           owner_email: owner,
           user_name: ended.user ?? null,
-          started_at: new Date(ended.startedAt ?? now).toISOString(),
-          ended_at: new Date(now).toISOString(),
+          started_at: new Date(ended.startedAt ?? endAt).toISOString(),
+          ended_at: new Date(endAt).toISOString(),
           status: "ended",
           pauses: ended.pauses as unknown as never,
           total_ms: liveWorkMs,
