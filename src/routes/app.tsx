@@ -34,7 +34,9 @@ function AppLayout() {
     <WorkspaceProvider>
       <PontoProvider>
         <ChecklistProvider>
-          <PontoAutoTracker />
+            <PontoAutoTracker />
+            <CalculatorWidget />
+
           <div className="flex min-h-screen w-full bg-background">
             <Sidebar />
             <main className="flex-1 min-w-0 relative flex flex-col">
