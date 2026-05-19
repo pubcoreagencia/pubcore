@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
 import { WorkspaceProvider } from "@/lib/workspace";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 export const Route = createFileRoute("/app")({
   component: AppLayout,
