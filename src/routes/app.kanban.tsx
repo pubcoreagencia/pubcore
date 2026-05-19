@@ -574,7 +574,7 @@ function KanbanPage() {
                 }
                 setOverCol(null);
               }}
-              className={`flex-shrink-0 w-[280px] md:w-[300px] rounded-xl border bg-surface/40 p-3 min-h-[500px] transition ${
+              className={`snap-start flex-shrink-0 w-[85vw] max-w-[320px] md:w-[300px] rounded-xl border bg-surface/40 p-3 min-h-[420px] md:min-h-[500px] transition ${
                 isOver ? "border-primary/60 bg-primary/5" : "border-border"
               }`}
             >
