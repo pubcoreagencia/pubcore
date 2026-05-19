@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Plus, Search, Star, Trash2, FileText, Sparkles, Pin, Tag as TagIcon,
   Clock, Grid2x2, List as ListIcon, Loader2, X, Settings2, Pencil,
-  ArrowUp, ArrowDown, Lightbulb, Target, Megaphone, Hammer, Compass,
+  ArrowUp, ArrowDown, ArrowLeft, Lightbulb, Target, Megaphone, Hammer, Compass,
   Brain, Cog, Folder, Rocket, Heart, Flag, Bookmark, Zap, Palette, Check,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,6 +103,7 @@ function NotesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const catByName = useMemo(() => {
     const m = new Map<string, NoteCategory>();
@@ -375,9 +376,9 @@ function NotesPage() {
     : filter.name;
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] w-full overflow-hidden">
-      {/* ============ Notes Sidebar ============ */}
-      <aside className="w-64 shrink-0 border-r border-border/60 bg-card/30 backdrop-blur-sm flex flex-col">
+    <div className="flex h-[calc(100vh-3.5rem-64px-env(safe-area-inset-bottom))] md:h-[calc(100vh-3.5rem)] w-full overflow-hidden">
+      {/* ============ Notes Sidebar (desktop) ============ */}
+      <aside className="hidden md:flex w-64 shrink-0 border-r border-border/60 bg-card/30 backdrop-blur-sm flex-col">
         <div className="px-4 pt-5 pb-3">
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="h-4 w-4 text-primary" />
@@ -440,25 +441,43 @@ function NotesPage() {
       </aside>
 
       {/* ============ List Pane ============ */}
-      <section className="w-[360px] shrink-0 border-r border-border/60 flex flex-col bg-background">
-        <div className="px-4 pt-5 pb-3 space-y-3 border-b border-border/60">
-          <div className="flex items-center justify-between">
-            <h3 className="font-display font-semibold text-sm tracking-tight capitalize">{filterLabel}</h3>
-            <div className="flex items-center gap-0.5 rounded-md bg-secondary/60 p-0.5">
+      <section className={`${selectedId ? "hidden md:flex" : "flex"} w-full md:w-[360px] shrink-0 border-r border-border/60 flex-col bg-background`}>
+        <div className="px-4 pt-4 md:pt-5 pb-3 space-y-3 border-b border-border/60">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <button
-                onClick={() => setView("grid")}
-                className={`p-1.5 rounded transition-colors ${view === "grid" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                aria-label="Grid"
+                onClick={() => setMobileFiltersOpen(true)}
+                className="md:hidden p-2 -ml-2 rounded-md hover:bg-secondary text-muted-foreground"
+                aria-label="Filtros"
               >
-                <Grid2x2 className="h-3.5 w-3.5" />
+                <Settings2 className="h-4 w-4" />
               </button>
+              <h3 className="font-display font-semibold text-sm tracking-tight capitalize truncate">{filterLabel}</h3>
+            </div>
+            <div className="flex items-center gap-1">
               <button
-                onClick={() => setView("list")}
-                className={`p-1.5 rounded transition-colors ${view === "list" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-                aria-label="Lista"
+                onClick={createNote}
+                className="md:hidden p-2 rounded-md bg-primary text-primary-foreground"
+                aria-label="Nova nota"
               >
-                <ListIcon className="h-3.5 w-3.5" />
+                <Plus className="h-4 w-4" />
               </button>
+              <div className="flex items-center gap-0.5 rounded-md bg-secondary/60 p-0.5">
+                <button
+                  onClick={() => setView("grid")}
+                  className={`p-1.5 rounded transition-colors ${view === "grid" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  aria-label="Grid"
+                >
+                  <Grid2x2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => setView("list")}
+                  className={`p-1.5 rounded transition-colors ${view === "list" ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  aria-label="Lista"
+                >
+                  <ListIcon className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
           </div>
           <div className="relative">
@@ -513,7 +532,7 @@ function NotesPage() {
       </section>
 
       {/* ============ Editor ============ */}
-      <main className="flex-1 min-w-0 flex flex-col bg-background">
+      <main className={`${selectedId ? "flex" : "hidden md:flex"} flex-1 min-w-0 flex-col bg-background`}>
         {selected ? (
           <Editor
             key={selected.id}
@@ -543,6 +562,76 @@ function NotesPage() {
         onDelete={deleteCategory}
         onMove={moveCategory}
       />
+
+      {/* ============ Mobile Filters Sheet ============ */}
+      {mobileFiltersOpen && (
+        <>
+          <div
+            className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-fade-in"
+            onClick={() => setMobileFiltersOpen(false)}
+          />
+          <div
+            className="md:hidden fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-border bg-sidebar shadow-2xl max-h-[80vh] flex flex-col animate-slide-in-right"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          >
+            <div className="flex items-center justify-center pt-2">
+              <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+            </div>
+            <div className="flex items-center justify-between px-5 pt-3 pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h2 className="font-display text-base font-semibold tracking-tight">Filtros</h2>
+              </div>
+              <button
+                onClick={() => setMobileFiltersOpen(false)}
+                className="p-2 -mr-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-3 pb-4 space-y-0.5 overflow-y-auto flex-1">
+              <SidebarItem
+                icon={FileText} label="Todas" count={counts.__all}
+                active={filter.kind === "all"}
+                onClick={() => { setFilter({ kind: "all" }); setMobileFiltersOpen(false); }}
+              />
+              <SidebarItem
+                icon={Star} label="Favoritas" count={counts.__fav}
+                active={filter.kind === "favorites"}
+                onClick={() => { setFilter({ kind: "favorites" }); setMobileFiltersOpen(false); }}
+              />
+              <SidebarItem
+                icon={Clock} label="Recentes" count={Math.min(notes.length, 12)}
+                active={filter.kind === "recent"}
+                onClick={() => { setFilter({ kind: "recent" }); setMobileFiltersOpen(false); }}
+              />
+              <div className="flex items-center justify-between px-3 pt-5 pb-1.5">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60">Categorias</span>
+                <button
+                  onClick={() => { setMobileFiltersOpen(false); setManageOpen(true); }}
+                  className="text-muted-foreground/60 hover:text-foreground"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {categories.map((c) => {
+                const Icon = ICONS[c.icon] ?? Sparkles;
+                return (
+                  <SidebarItem
+                    key={c.id}
+                    customIcon={<Icon className="h-3.5 w-3.5" style={{ color: c.color }} />}
+                    label={c.name}
+                    count={counts[c.name] ?? 0}
+                    active={filter.kind === "category" && filter.name === c.name}
+                    onClick={() => { setFilter({ kind: "category", name: c.name }); setMobileFiltersOpen(false); }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -704,17 +793,20 @@ function Editor({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="h-14 pl-6 pr-6 md:pr-[360px] border-b border-border/60 flex items-center justify-between gap-3 bg-card/20 relative z-50">
+      <div className="h-14 px-3 md:pl-6 md:pr-[360px] border-b border-border/60 flex items-center justify-between gap-2 md:gap-3 bg-card/20 relative z-50">
         <div className="flex items-center gap-2 min-w-0">
-          <Icon className="h-3.5 w-3.5" style={{ color }} />
+          <button onClick={onClose} className="md:hidden p-1.5 -ml-1 rounded-md hover:bg-secondary text-muted-foreground" aria-label="Voltar">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <Icon className="h-3.5 w-3.5 flex-shrink-0" style={{ color }} />
           <span className="text-[10px] uppercase tracking-wider font-semibold truncate" style={{ color }}>
             {note.category}
           </span>
-          <span className="text-muted-foreground/40">·</span>
-          <span className="text-[11px] text-muted-foreground">Editado {formatRelative(note.updated_at)}</span>
-          <SaveIndicator status={saveStatus} className="ml-2" />
+          <span className="hidden sm:inline text-muted-foreground/40">·</span>
+          <span className="hidden sm:inline text-[11px] text-muted-foreground truncate">Editado {formatRelative(note.updated_at)}</span>
+          <SaveIndicator status={saveStatus} className="ml-1 md:ml-2" />
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 md:gap-1 flex-shrink-0">
           <button onClick={() => onPin(!note.pinned)} className="p-2 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" title="Fixar">
             <Pin className={`h-4 w-4 ${note.pinned ? "fill-current text-primary" : ""}`} />
           </button>
@@ -724,20 +816,18 @@ function Editor({
           <button onClick={onDelete} className="p-2 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Excluir">
             <Trash2 className="h-4 w-4" />
           </button>
-          <button onClick={onClose} className="p-2 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors md:hidden">
-            <X className="h-4 w-4" />
-          </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-8 py-8">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 md:px-8 py-5 md:py-8">
           <input
             value={note.title}
             onChange={(e) => onChange({ title: e.target.value })}
             placeholder="Sem título"
-            className="w-full bg-transparent text-3xl font-display font-bold tracking-tight text-foreground placeholder:text-muted-foreground/40 outline-none mb-4"
+            className="w-full bg-transparent text-2xl sm:text-3xl font-display font-bold tracking-tight text-foreground placeholder:text-muted-foreground/40 outline-none mb-4"
           />
+
 
           <div className="flex flex-wrap items-center gap-2 mb-5">
             <select
