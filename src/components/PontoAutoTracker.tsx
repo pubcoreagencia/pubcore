@@ -166,7 +166,7 @@ export function PontoAutoTracker() {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };
-  }, [user, isLive, end]);
+  }, [user, isLive, end, session.sessionId]);
 
   // Heartbeat: enquanto o expediente está ativo, mantém updated_at fresco
   // no Supabase para que a detecção de abandono em outro browser/aba funcione.
