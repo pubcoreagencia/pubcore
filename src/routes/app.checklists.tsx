@@ -44,16 +44,16 @@ function ChecklistsPage() {
   const completionPct = totals.pct;
 
   return (
-    <div className="p-6 lg:p-10 max-w-[1600px] mx-auto">
-      <header className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-        <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Operação diária</div>
-          <h1 className="font-display text-4xl font-bold tracking-tight mt-1">Centro Operacional</h1>
-          <p className="text-muted-foreground mt-1">
+    <div className="p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
+      <header className="mb-5 md:mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-3 md:gap-4">
+        <div className="min-w-0">
+          <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">Operação diária</div>
+          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mt-1">Centro Operacional</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Crie, organize e acompanhe suas próprias tarefas por empresa.
           </p>
         </div>
-        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-card">
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-card self-start md:self-auto">
           <div className="relative h-12 w-12">
             <svg viewBox="0 0 36 36" className="h-12 w-12 -rotate-90">
               <circle cx="18" cy="18" r="15" fill="none" stroke="oklch(0.28 0.014 240)" strokeWidth="3" />
@@ -78,25 +78,27 @@ function ChecklistsPage() {
         </div>
       </header>
 
-      {/* Tabs */}
-      <div className="flex flex-wrap gap-1 p-1 mb-6 rounded-xl border border-border bg-card shadow-card w-fit">
-        {TABS.map((t) => {
-          const active = tab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                active
-                  ? "bg-gradient-primary text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:text-foreground hover:bg-surface"
-              }`}
-            >
-              <t.icon className="h-4 w-4" />
-              {t.label}
-            </button>
-          );
-        })}
+      {/* Tabs — scroll horizontal no mobile */}
+      <div className="-mx-4 sm:mx-0 px-4 sm:px-0 mb-5 md:mb-6 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 p-1 rounded-xl border border-border bg-card shadow-card w-fit">
+          {TABS.map((t) => {
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`flex items-center gap-2 rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+                  active
+                    ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                    : "text-muted-foreground hover:text-foreground hover:bg-surface"
+                }`}
+              >
+                <t.icon className="h-4 w-4" />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {tab === "diario" && <DailyTab />}
@@ -134,8 +136,8 @@ function DailyTab() {
   return (
     <div className="space-y-5">
       {/* Filtros */}
-      <div className="flex flex-wrap items-center gap-3 p-4 rounded-xl border border-border bg-card shadow-card">
-        <Filter className="h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl border border-border bg-card shadow-card">
+        <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
         <Select
           label="Empresa"
           value={companyFilter}
@@ -148,13 +150,14 @@ function DailyTab() {
           onChange={(v) => setStatusFilter(v as StatusFilter)}
           options={["Todos", "Pendente", "Concluído"]}
         />
-        <div className="ml-auto flex items-center gap-3 text-xs">
-          <span className="text-muted-foreground font-mono">{totals.done}/{totals.total} concluídas</span>
+        <div className="ml-auto flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground font-mono hidden sm:inline">{totals.done}/{totals.total} concluídas</span>
+          <span className="text-muted-foreground font-mono sm:hidden">{totals.done}/{totals.total}</span>
           <span className="px-2 py-1 rounded-md bg-surface font-mono text-primary">{totals.pct}%</span>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
         {visibleCompanies.map((company) => (
           <CompanyChecklistCard
             key={company}
@@ -381,7 +384,7 @@ function CompanyChecklistCard({
                   </div>
 
                   {!isEditing && (
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition shrink-0">
+                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition shrink-0">
                       <button
                         onClick={() => startEdit(t)}
                         className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-surface"
@@ -810,20 +813,20 @@ function PontoTab() {
   return (
     <div className="space-y-5">
       {/* 1 + 2: Status + Timer Operacional */}
-      <div className="rounded-2xl border border-border bg-card p-8 shadow-card relative overflow-hidden">
+      <div className="rounded-2xl border border-border bg-card p-5 sm:p-8 shadow-card relative overflow-hidden">
         <div className="absolute inset-0 bg-glow opacity-50 pointer-events-none" />
         <div className="relative">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${statusColor}`}>
               <span className={`h-1.5 w-1.5 rounded-full ${isLive ? "bg-current animate-pulse" : "bg-current opacity-60"}`} />
               {statusLabel}
             </span>
-            {user && <span className="text-xs text-muted-foreground">{user.name} · {user.role}</span>}
+            {user && <span className="text-[11px] sm:text-xs text-muted-foreground truncate">{user.name} · {user.role}</span>}
           </div>
 
-          <div className="mt-6">
+          <div className="mt-5 sm:mt-6">
             <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Tempo de expediente</div>
-            <div className="font-display text-6xl md:text-7xl font-bold tracking-tight tabular-nums mt-1">
+            <div className="font-display text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight tabular-nums mt-1">
               {fmtTime(liveWork)}
             </div>
           </div>
@@ -1066,7 +1069,7 @@ function MetricsTab() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center gap-3 p-4 rounded-xl border border-border bg-card shadow-card">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl border border-border bg-card shadow-card">
         <div className="flex gap-1 p-1 rounded-lg bg-surface">
           {(["diario","semanal","mensal"] as const).map((p) => (
             <button
@@ -1078,8 +1081,8 @@ function MetricsTab() {
             >{p}</button>
           ))}
         </div>
-        <span className="ml-auto text-xs text-muted-foreground font-mono">
-          {loading ? "Carregando…" : `${tasksCount} tarefas · ${hours.toFixed(1)}h trabalhadas`}
+        <span className="ml-auto text-[11px] sm:text-xs text-muted-foreground font-mono">
+          {loading ? "Carregando…" : `${tasksCount} tarefas · ${hours.toFixed(1)}h`}
         </span>
       </div>
 
