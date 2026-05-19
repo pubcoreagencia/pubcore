@@ -206,7 +206,7 @@ function StockPage() {
   const activeCompany = data.companies.find((c) => c.id === activeCompanyId) ?? null;
 
   return (
-    <div className="p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 max-w-[1700px] mx-auto">
+    <div className="w-full min-w-0 max-w-full xl:max-w-[1700px] xl:mx-auto p-3 sm:p-6 md:p-8 space-y-4 sm:space-y-6 overflow-x-hidden">
       <header className="flex flex-wrap items-start sm:items-end justify-between gap-3 sm:gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">
@@ -219,7 +219,7 @@ function StockPage() {
             Cada empresa tem seu próprio inventário, grupos, categorias e campos.
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="grid grid-cols-2 gap-2 w-full sm:w-auto sm:flex sm:items-center sm:flex-shrink-0">
           <Button variant="outline" size="sm" onClick={() => setHistoryOpen(true)} className="gap-2">
             <History className="h-4 w-4" /> <span className="hidden sm:inline">Histórico</span>
           </Button>
@@ -512,15 +512,15 @@ function CompanyView({
   };
 
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+    <div className="w-full min-w-0 space-y-5 overflow-x-hidden">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 min-w-0">
         <Kpi label="Itens" value={String(items.length)} accent={company.color} />
         <Kpi label="Unidades" value={totalUnits.toLocaleString("pt-BR")} accent={company.color} />
         <Kpi label="Valor total" value={BRL(totalValue)} accent={company.color} />
         <Kpi label="Críticos" value={String(critical)} accent={critical > 0 ? "oklch(0.65 0.22 25)" : company.color} />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 min-w-0">
         <div className="relative w-full md:flex-1 md:min-w-[220px] order-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nome, SKU, fornecedor…" className="pl-9" />
