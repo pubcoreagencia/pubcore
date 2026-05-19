@@ -122,11 +122,14 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    width: 100%;
+    max-width: 100%;
     overflow-x: hidden;
     overscroll-behavior-x: none;
   }
   /* Prevent any page from horizontally overflowing the viewport on mobile */
-  #root { max-width: 100vw; overflow-x: hidden; }
+  body { min-width: 0; }
+  body > div { width: 100%; max-width: 100%; overflow-x: hidden; }
 
   body {
     background-image:

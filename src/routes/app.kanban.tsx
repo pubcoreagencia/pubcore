@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, type PointerEvent } from "react";
 import { Plus, Trash2, Pencil, X, GripVertical, CalendarDays, User, FileText, ListChecks, Layers, Paperclip } from "lucide-react";
 import { COMPANIES, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
@@ -93,6 +93,58 @@ function KanbanPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [loaded, setLoaded] = useState(false);
   const boardRef = useRef<HTMLDivElement | null>(null);
+  const boardPointerRef = useRef({ active: false, pointerId: -1, startX: 0, startY: 0, startLeft: 0, moved: false });
+  const boardDragMovedRef = useRef(false);
+  const [nativeDragEnabled, setNativeDragEnabled] = useState(true);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: coarse)");
+    const update = () => setNativeDragEnabled(!mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", update);
+      else mq.removeListener(update);
+    };
+  }, []);
+
+  const shouldIgnoreBoardPan = (target: EventTarget | null) => {
+    return target instanceof HTMLElement && Boolean(target.closest("button,a,input,textarea,select,[role='button'],[contenteditable='true']"));
+  };
+
+  const handleBoardPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (shouldIgnoreBoardPan(e.target)) return;
+    const el = boardRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    boardPointerRef.current = { active: true, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, startLeft: el.scrollLeft, moved: false };
+    boardDragMovedRef.current = false;
+  };
+
+  const handleBoardPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    const state = boardPointerRef.current;
+    const el = boardRef.current;
+    if (!state.active || state.pointerId !== e.pointerId || !el) return;
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+    if (!state.moved && Math.abs(dx) < 6) return;
+    if (Math.abs(dx) < Math.abs(dy)) return;
+    state.moved = true;
+    boardDragMovedRef.current = true;
+    e.preventDefault();
+    el.scrollLeft = state.startLeft - dx;
+  };
+
+  const handleBoardPointerEnd = (e: PointerEvent<HTMLDivElement>) => {
+    const state = boardPointerRef.current;
+    if (state.pointerId !== e.pointerId) return;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    boardPointerRef.current = { ...state, active: false };
+    if (state.moved) window.setTimeout(() => { boardDragMovedRef.current = false; }, 80);
+    else boardDragMovedRef.current = false;
+  };
 
   // Horizontal wheel scrolling (Trello/Linear-like)
   useEffect(() => {
@@ -545,8 +597,19 @@ function KanbanPage() {
       {/* BOARD */}
       <div
         ref={boardRef}
-        className="flex gap-3 sm:gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-proximity [scrollbar-width:thin] overscroll-x-contain -mx-3 sm:mx-0 pl-3 pr-6 sm:px-0 touch-pan-x"
-        style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" }}
+        onPointerDown={handleBoardPointerDown}
+        onPointerMove={handleBoardPointerMove}
+        onPointerUp={handleBoardPointerEnd}
+        onPointerCancel={handleBoardPointerEnd}
+        onLostPointerCapture={handleBoardPointerEnd}
+        onClickCapture={(e) => {
+          if (boardDragMovedRef.current) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
+        className="flex w-full max-w-full gap-3 sm:gap-4 overflow-x-auto overflow-y-hidden pb-4 scroll-smooth snap-x snap-proximity [scrollbar-width:thin] overscroll-x-contain touch-pan-y select-none cursor-grab active:cursor-grabbing"
+        style={{ scrollBehavior: "smooth", WebkitOverflowScrolling: "touch", paddingInline: "12px max(24px, env(safe-area-inset-right))", marginInline: "-12px" }}
       >
         {funnelCols.map((col) => {
           const list = funnelCards.filter(c => c.column_id === col.id).sort((a, b) => a.position - b.position);
@@ -554,7 +617,7 @@ function KanbanPage() {
           return (
             <div
               key={col.id}
-              draggable={editingCol !== col.id}
+              draggable={nativeDragEnabled && editingCol !== col.id}
               onDragStart={(e) => {
                 if (draggingCard) return;
                 setDraggingCol(col.id);
@@ -620,7 +683,7 @@ function KanbanPage() {
                   return (
                     <article
                       key={c.id}
-                      draggable
+                      draggable={nativeDragEnabled}
                       onDragStart={(e) => {
                         e.stopPropagation();
                         setDraggingCard(c.id);
@@ -724,7 +787,7 @@ function KanbanPage() {
             <Plus className="h-4 w-4" /> Nova coluna
           </button>
         )}
-        <div aria-hidden className="flex-shrink-0 w-3 sm:w-6" />
+        <div aria-hidden className="flex-shrink-0 w-1 sm:w-6" />
       </div>
 
       {openCard && (
