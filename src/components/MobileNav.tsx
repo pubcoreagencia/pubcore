@@ -1,7 +1,7 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, KanbanSquare, ListChecks, Calendar, StickyNote, Wallet, Boxes,
-  Users2, Calculator, Settings, LogOut,
+  Users2, Calculator, Settings, LogOut, Box,
 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
@@ -20,6 +20,7 @@ const TABS: Tab[] = [
   { to: "/app/calendar", label: "Agenda", icon: Calendar },
   { to: "/app/crm", label: "CRM", icon: Users2 },
   { to: "/app/calculator", label: "Calc.", icon: Calculator },
+  { to: "/app/calc3d", label: "Calc. 3D", icon: Box },
   { to: "/app/settings", label: "Config.", icon: Settings },
 ];
 
