@@ -458,7 +458,6 @@ function CompanyView({
   );
 
   const [q, setQ] = useState("");
-  const [groupFilter, setGroupFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [view, setView] = useState<"table" | "cards">("table");
   const [isMobile, setIsMobile] = useState(false);
@@ -472,11 +471,12 @@ function CompanyView({
   const effectiveView = isMobile ? "cards" : view;
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [creatingItem, setCreatingItem] = useState(false);
+  const [createGroupId, setCreateGroupId] = useState<string | null>(null);
   const [movingItem, setMovingItem] = useState<Item | null>(null);
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const filtered = useMemo(() => {
     return items.filter((i) => {
-      if (groupFilter !== "all" && i.group_id !== groupFilter) return false;
       if (categoryFilter !== "all" && i.category_id !== categoryFilter) return false;
       if (q) {
         const hay = `${i.name} ${i.sku ?? ""} ${i.supplier ?? ""} ${i.location ?? ""}`.toLowerCase();
@@ -484,12 +484,32 @@ function CompanyView({
       }
       return true;
     });
-  }, [items, groupFilter, categoryFilter, q]);
+  }, [items, categoryFilter, q]);
 
   // KPIs
   const totalUnits = items.reduce((s, i) => s + Number(i.quantity || 0), 0);
   const totalValue = items.reduce((s, i) => s + Number(i.quantity) * Number(i.cost), 0);
   const critical = items.filter((i) => Number(i.quantity) <= Number(i.min_quantity)).length;
+
+  const sortedGroups = [...groups].sort((a, b) => a.position - b.position);
+  const ungrouped = filtered.filter((i) => !i.group_id);
+  const sections: { id: string; group: Group | null; items: Item[] }[] = [
+    ...sortedGroups.map((g) => ({ id: g.id, group: g, items: filtered.filter((i) => i.group_id === g.id) })),
+    ...(ungrouped.length > 0 || sortedGroups.length === 0
+      ? [{ id: "__none__", group: null, items: ungrouped }]
+      : []),
+  ];
+
+  const createGroup = async () => {
+    const name = window.prompt("Nome do novo grupo:");
+    if (!name?.trim()) return;
+    const { error } = await sb.from("stock_groups").insert({
+      workspace_id: workspaceId, user_id: userId, company_id: company.id,
+      name: name.trim(), color: PALETTE[groups.length % PALETTE.length], position: groups.length,
+    });
+    if (error) toast.error("Erro ao criar grupo");
+    else toast.success("Grupo criado");
+  };
 
   return (
     <div className="space-y-5">
@@ -505,13 +525,6 @@ function CompanyView({
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar nome, SKU, fornecedor…" className="pl-9" />
         </div>
-        <Select value={groupFilter} onValueChange={setGroupFilter}>
-          <SelectTrigger className="flex-1 md:flex-none md:w-44 order-2"><SelectValue placeholder="Grupo" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os grupos</SelectItem>
-            {groups.map((g) => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="flex-1 md:flex-none md:w-44 order-3"><SelectValue placeholder="Categoria" /></SelectTrigger>
           <SelectContent>
@@ -527,29 +540,39 @@ function CompanyView({
             <LayoutGrid className="h-4 w-4" />
           </button>
         </div>
-        <Button onClick={() => { setEditingItem(null); setCreatingItem(true); }} className="gap-2 order-5 w-full md:w-auto">
+        <Button onClick={createGroup} variant="outline" className="gap-2 order-5 flex-1 md:flex-none">
+          <FolderPlus className="h-4 w-4" /> Novo grupo
+        </Button>
+        <Button onClick={() => { setEditingItem(null); setCreateGroupId(null); setCreatingItem(true); }} className="gap-2 order-6 w-full md:w-auto">
           <Plus className="h-4 w-4" /> Novo item
         </Button>
       </div>
 
-      {effectiveView === "table" ? (
-        <ItemsTable
-          items={filtered}
-          allItems={items}
-          fields={fields}
-          groups={groups}
-          categories={categories}
-          onEdit={(i) => setEditingItem(i)}
-          onMove={(i) => setMovingItem(i)}
-        />
-      ) : (
-        <ItemsCards items={filtered} allItems={items} fields={fields} onEdit={setEditingItem} onMove={setMovingItem} accent={company.color} />
-      )}
+      <div className="space-y-3">
+        {sections.map((s) => (
+          <GroupSection
+            key={s.id}
+            group={s.group}
+            items={s.items}
+            allItems={items}
+            fields={fields}
+            groups={groups}
+            categories={categories}
+            view={effectiveView}
+            accent={company.color}
+            collapsed={!!collapsed[s.id]}
+            onToggle={() => setCollapsed((c) => ({ ...c, [s.id]: !c[s.id] }))}
+            onAdd={() => { setEditingItem(null); setCreateGroupId(s.group?.id ?? null); setCreatingItem(true); }}
+            onEdit={(i) => setEditingItem(i)}
+            onMove={(i) => setMovingItem(i)}
+          />
+        ))}
+      </div>
 
       {(editingItem || creatingItem) && (
         <ItemDialog
           open={!!editingItem || creatingItem}
-          onClose={() => { setEditingItem(null); setCreatingItem(false); }}
+          onClose={() => { setEditingItem(null); setCreatingItem(false); setCreateGroupId(null); }}
           item={editingItem}
           company={company}
           fields={fields}
@@ -558,6 +581,7 @@ function CompanyView({
           workspaceId={workspaceId}
           userId={userId}
           nextPosition={items.length}
+          defaultGroupId={createGroupId}
         />
       )}
       {movingItem && (
@@ -570,6 +594,72 @@ function CompanyView({
           userName={userName}
           companyId={company.id}
         />
+      )}
+    </div>
+  );
+}
+
+function GroupSection({
+  group, items, allItems, fields, groups, categories, view, accent,
+  collapsed, onToggle, onAdd, onEdit, onMove,
+}: {
+  group: Group | null; items: Item[]; allItems: Item[]; fields: FieldDef[];
+  groups: Group[]; categories: Category[]; view: "table" | "cards"; accent: string;
+  collapsed: boolean; onToggle: () => void; onAdd: () => void;
+  onEdit: (i: Item) => void; onMove: (i: Item) => void;
+}) {
+  const color = group?.color ?? "oklch(0.55 0.02 240)";
+  const name = group?.name ?? "Sem grupo";
+  const totalUnits = items.reduce((s, i) => s + Number(i.quantity || 0), 0);
+  const totalValue = items.reduce((s, i) => s + Number(i.quantity) * Number(i.cost), 0);
+  const critical = items.filter((i) => Number(i.quantity) <= Number(i.min_quantity)).length;
+
+  return (
+    <div className="rounded-xl border border-border bg-card/30 overflow-hidden">
+      <div
+        className="flex items-center gap-3 px-3 sm:px-4 py-2.5 hover:bg-secondary/30 transition-colors cursor-pointer select-none"
+        onClick={onToggle}
+      >
+        <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
+        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm truncate">{name}</span>
+            <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{items.length}</Badge>
+            {critical > 0 && <Badge variant="destructive" className="text-[10px] h-5 px-1.5">{critical} crítico{critical > 1 ? "s" : ""}</Badge>}
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-0.5 hidden sm:block">
+            {totalUnits.toLocaleString("pt-BR")} un · {BRL(totalValue)}
+          </div>
+        </div>
+        <Button
+          size="sm" variant="ghost" className="h-7 gap-1 text-xs shrink-0"
+          onClick={(e) => { e.stopPropagation(); onAdd(); }}
+          title="Adicionar item neste grupo"
+        >
+          <Plus className="h-3.5 w-3.5" /><span className="hidden sm:inline">Item</span>
+        </Button>
+      </div>
+      {!collapsed && (
+        <div className="border-t border-border p-2 sm:p-3">
+          {items.length === 0 ? (
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              Nenhum item neste grupo
+            </div>
+          ) : view === "table" ? (
+            <ItemsTable
+              items={items}
+              allItems={allItems}
+              fields={fields}
+              groups={groups}
+              categories={categories}
+              onEdit={onEdit}
+              onMove={onMove}
+            />
+          ) : (
+            <ItemsCards items={items} allItems={allItems} fields={fields} onEdit={onEdit} onMove={onMove} accent={accent} />
+          )}
+        </div>
       )}
     </div>
   );
