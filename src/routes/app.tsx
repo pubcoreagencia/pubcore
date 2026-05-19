@@ -37,10 +37,10 @@ function AppLayout() {
             <PontoAutoTracker />
             <CalculatorWidget />
 
-          <div className="flex min-h-screen w-full bg-background">
+          <div className="flex min-h-screen w-full bg-background overflow-x-hidden">
             <Sidebar />
             <main
-              className="flex-1 min-w-0 relative flex flex-col pb-[calc(env(safe-area-inset-bottom)+56px)] md:pb-0"
+              className="flex-1 min-w-0 max-w-full relative flex flex-col overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+64px)] md:pb-0"
             >
               <MobileNav />
               <PontoHeader />
