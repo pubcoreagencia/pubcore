@@ -532,7 +532,7 @@ function NotesPage() {
       </section>
 
       {/* ============ Editor ============ */}
-      <main className="flex-1 min-w-0 flex flex-col bg-background">
+      <main className={`${selectedId ? "flex" : "hidden md:flex"} flex-1 min-w-0 flex-col bg-background`}>
         {selected ? (
           <Editor
             key={selected.id}
@@ -562,6 +562,76 @@ function NotesPage() {
         onDelete={deleteCategory}
         onMove={moveCategory}
       />
+
+      {/* ============ Mobile Filters Sheet ============ */}
+      {mobileFiltersOpen && (
+        <>
+          <div
+            className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-fade-in"
+            onClick={() => setMobileFiltersOpen(false)}
+          />
+          <div
+            className="md:hidden fixed inset-x-0 bottom-0 z-50 rounded-t-2xl border-t border-border bg-sidebar shadow-2xl max-h-[80vh] flex flex-col animate-slide-in-right"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+          >
+            <div className="flex items-center justify-center pt-2">
+              <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+            </div>
+            <div className="flex items-center justify-between px-5 pt-3 pb-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <h2 className="font-display text-base font-semibold tracking-tight">Filtros</h2>
+              </div>
+              <button
+                onClick={() => setMobileFiltersOpen(false)}
+                className="p-2 -mr-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-3 pb-4 space-y-0.5 overflow-y-auto flex-1">
+              <SidebarItem
+                icon={FileText} label="Todas" count={counts.__all}
+                active={filter.kind === "all"}
+                onClick={() => { setFilter({ kind: "all" }); setMobileFiltersOpen(false); }}
+              />
+              <SidebarItem
+                icon={Star} label="Favoritas" count={counts.__fav}
+                active={filter.kind === "favorites"}
+                onClick={() => { setFilter({ kind: "favorites" }); setMobileFiltersOpen(false); }}
+              />
+              <SidebarItem
+                icon={Clock} label="Recentes" count={Math.min(notes.length, 12)}
+                active={filter.kind === "recent"}
+                onClick={() => { setFilter({ kind: "recent" }); setMobileFiltersOpen(false); }}
+              />
+              <div className="flex items-center justify-between px-3 pt-5 pb-1.5">
+                <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60">Categorias</span>
+                <button
+                  onClick={() => { setMobileFiltersOpen(false); setManageOpen(true); }}
+                  className="text-muted-foreground/60 hover:text-foreground"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              {categories.map((c) => {
+                const Icon = ICONS[c.icon] ?? Sparkles;
+                return (
+                  <SidebarItem
+                    key={c.id}
+                    customIcon={<Icon className="h-3.5 w-3.5" style={{ color: c.color }} />}
+                    label={c.name}
+                    count={counts[c.name] ?? 0}
+                    active={filter.kind === "category" && filter.name === c.name}
+                    onClick={() => { setFilter({ kind: "category", name: c.name }); setMobileFiltersOpen(false); }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
