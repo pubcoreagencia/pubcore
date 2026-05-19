@@ -22,6 +22,7 @@ import {
 import {
   Boxes, Plus, Pencil, Trash2, Search, Settings2, GripVertical,
   ArrowDownToLine, History, LayoutGrid, Table as TableIcon, Eye, EyeOff,
+  ChevronDown, FolderPlus,
 } from "lucide-react";
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
