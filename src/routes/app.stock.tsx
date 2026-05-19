@@ -662,7 +662,7 @@ function ItemRow({ item, fields, groups, categories, onEdit, onMove, onDelete }:
     <tr ref={setNodeRef} style={style} className="border-b border-border/50 last:border-0 hover:bg-secondary/30 group">
       <td className="px-1.5 py-1">
         <button {...attributes} {...listeners}
-          className="opacity-0 group-hover:opacity-60 hover:opacity-100 cursor-grab p-1" aria-label="Reordenar">
+          className="opacity-60 md:opacity-0 md:group-hover:opacity-60 hover:opacity-100 cursor-grab active:cursor-grabbing p-1 touch-none" aria-label="Reordenar">
           <GripVertical className="h-3.5 w-3.5" />
         </button>
       </td>
