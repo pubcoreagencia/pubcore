@@ -460,6 +460,15 @@ function CompanyView({
   const [groupFilter, setGroupFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [view, setView] = useState<"table" | "cards">("table");
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  const effectiveView = isMobile ? "cards" : view;
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [creatingItem, setCreatingItem] = useState(false);
   const [movingItem, setMovingItem] = useState<Item | null>(null);
