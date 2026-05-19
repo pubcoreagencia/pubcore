@@ -164,11 +164,11 @@ function Dashboard() {
   ];
 
   return (
-    <div className="p-4 sm:p-6 lg:p-10 space-y-6 md:space-y-8 max-w-[1600px] mx-auto">
+    <div className="w-full min-w-0 max-w-[1600px] mx-auto p-3 sm:p-6 lg:p-10 space-y-5 md:space-y-8 overflow-x-hidden">
       <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div className="min-w-0">
           <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">Cockpit</div>
-          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mt-1 truncate">
+          <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight mt-1 leading-tight break-words">
             Bem-vindo, <span className="text-gradient">{user?.name?.split(" ")[0] ?? "executivo"}</span>
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
@@ -186,12 +186,12 @@ function Dashboard() {
       </header>
 
       {/* KPIs */}
-      <section className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
+      <section className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2.5 md:gap-4 min-w-0">
         {KPI_DEFS.map((k) => (
           <Link
             key={k.label}
             to={k.to}
-            className="group rounded-xl border border-border bg-card p-3 sm:p-4 md:p-5 shadow-card hover:border-primary/40 hover:shadow-[0_0_20px_-5px_rgba(79,70,229,0.15)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+            className="group min-w-0 rounded-xl border border-border bg-card p-2.5 sm:p-4 md:p-5 shadow-card hover:border-primary/40 hover:shadow-[0_0_20px_-5px_rgba(79,70,229,0.15)] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
           >
             <div className="flex items-start justify-between">
               <div className={`flex h-8 w-8 md:h-9 md:w-9 items-center justify-center rounded-lg bg-surface ${k.accent} group-hover:scale-110 transition-transform duration-300`}>
@@ -199,8 +199,8 @@ function Dashboard() {
               </div>
               <ChevronRight className="h-4 w-4 text-muted-foreground/40 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all duration-300" />
             </div>
-            <div className="mt-3 md:mt-4 font-display text-xl md:text-2xl font-bold tracking-tight tabular-nums truncate">{k.value}</div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-1 truncate">{k.label}</div>
+            <div className="mt-3 md:mt-4 font-display text-lg sm:text-xl md:text-2xl font-bold tracking-tight tabular-nums break-words leading-tight">{k.value}</div>
+            <div className="text-[9px] sm:text-[10px] uppercase tracking-wider text-muted-foreground mt-1 leading-tight break-words">{k.label}</div>
             <div className="text-[10px] text-muted-foreground/70 mt-0.5 truncate">{k.hint}</div>
           </Link>
         ))}
@@ -211,12 +211,12 @@ function Dashboard() {
         <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
           <Zap className="h-4 w-4 text-primary" /> Acesso rápido
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 md:gap-4 min-w-0">
           {QUICK_CARDS.map((c) => (
             <Link
               key={c.label}
               to={c.to}
-              className={`group relative rounded-xl border ${c.border} ${c.bg} p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden`}
+              className={`group relative min-w-0 rounded-xl border ${c.border} ${c.bg} p-3 sm:p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer overflow-hidden`}
             >
               <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 group-hover:scale-110 transition-all duration-500">
                 <c.icon className="h-10 w-10" />
