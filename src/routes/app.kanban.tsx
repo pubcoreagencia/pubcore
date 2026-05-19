@@ -428,20 +428,21 @@ function KanbanPage() {
   const doneCards = funnelCards.filter(c => c.status === "done").length;
 
   return (
-    <div className="p-4 md:p-6 lg:p-10 max-w-[1800px] mx-auto">
-      <header className="mb-4 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <div className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Fluxo operacional</div>
-          <h1 className="font-display text-3xl md:text-4xl font-bold tracking-tight mt-1">Kanban</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {sortedFunnels.length} funis · {funnelCols.length} colunas · {totalCards} cards · {doneCards} concluídos
+    <div className="p-3 sm:p-6 lg:p-10 max-w-[1800px] mx-auto">
+      <header className="mb-4 flex items-start sm:items-end justify-between gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">Fluxo operacional</div>
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight mt-1">Kanban</h1>
+          <p className="text-muted-foreground mt-1 text-xs sm:text-sm truncate">
+            <span className="hidden sm:inline">{sortedFunnels.length} funis · {funnelCols.length} colunas · {totalCards} cards · {doneCards} concluídos</span>
+            <span className="sm:hidden">{funnelCols.length} col · {totalCards} cards · {doneCards} feitos</span>
           </p>
         </div>
         <button
           onClick={() => setAddingCol(true)}
-          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:border-primary/40 hover:shadow-glow transition"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs sm:text-sm font-medium hover:border-primary/40 hover:shadow-glow transition flex-shrink-0"
         >
-          <Plus className="h-4 w-4" /> Nova coluna
+          <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Nova coluna</span><span className="sm:hidden">Coluna</span>
         </button>
       </header>
 
