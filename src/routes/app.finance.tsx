@@ -431,12 +431,12 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px]">
+        <div className="relative w-full md:flex-1 md:min-w-[220px] order-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input className="pl-9 bg-card/60" placeholder="Buscar descrição, categoria, responsável…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input className="pl-9 bg-card/60" placeholder="Buscar descrição, categoria…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Select value={filter} onValueChange={(v) => setFilter(v as never)}>
-          <SelectTrigger className="w-[140px] bg-card/60"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="flex-1 md:flex-none md:w-[140px] bg-card/60 order-2"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="income">Entradas</SelectItem>
@@ -444,7 +444,7 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
           </SelectContent>
         </Select>
         <Select value={company} onValueChange={setCompany}>
-          <SelectTrigger className="w-[160px] bg-card/60"><SelectValue placeholder="Empresa" /></SelectTrigger>
+          <SelectTrigger className="flex-1 md:flex-none md:w-[160px] bg-card/60 order-3"><SelectValue placeholder="Empresa" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas empresas</SelectItem>
             {companyOptions.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -452,7 +452,7 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
         </Select>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="h-4 w-4" /> Nova transação</Button>
+            <Button className="gap-2 order-4 w-full md:w-auto"><Plus className="h-4 w-4" /> Nova transação</Button>
           </DialogTrigger>
           <TransactionDialog
             initial={editing} workspaceId={activeWorkspaceId} userId={user?.id ?? ""}
@@ -461,18 +461,19 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-border/40 bg-card/40 px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Entradas filtradas</div>
-          <div className="font-display text-xl text-success">{BRL(totalIn)}</div>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="rounded-xl border border-border/40 bg-card/40 px-3 sm:px-4 py-2.5 sm:py-3 min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">Entradas filtradas</div>
+          <div className="font-display text-base sm:text-xl text-success truncate">{BRL(totalIn)}</div>
         </div>
-        <div className="rounded-xl border border-border/40 bg-card/40 px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saídas filtradas</div>
-          <div className="font-display text-xl text-destructive">{BRL(totalOut)}</div>
+        <div className="rounded-xl border border-border/40 bg-card/40 px-3 sm:px-4 py-2.5 sm:py-3 min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">Saídas filtradas</div>
+          <div className="font-display text-base sm:text-xl text-destructive truncate">{BRL(totalOut)}</div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/40 bg-card/40 overflow-hidden">
+      {/* Desktop table */}
+      <div className="hidden md:block rounded-2xl border border-border/40 bg-card/40 overflow-hidden">
         <div className="grid grid-cols-[80px_1fr_140px_120px_120px_100px_60px] gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.14em] text-muted-foreground border-b border-border/40">
           <div>Tipo</div><div>Descrição</div><div>Empresa</div><div>Categoria</div><div className="text-right">Valor</div><div>Data</div><div></div>
         </div>
@@ -495,6 +496,38 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
                 <button className="p-1.5 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>
                 <button className="p-1.5 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t)}><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
+            </div>
+          ))
+        }
+      </div>
+
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-2">
+        {loading ? <div className="p-6 text-center text-sm text-muted-foreground">Carregando…</div> :
+          filtered.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground rounded-2xl border border-border/40 bg-card/40">Nenhuma transação encontrada.</div> :
+          filtered.map(t => (
+            <div key={t.id} className="rounded-xl border border-border/40 bg-card/50 p-3 active:bg-secondary/30 transition-colors">
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Badge variant={t.kind === "income" ? "default" : "destructive"} className="text-[10px] flex-shrink-0">
+                    {t.kind === "income" ? "Entrada" : "Saída"}
+                  </Badge>
+                  <div className="font-medium text-sm truncate">{t.description || "—"}</div>
+                </div>
+                <div className={`font-medium font-display text-sm flex-shrink-0 ${t.kind === "income" ? "text-success" : "text-destructive"}`}>{BRL(+t.amount)}</div>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                  {t.company && <span className="truncate">{t.company}</span>}
+                  {t.category_name && <span className="opacity-60">· {t.category_name}</span>}
+                  <span className="opacity-60">· {new Date(t.occurred_on + "T00:00").toLocaleDateString("pt-BR")}</span>
+                </div>
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <button className="p-1.5 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>
+                  <button className="p-1.5 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t)}><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+              {t.recurrence !== "none" && <div className="text-[10px] text-muted-foreground mt-1">recorrente · {t.recurrence}</div>}
             </div>
           ))
         }
