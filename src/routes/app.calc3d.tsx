@@ -483,7 +483,7 @@ function Section({
 }
 
 function Grid({ children }: { children: React.ReactNode }) {
-  return <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{children}</div>;
+  return <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 min-w-0">{children}</div>;
 }
 
 function NumField({
@@ -504,7 +504,7 @@ function NumField({
         max={max}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
         onFocus={(e) => e.target.select()}
-        className="w-full h-11 sm:h-10 px-3 rounded-lg bg-background/60 border border-border/40 text-sm tabular-nums focus:outline-none focus:border-primary/60"
+        className="w-full min-w-0 h-11 sm:h-10 px-2.5 sm:px-3 rounded-lg bg-background/60 border border-border/40 text-sm tabular-nums focus:outline-none focus:border-primary/60"
       />
     </label>
   );
@@ -514,7 +514,7 @@ function ReadField({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
       <span className="block text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground mb-1 truncate">{label}</span>
-      <div className="w-full h-11 sm:h-10 px-3 rounded-lg bg-background/30 border border-border/30 text-sm tabular-nums flex items-center text-muted-foreground truncate">
+      <div className="w-full min-w-0 h-11 sm:h-10 px-2.5 sm:px-3 rounded-lg bg-background/30 border border-border/30 text-sm tabular-nums flex items-center text-muted-foreground truncate">
         {value}
       </div>
     </div>
@@ -530,7 +530,7 @@ function SliderField({
   return (
     <div className="min-w-0">
       <div className="flex items-center justify-between mb-2 gap-2">
-        <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground truncate">{label}</span>
+        <span className="text-[10px] sm:text-[11px] uppercase tracking-wider text-muted-foreground truncate min-w-0">{label}</span>
         <span className="text-xs font-medium tabular-nums text-foreground flex-shrink-0">
           {value}{suffix}
         </span>
@@ -569,7 +569,7 @@ function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-background/40 border border-border/40 p-2 min-w-0">
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">{label}</div>
-      <div className="text-sm font-medium tabular-nums text-foreground truncate">{value}</div>
+      <div className="text-xs sm:text-sm font-medium tabular-nums text-foreground break-words leading-tight">{value}</div>
     </div>
   );
 }
