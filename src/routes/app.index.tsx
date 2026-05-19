@@ -211,7 +211,7 @@ function Dashboard() {
         <h2 className="font-display text-lg font-bold mb-4 flex items-center gap-2">
           <Zap className="h-4 w-4 text-primary" /> Acesso rápido
         </h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
           {QUICK_CARDS.map((c) => (
             <Link
               key={c.label}
