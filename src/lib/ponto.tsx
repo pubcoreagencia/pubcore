@@ -54,6 +54,16 @@ export function getActivePontoSession() {
   return { sessionId: _activeSessionId, ownerEmail: _activeOwner, userName: _activeUser };
 }
 
+export interface PontoRemoteRow {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  status: string;
+  pauses: unknown;
+  user_name: string | null;
+  owner_email: string;
+}
+
 interface PontoCtx {
   session: PontoSession;
   liveWorkMs: number;
@@ -65,6 +75,7 @@ interface PontoCtx {
   resume: () => void;
   end: () => Promise<void>;
   reset: () => void;
+  adoptSession: (row: PontoRemoteRow) => void;
 }
 
 const Ctx = createContext<PontoCtx | null>(null);
