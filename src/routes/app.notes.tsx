@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Plus, Search, Star, Trash2, FileText, Sparkles, Pin, Tag as TagIcon,
   Clock, Grid2x2, List as ListIcon, Loader2, X, Settings2, Pencil,
-  ArrowUp, ArrowDown, Lightbulb, Target, Megaphone, Hammer, Compass,
+  ArrowUp, ArrowDown, ArrowLeft, Lightbulb, Target, Megaphone, Hammer, Compass,
   Brain, Cog, Folder, Rocket, Heart, Flag, Bookmark, Zap, Palette, Check,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
