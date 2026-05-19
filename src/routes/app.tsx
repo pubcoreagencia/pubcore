@@ -46,7 +46,9 @@ function AppLayout() {
             >
               <MobileNav />
               <PontoHeader />
-              <Outlet />
+              <div className="w-full min-w-0 max-w-full overflow-x-hidden">
+                <Outlet />
+              </div>
             </main>
           </div>
         </ChecklistProvider>
