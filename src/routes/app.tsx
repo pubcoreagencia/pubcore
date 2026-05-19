@@ -4,6 +4,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { MobileNav } from "@/components/MobileNav";
 import { PontoHeader } from "@/components/PontoHeader";
 import { PontoAutoTracker } from "@/components/PontoAutoTracker";
+import { CalculatorWidget } from "@/components/CalculatorWidget";
 import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
