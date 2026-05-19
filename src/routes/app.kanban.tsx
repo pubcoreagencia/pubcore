@@ -604,7 +604,7 @@ function KanbanPage() {
                   )}
                   <span className="text-xs text-muted-foreground font-mono">{list.length}</span>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover/col:opacity-100 transition">
+                <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover/col:opacity-100 transition">
                   <button onClick={() => { setEditingCol(col.id); setColDraft(col.name); }} className="text-muted-foreground hover:text-foreground p-1">
                     <Pencil className="h-3 w-3" />
                   </button>
