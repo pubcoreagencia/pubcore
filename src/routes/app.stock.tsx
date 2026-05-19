@@ -615,16 +615,16 @@ function GroupSection({
   const critical = items.filter((i) => Number(i.quantity) <= Number(i.min_quantity)).length;
 
   return (
-    <div className="rounded-xl border border-border bg-card/30 overflow-hidden">
+    <div className="min-w-0 rounded-xl border border-border bg-card/30 overflow-hidden">
       <div
-        className="flex items-center gap-3 px-3 sm:px-4 py-2.5 hover:bg-secondary/30 transition-colors cursor-pointer select-none"
+        className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 hover:bg-secondary/30 transition-colors cursor-pointer select-none min-w-0"
         onClick={onToggle}
       >
         <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${collapsed ? "-rotate-90" : ""}`} />
         <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm truncate">{name}</span>
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="font-medium text-sm truncate min-w-0 max-w-full">{name}</span>
             <Badge variant="secondary" className="text-[10px] h-5 px-1.5">{items.length}</Badge>
             {critical > 0 && <Badge variant="destructive" className="text-[10px] h-5 px-1.5">{critical} crítico{critical > 1 ? "s" : ""}</Badge>}
           </div>
@@ -641,7 +641,7 @@ function GroupSection({
         </Button>
       </div>
       {!collapsed && (
-        <div className="border-t border-border p-2 sm:p-3">
+        <div className="border-t border-border p-2 sm:p-3 min-w-0 overflow-x-hidden">
           {items.length === 0 ? (
             <div className="py-8 text-center text-xs text-muted-foreground">
               Nenhum item neste grupo
@@ -667,10 +667,10 @@ function GroupSection({
 
 function Kpi({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card/50 p-2.5 sm:p-4 min-w-0">
+    <div className="rounded-xl border border-border bg-card/50 p-2.5 sm:p-4 min-w-0 overflow-hidden">
       <div className="text-[9px] sm:text-[10px] uppercase tracking-[0.15em] sm:tracking-[0.2em] text-muted-foreground truncate">{label}</div>
       <div
-        className="font-display text-base sm:text-2xl font-semibold mt-1 sm:mt-1.5 tracking-tight break-words leading-tight"
+        className="font-display text-[15px] sm:text-2xl font-semibold mt-1 sm:mt-1.5 tracking-tight break-words leading-tight"
         style={accent ? { color: accent } : undefined}
       >
         {value}
