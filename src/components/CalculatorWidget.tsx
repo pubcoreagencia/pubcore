@@ -23,7 +23,9 @@ export function CalculatorWidget() {
     if (typeof window === "undefined") return { x: 24, y: 24 };
     const saved = loadPos();
     if (saved) return saved;
-    return { x: 24, y: 24 };
+    const w = 48;
+    const h = 48;
+    return { x: window.innerWidth - w - 24, y: window.innerHeight - h - 24 };
   });
   const [open, setOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
