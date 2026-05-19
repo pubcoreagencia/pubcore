@@ -194,38 +194,38 @@ function FinancePage() {
   }, [transactions, costs, products]);
 
   return (
-    <div className="px-6 lg:px-10 py-8 max-w-[1500px] mx-auto">
+    <div className="px-3 sm:px-6 lg:px-10 py-4 sm:py-8 max-w-[1500px] mx-auto">
       {/* Sugestões compartilhadas de empresa para inputs de texto livre */}
       <datalist id="finance-company-suggestions">
         {companyOptions.map(c => <option key={c} value={c} />)}
       </datalist>
 
-      <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-3 sm:gap-4 mb-5 sm:mb-8">
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mb-1 truncate">
             {activeWorkspace?.name ?? "Workspace"}
           </div>
-          <h1 className="font-display text-4xl font-semibold tracking-tight flex items-center gap-3">
-            <Wallet className="h-8 w-8 text-primary" />
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight flex items-center gap-2 sm:gap-3">
+            <Wallet className="h-6 w-6 sm:h-8 sm:w-8 text-primary flex-shrink-0" />
             Finanças
           </h1>
-          <p className="text-muted-foreground text-sm mt-2 max-w-xl">
+          <p className="text-muted-foreground text-xs sm:text-sm mt-2 max-w-xl hidden sm:block">
             Central financeira da holding — entradas, saídas, custos, produtos e breakeven em tempo real.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Activity className="h-3.5 w-3.5 text-success" /> Sincronizado · Realtime
+        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-shrink-0">
+          <Activity className="h-3.5 w-3.5 text-success" /> <span className="hidden sm:inline">Sincronizado · </span>Realtime
         </div>
       </header>
 
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="bg-card/60 border border-border/40 mb-6 h-auto p-1 flex-wrap">
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="tx">Entradas/Saídas</TabsTrigger>
-          <TabsTrigger value="costs">Custos</TabsTrigger>
-          <TabsTrigger value="products">Produtos</TabsTrigger>
-          <TabsTrigger value="breakeven">Breakeven</TabsTrigger>
-          <TabsTrigger value="reports">Relatórios</TabsTrigger>
+        <TabsList className="bg-card/60 border border-border/40 mb-4 sm:mb-6 h-auto p-1 w-full overflow-x-auto flex md:flex-wrap justify-start md:justify-center gap-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsTrigger value="dashboard" className="flex-shrink-0">Dashboard</TabsTrigger>
+          <TabsTrigger value="tx" className="flex-shrink-0">Entradas/Saídas</TabsTrigger>
+          <TabsTrigger value="costs" className="flex-shrink-0">Custos</TabsTrigger>
+          <TabsTrigger value="products" className="flex-shrink-0">Produtos</TabsTrigger>
+          <TabsTrigger value="breakeven" className="flex-shrink-0">Breakeven</TabsTrigger>
+          <TabsTrigger value="reports" className="flex-shrink-0">Relatórios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard"><DashboardTab kpis={kpis} tx={transactions} products={products} /></TabsContent>
@@ -249,14 +249,14 @@ function KpiCard({ label, value, sub, icon, tone = "default", glow = false }: {
     tone === "danger" ? "text-destructive" :
     tone === "primary" ? "text-primary" : "text-foreground";
   return (
-    <div className={`relative rounded-2xl border border-border/40 bg-card/60 p-5 overflow-hidden ${glow ? "shadow-[0_0_60px_-20px_color-mix(in oklab, var(--primary) 40%, transparent)]" : ""}`}>
+    <div className={`relative rounded-2xl border border-border/40 bg-card/60 p-3 sm:p-5 overflow-hidden min-w-0 ${glow ? "shadow-[0_0_60px_-20px_color-mix(in oklab, var(--primary) 40%, transparent)]" : ""}`}>
       {glow && <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />}
-      <div className="relative flex items-start justify-between">
-        <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
-        <div className="text-muted-foreground">{icon}</div>
+      <div className="relative flex items-start justify-between gap-2">
+        <div className="text-[10px] sm:text-xs uppercase tracking-[0.16em] text-muted-foreground truncate">{label}</div>
+        <div className="text-muted-foreground flex-shrink-0">{icon}</div>
       </div>
-      <div className={`relative font-display text-3xl font-semibold mt-3 ${toneText}`}>{value}</div>
-      {sub && <div className="relative text-xs text-muted-foreground mt-1.5">{sub}</div>}
+      <div className={`relative font-display text-xl sm:text-3xl font-semibold mt-2 sm:mt-3 truncate ${toneText}`}>{value}</div>
+      {sub && <div className="relative text-[10px] sm:text-xs text-muted-foreground mt-1 sm:mt-1.5 truncate">{sub}</div>}
     </div>
   );
 }
@@ -431,12 +431,12 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px]">
+        <div className="relative w-full md:flex-1 md:min-w-[220px] order-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input className="pl-9 bg-card/60" placeholder="Buscar descrição, categoria, responsável…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Input className="pl-9 bg-card/60" placeholder="Buscar descrição, categoria…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Select value={filter} onValueChange={(v) => setFilter(v as never)}>
-          <SelectTrigger className="w-[140px] bg-card/60"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="flex-1 md:flex-none md:w-[140px] bg-card/60 order-2"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="income">Entradas</SelectItem>
@@ -444,7 +444,7 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
           </SelectContent>
         </Select>
         <Select value={company} onValueChange={setCompany}>
-          <SelectTrigger className="w-[160px] bg-card/60"><SelectValue placeholder="Empresa" /></SelectTrigger>
+          <SelectTrigger className="flex-1 md:flex-none md:w-[160px] bg-card/60 order-3"><SelectValue placeholder="Empresa" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todas empresas</SelectItem>
             {companyOptions.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -452,7 +452,7 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
         </Select>
         <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setEditing(null); }}>
           <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="h-4 w-4" /> Nova transação</Button>
+            <Button className="gap-2 order-4 w-full md:w-auto"><Plus className="h-4 w-4" /> Nova transação</Button>
           </DialogTrigger>
           <TransactionDialog
             initial={editing} workspaceId={activeWorkspaceId} userId={user?.id ?? ""}
@@ -461,18 +461,19 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-border/40 bg-card/40 px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Entradas filtradas</div>
-          <div className="font-display text-xl text-success">{BRL(totalIn)}</div>
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="rounded-xl border border-border/40 bg-card/40 px-3 sm:px-4 py-2.5 sm:py-3 min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">Entradas filtradas</div>
+          <div className="font-display text-base sm:text-xl text-success truncate">{BRL(totalIn)}</div>
         </div>
-        <div className="rounded-xl border border-border/40 bg-card/40 px-4 py-3">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Saídas filtradas</div>
-          <div className="font-display text-xl text-destructive">{BRL(totalOut)}</div>
+        <div className="rounded-xl border border-border/40 bg-card/40 px-3 sm:px-4 py-2.5 sm:py-3 min-w-0">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">Saídas filtradas</div>
+          <div className="font-display text-base sm:text-xl text-destructive truncate">{BRL(totalOut)}</div>
         </div>
       </div>
 
-      <div className="rounded-2xl border border-border/40 bg-card/40 overflow-hidden">
+      {/* Desktop table */}
+      <div className="hidden md:block rounded-2xl border border-border/40 bg-card/40 overflow-hidden">
         <div className="grid grid-cols-[80px_1fr_140px_120px_120px_100px_60px] gap-2 px-4 py-3 text-[10px] uppercase tracking-[0.14em] text-muted-foreground border-b border-border/40">
           <div>Tipo</div><div>Descrição</div><div>Empresa</div><div>Categoria</div><div className="text-right">Valor</div><div>Data</div><div></div>
         </div>
@@ -495,6 +496,38 @@ function TransactionsTab({ tx, loading, companyOptions }: { tx: Tx[]; loading: b
                 <button className="p-1.5 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>
                 <button className="p-1.5 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t)}><Trash2 className="h-3.5 w-3.5" /></button>
               </div>
+            </div>
+          ))
+        }
+      </div>
+
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-2">
+        {loading ? <div className="p-6 text-center text-sm text-muted-foreground">Carregando…</div> :
+          filtered.length === 0 ? <div className="p-10 text-center text-sm text-muted-foreground rounded-2xl border border-border/40 bg-card/40">Nenhuma transação encontrada.</div> :
+          filtered.map(t => (
+            <div key={t.id} className="rounded-xl border border-border/40 bg-card/50 p-3 active:bg-secondary/30 transition-colors">
+              <div className="flex items-start justify-between gap-2 mb-1.5">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Badge variant={t.kind === "income" ? "default" : "destructive"} className="text-[10px] flex-shrink-0">
+                    {t.kind === "income" ? "Entrada" : "Saída"}
+                  </Badge>
+                  <div className="font-medium text-sm truncate">{t.description || "—"}</div>
+                </div>
+                <div className={`font-medium font-display text-sm flex-shrink-0 ${t.kind === "income" ? "text-success" : "text-destructive"}`}>{BRL(+t.amount)}</div>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                  {t.company && <span className="truncate">{t.company}</span>}
+                  {t.category_name && <span className="opacity-60">· {t.category_name}</span>}
+                  <span className="opacity-60">· {new Date(t.occurred_on + "T00:00").toLocaleDateString("pt-BR")}</span>
+                </div>
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <button className="p-1.5 text-muted-foreground hover:text-foreground" onClick={() => { setEditing(t); setOpen(true); }}><Pencil className="h-3.5 w-3.5" /></button>
+                  <button className="p-1.5 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(t)}><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+              {t.recurrence !== "none" && <div className="text-[10px] text-muted-foreground mt-1">recorrente · {t.recurrence}</div>}
             </div>
           ))
         }
@@ -1053,12 +1086,12 @@ function ReportsTab({ tx, products }: { tx: Tx[]; products: Product[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
+      <div className="flex flex-wrap justify-between items-start sm:items-center gap-3">
+        <div className="min-w-0">
           <h3 className="font-display text-lg font-semibold">Relatórios e métricas</h3>
           <p className="text-xs text-muted-foreground">Exporte e analise o histórico financeiro completo.</p>
         </div>
-        <Button variant="outline" className="gap-2" onClick={exportCsv}><Download className="h-4 w-4" /> Exportar CSV</Button>
+        <Button variant="outline" size="sm" className="gap-2 flex-shrink-0" onClick={exportCsv}><Download className="h-4 w-4" /> <span className="hidden sm:inline">Exportar </span>CSV</Button>
       </div>
 
       <div className="rounded-2xl border border-border/40 bg-card/60 p-6">
@@ -1078,43 +1111,51 @@ function ReportsTab({ tx, products }: { tx: Tx[]; products: Product[] }) {
       </div>
 
       <div className="rounded-2xl border border-border/40 bg-card/60 overflow-hidden">
-        <div className="p-5 border-b border-border/40"><h3 className="font-display text-base font-semibold">Métricas por empresa</h3></div>
-        <div className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-2 px-5 py-2.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/30">
-          <div>Empresa</div><div className="text-right">Entradas</div><div className="text-right">Saídas</div><div className="text-right">Lucro</div><div className="text-right">Margem</div>
-        </div>
-        {byCompanyTotals.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Sem dados para reportar.</div> :
-          byCompanyTotals.map(r => (
-            <div key={r.company} className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-2 px-5 py-3 text-sm border-b border-border/20 last:border-0">
-              <div>{r.company}</div>
-              <div className="text-right text-success font-display">{BRL(r.income)}</div>
-              <div className="text-right text-destructive font-display">{BRL(r.expense)}</div>
-              <div className={`text-right font-display ${r.profit >= 0 ? "text-success" : "text-destructive"}`}>{BRL(r.profit)}</div>
-              <div className="text-right text-muted-foreground">{r.margin.toFixed(1)}%</div>
+        <div className="p-4 sm:p-5 border-b border-border/40"><h3 className="font-display text-base font-semibold">Métricas por empresa</h3></div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <div className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-2 px-5 py-2.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/30">
+              <div>Empresa</div><div className="text-right">Entradas</div><div className="text-right">Saídas</div><div className="text-right">Lucro</div><div className="text-right">Margem</div>
             </div>
-          ))
-        }
+            {byCompanyTotals.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Sem dados para reportar.</div> :
+              byCompanyTotals.map(r => (
+                <div key={r.company} className="grid grid-cols-[1fr_120px_120px_120px_100px] gap-2 px-5 py-3 text-sm border-b border-border/20 last:border-0">
+                  <div className="truncate">{r.company}</div>
+                  <div className="text-right text-success font-display">{BRL(r.income)}</div>
+                  <div className="text-right text-destructive font-display">{BRL(r.expense)}</div>
+                  <div className={`text-right font-display ${r.profit >= 0 ? "text-success" : "text-destructive"}`}>{BRL(r.profit)}</div>
+                  <div className="text-right text-muted-foreground">{r.margin.toFixed(1)}%</div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-border/40 bg-card/60 overflow-hidden">
-        <div className="p-5 border-b border-border/40"><h3 className="font-display text-base font-semibold">Métricas por produto</h3></div>
-        <div className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-5 py-2.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/30">
-          <div>Produto</div><div>Empresa</div><div className="text-right">Margem</div><div className="text-right">Demanda</div><div className="text-right">Lucro/mês</div>
+        <div className="p-4 sm:p-5 border-b border-border/40"><h3 className="font-display text-base font-semibold">Métricas por produto</h3></div>
+        <div className="overflow-x-auto">
+          <div className="min-w-[640px]">
+            <div className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-5 py-2.5 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/30">
+              <div>Produto</div><div>Empresa</div><div className="text-right">Margem</div><div className="text-right">Demanda</div><div className="text-right">Lucro/mês</div>
+            </div>
+            {products.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Sem produtos cadastrados.</div> :
+              [...products].sort((a, b) => ((+b.price-+b.cost)*+b.avg_demand_monthly) - ((+a.price-+a.cost)*+a.avg_demand_monthly)).map(p => {
+                const margin = +p.price > 0 ? ((+p.price - +p.cost) / +p.price) * 100 : 0;
+                const monthly = (+p.price - +p.cost) * +p.avg_demand_monthly;
+                return (
+                  <div key={p.id} className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-5 py-3 text-sm border-b border-border/20 last:border-0">
+                    <div className="truncate">{p.name}</div>
+                    <div className="text-muted-foreground text-xs truncate">{p.company}</div>
+                    <div className="text-right text-primary">{margin.toFixed(1)}%</div>
+                    <div className="text-right text-muted-foreground">{+p.avg_demand_monthly}</div>
+                    <div className="text-right font-display text-success">{BRL(monthly)}</div>
+                  </div>
+                );
+              })
+            }
+          </div>
         </div>
-        {products.length === 0 ? <div className="p-8 text-center text-sm text-muted-foreground">Sem produtos cadastrados.</div> :
-          [...products].sort((a, b) => ((+b.price-+b.cost)*+b.avg_demand_monthly) - ((+a.price-+a.cost)*+a.avg_demand_monthly)).map(p => {
-            const margin = +p.price > 0 ? ((+p.price - +p.cost) / +p.price) * 100 : 0;
-            const monthly = (+p.price - +p.cost) * +p.avg_demand_monthly;
-            return (
-              <div key={p.id} className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-5 py-3 text-sm border-b border-border/20 last:border-0">
-                <div className="truncate">{p.name}</div>
-                <div className="text-muted-foreground text-xs">{p.company}</div>
-                <div className="text-right text-primary">{margin.toFixed(1)}%</div>
-                <div className="text-right text-muted-foreground">{+p.avg_demand_monthly}</div>
-                <div className="text-right font-display text-success">{BRL(monthly)}</div>
-              </div>
-            );
-          })
-        }
       </div>
     </div>
   );
