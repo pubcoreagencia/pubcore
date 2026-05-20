@@ -37,6 +37,7 @@ function AppLayout() {
       <PontoProvider>
         <ChecklistProvider>
           <PontoAutoTracker />
+          <GratitudePanel />
           <div className="hidden md:block">
             <CalculatorWidget />
             <StickyNotesWidget />
