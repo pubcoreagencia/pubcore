@@ -38,8 +38,8 @@ function AppLayout() {
           <PontoAutoTracker />
           <div className="hidden md:block">
             <CalculatorWidget />
+            <StickyNotesWidget />
           </div>
-          <StickyNotesWidget />
 
 
           <div className="flex min-h-dvh w-full max-w-[100dvw] bg-background overflow-x-hidden">
