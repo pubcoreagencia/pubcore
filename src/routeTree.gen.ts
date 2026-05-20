@@ -19,6 +19,7 @@ import { Route as AppStickyNotesRouteImport } from './routes/app.sticky-notes'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppNotesRouteImport } from './routes/app.notes'
 import { Route as AppKanbanRouteImport } from './routes/app.kanban'
+import { Route as AppGratitudeRouteImport } from './routes/app.gratitude'
 import { Route as AppFinanceRouteImport } from './routes/app.finance'
 import { Route as AppCrmRouteImport } from './routes/app.crm'
 import { Route as AppChecklistsRouteImport } from './routes/app.checklists'
@@ -76,6 +77,11 @@ const AppKanbanRoute = AppKanbanRouteImport.update({
   path: '/kanban',
   getParentRoute: () => AppRoute,
 } as any)
+const AppGratitudeRoute = AppGratitudeRouteImport.update({
+  id: '/gratitude',
+  path: '/gratitude',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFinanceRoute = AppFinanceRouteImport.update({
   id: '/finance',
   path: '/finance',
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/app/checklists': typeof AppChecklistsRoute
   '/app/crm': typeof AppCrmRoute
   '/app/finance': typeof AppFinanceRoute
+  '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
@@ -135,6 +142,7 @@ export interface FileRoutesByTo {
   '/app/checklists': typeof AppChecklistsRoute
   '/app/crm': typeof AppCrmRoute
   '/app/finance': typeof AppFinanceRoute
+  '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
@@ -154,6 +162,7 @@ export interface FileRoutesById {
   '/app/checklists': typeof AppChecklistsRoute
   '/app/crm': typeof AppCrmRoute
   '/app/finance': typeof AppFinanceRoute
+  '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
     | '/app/checklists'
     | '/app/crm'
     | '/app/finance'
+    | '/app/gratitude'
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/app/checklists'
     | '/app/crm'
     | '/app/finance'
+    | '/app/gratitude'
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/app/checklists'
     | '/app/crm'
     | '/app/finance'
+    | '/app/gratitude'
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
@@ -296,6 +308,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKanbanRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/gratitude': {
+      id: '/app/gratitude'
+      path: '/gratitude'
+      fullPath: '/app/gratitude'
+      preLoaderRoute: typeof AppGratitudeRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/finance': {
       id: '/app/finance'
       path: '/finance'
@@ -348,6 +367,7 @@ interface AppRouteChildren {
   AppChecklistsRoute: typeof AppChecklistsRoute
   AppCrmRoute: typeof AppCrmRoute
   AppFinanceRoute: typeof AppFinanceRoute
+  AppGratitudeRoute: typeof AppGratitudeRoute
   AppKanbanRoute: typeof AppKanbanRoute
   AppNotesRoute: typeof AppNotesRoute
   AppSettingsRoute: typeof AppSettingsRoute
@@ -363,6 +383,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppChecklistsRoute: AppChecklistsRoute,
   AppCrmRoute: AppCrmRoute,
   AppFinanceRoute: AppFinanceRoute,
+  AppGratitudeRoute: AppGratitudeRoute,
   AppKanbanRoute: AppKanbanRoute,
   AppNotesRoute: AppNotesRoute,
   AppSettingsRoute: AppSettingsRoute,
