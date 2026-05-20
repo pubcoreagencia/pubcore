@@ -27,6 +27,7 @@ const COLORS: Record<string, { bg: string; border: string; chip: string; label: 
 const COLOR_KEYS = Object.keys(COLORS);
 
 export function useStickyNotes() {
+  const channelIdRef = useRef<string>(Math.random().toString(36).slice(2));
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [notes, setNotes] = useState<StickyNoteRow[]>([]);
@@ -49,7 +50,7 @@ export function useStickyNotes() {
     })();
 
     const ch = supabase
-      .channel(`sticky_notes:${activeWorkspaceId}`)
+      .channel(`sticky_notes:${activeWorkspaceId}:${channelIdRef.current}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "sticky_notes", filter: `workspace_id=eq.${activeWorkspaceId}` },
         (payload) => {
