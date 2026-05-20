@@ -5,6 +5,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { PontoHeader } from "@/components/PontoHeader";
 import { PontoAutoTracker } from "@/components/PontoAutoTracker";
 import { CalculatorWidget } from "@/components/CalculatorWidget";
+import { StickyNotesWidget } from "@/components/StickyNotesWidget";
 import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
@@ -38,6 +39,8 @@ function AppLayout() {
           <div className="hidden md:block">
             <CalculatorWidget />
           </div>
+          <StickyNotesWidget />
+
 
           <div className="flex min-h-dvh w-full max-w-[100dvw] bg-background overflow-x-hidden">
             <Sidebar />
