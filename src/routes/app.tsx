@@ -6,6 +6,7 @@ import { PontoHeader } from "@/components/PontoHeader";
 import { PontoAutoTracker } from "@/components/PontoAutoTracker";
 import { CalculatorWidget } from "@/components/CalculatorWidget";
 import { StickyNotesWidget } from "@/components/StickyNotesWidget";
+import { GratitudePanel } from "@/components/GratitudePanel";
 import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
