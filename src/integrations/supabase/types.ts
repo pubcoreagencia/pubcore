@@ -747,6 +747,48 @@ export type Database = {
         }
         Relationships: []
       }
+      sticky_notes: {
+        Row: {
+          color: string
+          content: string
+          created_at: string
+          id: string
+          owner_email: string
+          position: number
+          tag: string | null
+          title: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string
+          content?: string
+          created_at?: string
+          id?: string
+          owner_email: string
+          position?: number
+          tag?: string | null
+          title?: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string
+          content?: string
+          created_at?: string
+          id?: string
+          owner_email?: string
+          position?: number
+          tag?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       stock_categories: {
         Row: {
           color: string
