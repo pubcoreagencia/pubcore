@@ -15,6 +15,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppStockRouteImport } from './routes/app.stock'
+import { Route as AppStickyNotesRouteImport } from './routes/app.sticky-notes'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppNotesRouteImport } from './routes/app.notes'
 import { Route as AppKanbanRouteImport } from './routes/app.kanban'
@@ -53,6 +54,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppStockRoute = AppStockRouteImport.update({
   id: '/stock',
   path: '/stock',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStickyNotesRoute = AppStickyNotesRouteImport.update({
+  id: '/sticky-notes',
+  path: '/sticky-notes',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
   '/app/': typeof AppIndexRoute
 }
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
   '/app': typeof AppIndexRoute
 }
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
   '/app/': typeof AppIndexRoute
 }
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
+    | '/app/sticky-notes'
     | '/app/stock'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
+    | '/app/sticky-notes'
     | '/app/stock'
     | '/app'
   id:
@@ -201,6 +212,7 @@ export interface FileRouteTypes {
     | '/app/kanban'
     | '/app/notes'
     | '/app/settings'
+    | '/app/sticky-notes'
     | '/app/stock'
     | '/app/'
   fileRoutesById: FileRoutesById
@@ -254,6 +266,13 @@ declare module '@tanstack/react-router' {
       path: '/stock'
       fullPath: '/app/stock'
       preLoaderRoute: typeof AppStockRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/sticky-notes': {
+      id: '/app/sticky-notes'
+      path: '/sticky-notes'
+      fullPath: '/app/sticky-notes'
+      preLoaderRoute: typeof AppStickyNotesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/settings': {
@@ -332,6 +351,7 @@ interface AppRouteChildren {
   AppKanbanRoute: typeof AppKanbanRoute
   AppNotesRoute: typeof AppNotesRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppStickyNotesRoute: typeof AppStickyNotesRoute
   AppStockRoute: typeof AppStockRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -346,6 +366,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppKanbanRoute: AppKanbanRoute,
   AppNotesRoute: AppNotesRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppStickyNotesRoute: AppStickyNotesRoute,
   AppStockRoute: AppStockRoute,
   AppIndexRoute: AppIndexRoute,
 }
