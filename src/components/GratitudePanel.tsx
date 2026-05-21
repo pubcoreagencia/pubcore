@@ -6,6 +6,7 @@ import { useWorkspace } from "@/lib/workspace";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useAutosave } from "@/hooks/use-autosave";
 
 function todayISO() {
   const d = new Date();
@@ -21,13 +22,10 @@ export function GratitudePanel() {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
-  const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   const [submitting, setSubmitting] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const contentRef = useRef<string>("");
-  contentRef.current = content;
+  const initialLoadRef = useRef(false);
 
-  // Check if today's entry exists / is completed
+  // ── 1. Check if today's entry exists / is completed ──
   useEffect(() => {
     if (!user || !activeWorkspaceId) return;
     let cancelled = false;
@@ -44,6 +42,7 @@ export function GratitudePanel() {
         setOpen(false);
       } else {
         setContent(data?.content ?? "");
+        initialLoadRef.current = true;
         setOpen(true);
       }
       setLoading(false);
@@ -51,7 +50,7 @@ export function GratitudePanel() {
     return () => { cancelled = true; };
   }, [user, activeWorkspaceId]);
 
-  // Lock body scroll
+  // ── 2. Lock body scroll ──
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -59,38 +58,61 @@ export function GratitudePanel() {
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
-  const saveDraft = useCallback(async () => {
-    if (!user || !activeWorkspaceId) return;
-    const cur = contentRef.current;
-    setSaving("saving");
-    const payload = {
-      workspace_id: activeWorkspaceId,
-      user_id: user.id,
-      owner_email: user.email,
-      entry_date: todayISO(),
-      content: cur,
-    };
-    const { error } = await (supabase as any)
-      .from("gratitude_entries")
-      .upsert(payload, { onConflict: "user_id,entry_date" });
-    setSaving(error ? "idle" : "saved");
-    if (!error) setTimeout(() => setSaving("idle"), 1500);
-  }, [user, activeWorkspaceId]);
+  // ── 3. Autosave hook (debounce 1.2 s) ──
+  const saver = useCallback(
+    async (patch: { content: string }) => {
+      if (!user || !activeWorkspaceId) return {};
+      const payload = {
+        workspace_id: activeWorkspaceId,
+        user_id: user.id,
+        owner_email: user.email,
+        entry_date: todayISO(),
+        content: patch.content,
+      };
+      const { error } = await (supabase as any)
+        .from("gratitude_entries")
+        .upsert(payload, { onConflict: "user_id,entry_date" });
+      if (error) return { error: { message: error.message } };
+      return {};
+    },
+    [user, activeWorkspaceId]
+  );
 
+  const { queue, flush, status } = useAutosave<{ content: string }>(saver, 1200);
+
+  // Flush pending saves on blur / tab-switch / unmount
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "hidden") flush();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      flush();
+    };
+  }, [flush]);
+
+  // ── 4. Handlers ──
   const handleChange = (value: string) => {
-    setContent(value);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => { void saveDraft(); }, 700);
+    setContent(value);               // instant, zero lag
+    if (initialLoadRef.current) {
+      queue({ content: value });       // debounced background save
+    }
+  };
+
+  const handleBlur = () => {
+    flush();
   };
 
   const handleComplete = async () => {
     if (!user || !activeWorkspaceId) return;
-    const cur = contentRef.current.trim();
+    const cur = content.trim();
     if (!cur) {
       toast.error("Escreva algo para concluir");
       return;
     }
     setSubmitting(true);
+    await flush(); // ensure any pending draft is persisted first
     const payload = {
       workspace_id: activeWorkspaceId,
       user_id: user.id,
@@ -136,6 +158,7 @@ export function GratitudePanel() {
             <Textarea
               value={content}
               onChange={(e) => handleChange(e.target.value)}
+              onBlur={handleBlur}
               placeholder="Escreva o que sentir vontade... gratidão, objetivos, sonhos, reflexões..."
               rows={12}
               className="resize-none bg-background/40 border-border/40 focus-visible:ring-amber-400/30 placeholder:text-muted-foreground/50 leading-relaxed text-[15px]"
@@ -144,12 +167,24 @@ export function GratitudePanel() {
 
           <footer className="px-6 md:px-10 py-5 border-t border-border/30 flex items-center justify-between gap-3 bg-background/30">
             <div className="text-[11px] text-muted-foreground inline-flex items-center gap-1.5 min-h-[20px]">
-              {saving === "saving" && (<><Loader2 className="h-3 w-3 animate-spin" /> Salvando rascunho…</>)}
-              {saving === "saved" && (<><Check className="h-3 w-3 text-emerald-500" /> Rascunho salvo</>)}
+              {status === "saving" && (
+                <><Loader2 className="h-3 w-3 animate-spin" /> Salvando…</>
+              )}
+              {status === "saved" && (
+                <><Check className="h-3 w-3 text-emerald-500" /> Salvo</>
+              )}
+              {status === "error" && (
+                <span className="text-red-400">Erro ao salvar</span>
+              )}
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => void saveDraft()} disabled={submitting}>
-                Salvar rascunho
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void flush()}
+                disabled={submitting || status === "saving"}
+              >
+                Salvar agora
               </Button>
               <Button
                 size="sm"
