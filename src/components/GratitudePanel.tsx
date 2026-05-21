@@ -160,8 +160,9 @@ export function GratitudePanel() {
 
           <div className="px-6 md:px-10 py-6 max-h-[60vh] md:max-h-[55vh] overflow-y-auto">
             <Textarea
-              value={content}
-              onChange={(e) => handleChange(e.target.value)}
+              ref={textareaRef}
+              defaultValue={contentRef.current}
+              onChange={handleChange}
               onBlur={handleBlur}
               placeholder="Escreva o que sentir vontade... gratidão, objetivos, sonhos, reflexões..."
               rows={12}
