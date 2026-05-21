@@ -125,11 +125,10 @@ function DailyTab() {
 
   const totals = useMemo(() => {
     let total = 0, done = 0;
-    for (const c of visibleCompanies) {
-      const list = state[c];
-      total += list.length;
-      done += list.filter((t) => t.done).length;
-    }
+    const walk = (list: UserTask[]) => {
+      for (const t of list) { total += 1; if (t.done) done += 1; walk(t.subtasks); }
+    };
+    for (const c of visibleCompanies) walk(state[c]);
     return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
   }, [state, visibleCompanies]);
 
@@ -170,16 +169,20 @@ function DailyTab() {
   );
 }
 
+/** Count {done, total} recursively across a task and its subtasks. */
+function countTree(t: UserTask): { done: number; total: number } {
+  let done = t.done ? 1 : 0;
+  let total = 1;
+  for (const c of t.subtasks) { const r = countTree(c); done += r.done; total += r.total; }
+  return { done, total };
+}
+
 function CompanyChecklistCard({
   company, statusFilter,
 }: { company: Company; statusFilter: StatusFilter }) {
-  const { state, add, edit, remove, toggle, reorder, clearCompany } = useChecklist();
+  const { state, add, clearCompany } = useChecklist();
   const tasks = state[company];
   const [draft, setDraft] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editingText, setEditingText] = useState("");
-  const [dragId, setDragId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
 
   const color = COMPANY_COLORS[company];
 
@@ -189,23 +192,17 @@ function CompanyChecklistCard({
     return true;
   });
 
-  const doneCount = tasks.filter((t) => t.done).length;
-  const pct = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
+  // Aggregate counts include subtasks
+  const agg = tasks.reduce(
+    (acc, t) => { const r = countTree(t); acc.done += r.done; acc.total += r.total; return acc; },
+    { done: 0, total: 0 },
+  );
+  const pct = agg.total ? Math.round((agg.done / agg.total) * 100) : 0;
 
   const submitNew = () => {
     if (!draft.trim()) return;
-    add(company, draft);
+    add(company, draft, null);
     setDraft("");
-  };
-
-  const startEdit = (t: UserTask) => {
-    setEditingId(t.id);
-    setEditingText(t.text);
-  };
-  const saveEdit = () => {
-    if (editingId) edit(company, editingId, editingText);
-    setEditingId(null);
-    setEditingText("");
   };
 
   return (
@@ -219,7 +216,7 @@ function CompanyChecklistCard({
         <div className="flex items-center justify-between gap-2">
           <CompanyTag company={company} />
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-muted-foreground">{doneCount}/{tasks.length}</span>
+            <span className="font-mono text-xs text-muted-foreground">{agg.done}/{agg.total}</span>
             {tasks.length > 0 && (
               <button
                 onClick={() => {
@@ -245,14 +242,12 @@ function CompanyChecklistCard({
       </div>
 
       <div className="p-3 flex-1 flex flex-col">
-        {/* Add input */}
+        {/* Add input (top-level) */}
         <div className="flex items-center gap-2 mb-3 px-1">
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") submitNew();
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter") submitNew(); }}
             placeholder="Nova tarefa…"
             className="flex-1 rounded-lg bg-surface border border-border px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring"
           />
@@ -277,139 +272,222 @@ function CompanyChecklistCard({
           </div>
         ) : (
           <ul className="space-y-0.5">
-            {filtered.map((t) => {
-              const isEditing = editingId === t.id;
-              const isDragging = dragId === t.id;
-              const isOver = overId === t.id && dragId && dragId !== t.id;
-              return (
-                <li
-                  key={t.id}
-                  draggable={!isEditing}
-                  onDragStart={(e) => {
-                    setDragId(t.id);
-                    e.dataTransfer.effectAllowed = "move";
-                  }}
-                  onDragEnter={() => setOverId(t.id)}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (dragId) reorder(company, dragId, t.id);
-                    setDragId(null);
-                    setOverId(null);
-                  }}
-                  onDragEnd={() => {
-                    setDragId(null);
-                    setOverId(null);
-                  }}
-                  className={`group flex items-start gap-2 rounded-lg p-2.5 transition ${
-                    t.done ? "bg-surface/40" : "hover:bg-surface/60"
-                  } ${isDragging ? "opacity-40" : ""} ${
-                    isOver ? "ring-2 ring-primary/50" : ""
-                  }`}
-                >
-                  <span
-                    className="mt-1 cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition shrink-0"
-                    aria-label="Arrastar"
-                  >
-                    <GripVertical className="h-4 w-4" />
-                  </span>
-
-                  <button
-                    onClick={() => toggle(company, t.id)}
-                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition ${
-                      t.done ? "border-primary bg-gradient-primary" : "border-border bg-surface hover:border-primary/50"
-                    }`}
-                    aria-label={t.done ? "Desmarcar" : "Concluir"}
-                  >
-                    {t.done && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
-                  </button>
-
-                  <div className="flex-1 min-w-0">
-                    {isEditing ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          autoFocus
-                          value={editingText}
-                          onChange={(e) => setEditingText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveEdit();
-                            if (e.key === "Escape") {
-                              setEditingId(null);
-                              setEditingText("");
-                            }
-                          }}
-                          onBlur={saveEdit}
-                          className="flex-1 rounded-md bg-background border border-border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                        />
-                        <button
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={saveEdit}
-                          className="text-success hover:text-success/80"
-                          aria-label="Salvar"
-                        >
-                          <Check className="h-4 w-4" />
-                        </button>
-                        <button
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            setEditingId(null);
-                            setEditingText("");
-                          }}
-                          className="text-muted-foreground hover:text-foreground"
-                          aria-label="Cancelar"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => toggle(company, t.id)}
-                          className={`block text-left text-sm leading-snug w-full ${
-                            t.done ? "line-through text-muted-foreground" : "font-medium"
-                          }`}
-                        >
-                          {t.text}
-                        </button>
-                        {t.done && t.doneAt && (
-                          <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-success font-mono">
-                            <CheckCircle2 className="h-3 w-3" /> Concluída às {t.doneAt}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-
-                  {!isEditing && (
-                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition shrink-0">
-                      <button
-                        onClick={() => startEdit(t)}
-                        className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-surface"
-                        aria-label="Editar"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => remove(company, t.id)}
-                        className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        aria-label="Excluir"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </li>
-              );
-            })}
+            {filtered.map((t) => (
+              <TaskRow
+                key={t.id}
+                task={t}
+                company={company}
+                depth={0}
+                color={color}
+              />
+            ))}
           </ul>
         )}
       </div>
     </div>
   );
 }
+
+/** Recursive row. Supports drag-reorder among siblings (same parent). */
+function TaskRow({
+  task, company, depth, color,
+}: { task: UserTask; company: Company; depth: number; color: string }) {
+  const { add, edit, remove, toggle, reorder } = useChecklist();
+  const [editing, setEditing] = useState(false);
+  const [editingText, setEditingText] = useState(task.text);
+  const [expanded, setExpanded] = useState(true);
+  const [subDraft, setSubDraft] = useState("");
+  const [showAddSub, setShowAddSub] = useState(false);
+
+  const hasSubs = task.subtasks.length > 0;
+  const agg = useMemo(() => countTree(task), [task]);
+  // Show only own children's progress (exclude self)
+  const subDone = agg.done - (task.done ? 1 : 0);
+  const subTotal = agg.total - 1;
+  const subPct = subTotal ? Math.round((subDone / subTotal) * 100) : 0;
+
+  const saveEdit = () => {
+    if (editingText.trim() && editingText !== task.text) edit(company, task.id, editingText);
+    setEditing(false);
+  };
+
+  const submitSub = () => {
+    if (!subDraft.trim()) return;
+    add(company, subDraft, task.id);
+    setSubDraft("");
+    setExpanded(true);
+  };
+
+  return (
+    <li>
+      <div
+        draggable={!editing}
+        onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData("text/task-id", task.id); e.dataTransfer.setData("text/parent-id", task.parentId ?? ""); e.dataTransfer.effectAllowed = "move"; }}
+        onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+        onDrop={(e) => {
+          e.preventDefault(); e.stopPropagation();
+          const fromId = e.dataTransfer.getData("text/task-id");
+          const fromParent = e.dataTransfer.getData("text/parent-id") || null;
+          if (fromId && fromId !== task.id && (fromParent || null) === (task.parentId ?? null)) {
+            reorder(company, fromId, task.id, task.parentId ?? null);
+          }
+        }}
+        className={`group flex items-start gap-2 rounded-lg p-2.5 transition ${
+          task.done ? "bg-surface/40" : "hover:bg-surface/60"
+        }`}
+        style={{ marginLeft: depth * 18 }}
+      >
+        {hasSubs ? (
+          <button
+            onClick={() => setExpanded((v) => !v)}
+            className="mt-0.5 text-muted-foreground/60 hover:text-foreground transition shrink-0"
+            aria-label={expanded ? "Recolher" : "Expandir"}
+          >
+            <ChevronRight className={`h-4 w-4 transition-transform ${expanded ? "rotate-90" : ""}`} />
+          </button>
+        ) : (
+          <span className="mt-1 cursor-grab active:cursor-grabbing text-muted-foreground/30 hover:text-muted-foreground transition shrink-0">
+            <GripVertical className="h-4 w-4" />
+          </span>
+        )}
+
+        <button
+          onClick={() => toggle(company, task.id)}
+          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition ${
+            task.done ? "border-primary bg-gradient-primary" : "border-border bg-surface hover:border-primary/50"
+          }`}
+          aria-label={task.done ? "Desmarcar" : "Concluir"}
+        >
+          {task.done && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
+        </button>
+
+        <div className="flex-1 min-w-0">
+          {editing ? (
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                value={editingText}
+                onChange={(e) => setEditingText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveEdit();
+                  if (e.key === "Escape") { setEditing(false); setEditingText(task.text); }
+                }}
+                onBlur={saveEdit}
+                className="flex-1 rounded-md bg-background border border-border px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => toggle(company, task.id)}
+                className={`block text-left text-sm leading-snug w-full ${
+                  task.done ? "line-through text-muted-foreground" : "font-medium"
+                }`}
+              >
+                {task.text}
+              </button>
+              {hasSubs && (
+                <div className="mt-1.5 flex items-center gap-2">
+                  <div className="flex-1 max-w-[140px] h-1 rounded-full bg-surface overflow-hidden">
+                    <div
+                      className="h-full transition-all rounded-full"
+                      style={{ width: `${subPct}%`, backgroundColor: color }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-mono text-muted-foreground">{subDone}/{subTotal}</span>
+                </div>
+              )}
+              {task.done && task.doneAt && (
+                <div className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-success font-mono">
+                  <CheckCircle2 className="h-3 w-3" /> Concluída às {task.doneAt}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {!editing && (
+          <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition shrink-0">
+            {depth < 3 && (
+              <button
+                onClick={() => { setShowAddSub((v) => !v); setExpanded(true); }}
+                className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-surface"
+                aria-label="Adicionar subtarefa"
+                title="Adicionar subtarefa"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <button
+              onClick={() => { setEditing(true); setEditingText(task.text); }}
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-surface"
+              aria-label="Editar"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => remove(company, task.id)}
+              className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              aria-label="Excluir"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Subtasks (animated reveal) */}
+      {expanded && (hasSubs || showAddSub) && (
+        <div className="mt-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+          {hasSubs && (
+            <ul
+              className="space-y-0.5 border-l border-border/60 ml-3"
+              style={{ marginLeft: depth * 18 + 12 }}
+            >
+              {task.subtasks.map((sub) => (
+                <TaskRow key={sub.id} task={sub} company={company} depth={depth + 1} color={color} />
+              ))}
+            </ul>
+          )}
+          {showAddSub && (
+            <div
+              className="flex items-center gap-2 px-1 py-2"
+              style={{ marginLeft: (depth + 1) * 18 }}
+            >
+              <input
+                autoFocus
+                value={subDraft}
+                onChange={(e) => setSubDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { submitSub(); }
+                  if (e.key === "Escape") { setShowAddSub(false); setSubDraft(""); }
+                }}
+                placeholder="Nova subtarefa…"
+                className="flex-1 rounded-md bg-surface border border-border px-2 py-1.5 text-xs placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <button
+                onClick={submitSub}
+                disabled={!subDraft.trim()}
+                className="inline-flex items-center justify-center h-7 w-7 rounded-md bg-gradient-primary text-primary-foreground disabled:opacity-40 transition"
+                aria-label="Adicionar"
+              >
+                <Check className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => { setShowAddSub(false); setSubDraft(""); }}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Cancelar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
 
 function Select({
   label, value, onChange, options,
