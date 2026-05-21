@@ -65,6 +65,7 @@ export type Database = {
           id: string
           notes: string | null
           owner_email: string
+          parent_id: string | null
           position: number
           priority: string
           status: string
@@ -81,6 +82,7 @@ export type Database = {
           id?: string
           notes?: string | null
           owner_email: string
+          parent_id?: string | null
           position?: number
           priority?: string
           status?: string
@@ -97,6 +99,7 @@ export type Database = {
           id?: string
           notes?: string | null
           owner_email?: string
+          parent_id?: string | null
           position?: number
           priority?: string
           status?: string
@@ -105,7 +108,15 @@ export type Database = {
           user_id?: string | null
           workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "checklist_tasks_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_leads: {
         Row: {

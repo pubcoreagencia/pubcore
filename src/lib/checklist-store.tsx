@@ -4,7 +4,7 @@ import {
 import { COMPANIES, type Company } from "./mock-data";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./auth";
-import { useWorkspace, getActiveWorkspaceId } from "./workspace";
+import { useWorkspace } from "./workspace";
 import { getActivePontoSession, onPontoEvent } from "./ponto";
 import { logActivity } from "./activity-log";
 
@@ -18,6 +18,8 @@ export interface UserTask {
   priority?: "low" | "medium" | "high";
   notes?: string;
   position: number;
+  parentId?: string | null;
+  subtasks: UserTask[];
 }
 
 export type ChecklistState = Record<Company, UserTask[]>;
@@ -34,6 +36,7 @@ interface DbRow {
   notes: string | null;
   done_at: string | null;
   position: number;
+  parent_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,33 +61,75 @@ function rowToTask(r: DbRow): UserTask {
     priority: (r.priority as UserTask["priority"]) ?? "medium",
     notes: r.notes ?? undefined,
     position: r.position,
+    parentId: r.parent_id ?? null,
+    subtasks: [],
   };
 }
 
+/** Build a tree from a flat row list, grouping by company. */
 function groupByCompany(rows: DbRow[]): ChecklistState {
   const base = emptyState();
-  for (const r of rows) {
-    const c = r.company as Company;
-    if (!base[c]) continue;
-    base[c].push(rowToTask(r));
+  const byId = new Map<string, UserTask>();
+  const tasks = rows.map((r) => {
+    const t = rowToTask(r);
+    byId.set(t.id, t);
+    return t;
+  });
+  for (const t of tasks) {
+    if (t.parentId && byId.has(t.parentId)) {
+      byId.get(t.parentId)!.subtasks.push(t);
+    } else {
+      const c = (rows.find((r) => r.id === t.id)?.company) as Company;
+      if (!base[c]) continue;
+      base[c].push(t);
+    }
   }
-  for (const c of COMPANIES) base[c].sort((a, b) => a.position - b.position);
+  const sortRec = (list: UserTask[]) => {
+    list.sort((a, b) => a.position - b.position);
+    for (const t of list) sortRec(t.subtasks);
+  };
+  for (const c of COMPANIES) sortRec(base[c]);
   return base;
 }
 
 interface Ctx {
   state: ChecklistState;
   loading: boolean;
-  add: (company: Company, text: string) => Promise<void>;
+  add: (company: Company, text: string, parentId?: string | null) => Promise<void>;
   edit: (company: Company, id: string, text: string) => Promise<void>;
   remove: (company: Company, id: string) => Promise<void>;
   toggle: (company: Company, id: string) => Promise<void>;
-  reorder: (company: Company, fromId: string, toId: string) => Promise<void>;
+  reorder: (company: Company, fromId: string, toId: string, parentId?: string | null) => Promise<void>;
   clearCompany: (company: Company) => Promise<void>;
   totals: { total: number; done: number; pct: number };
 }
 
 const ChecklistCtx = createContext<Ctx | null>(null);
+
+/** Recursively map over a task tree returning a new tree. */
+function mapTree(list: UserTask[], fn: (t: UserTask) => UserTask | null): UserTask[] {
+  const out: UserTask[] = [];
+  for (const t of list) {
+    const mapped = fn({ ...t, subtasks: mapTree(t.subtasks, fn) });
+    if (mapped) out.push(mapped);
+  }
+  return out;
+}
+
+function findTask(list: UserTask[], id: string): UserTask | null {
+  for (const t of list) {
+    if (t.id === id) return t;
+    const found = findTask(t.subtasks, id);
+    if (found) return found;
+  }
+  return null;
+}
+
+function flatten(list: UserTask[]): UserTask[] {
+  const out: UserTask[] = [];
+  for (const t of list) { out.push(t); out.push(...flatten(t.subtasks)); }
+  return out;
+}
 
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -100,8 +145,15 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   ownerRef.current = ownerEmail;
   wsRef.current = activeWorkspaceId;
 
+  // Cache the raw rows so realtime events can rebuild the tree cleanly.
+  const rowsRef = useRef<DbRow[]>([]);
+
+  const rebuild = useCallback(() => {
+    setState(groupByCompany(rowsRef.current));
+  }, []);
+
   useEffect(() => {
-    if (!userId || !activeWorkspaceId) { setState(emptyState()); setLoading(false); return; }
+    if (!userId || !activeWorkspaceId) { rowsRef.current = []; setState(emptyState()); setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
 
@@ -112,8 +164,8 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         .eq("workspace_id", activeWorkspaceId)
         .order("position", { ascending: true });
       if (cancelled) return;
-      if (error) { console.error("[checklist] load error", error); setState(emptyState()); }
-      else setState(groupByCompany((data ?? []) as DbRow[]));
+      if (error) { console.error("[checklist] load error", error); rowsRef.current = []; setState(emptyState()); }
+      else { rowsRef.current = (data ?? []) as DbRow[]; rebuild(); }
       setLoading(false);
     })();
 
@@ -122,93 +174,97 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       .on("postgres_changes",
         { event: "*", schema: "public", table: "checklist_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` },
         (payload) => {
-          setState((prev) => {
-            const next: ChecklistState = { ...prev };
-            for (const c of COMPANIES) next[c] = [...prev[c]];
-            if (payload.eventType === "INSERT") {
-              const row = payload.new as DbRow;
-              const c = row.company as Company;
-              if (!next[c]) return prev;
-              if (next[c].some((t) => t.id === row.id)) return prev;
-              next[c] = [...next[c], rowToTask(row)].sort((a, b) => a.position - b.position);
-            } else if (payload.eventType === "UPDATE") {
-              const row = payload.new as DbRow;
-              const c = row.company as Company;
-              const oldC = (payload.old as DbRow).company as Company;
-              if (oldC && oldC !== c && next[oldC]) next[oldC] = next[oldC].filter((t) => t.id !== row.id);
-              if (!next[c]) return next;
-              const idx = next[c].findIndex((t) => t.id === row.id);
-              if (idx === -1) next[c] = [...next[c], rowToTask(row)];
-              else next[c][idx] = rowToTask(row);
-              next[c] = [...next[c]].sort((a, b) => a.position - b.position);
-            } else if (payload.eventType === "DELETE") {
-              const row = payload.old as DbRow;
-              const c = row.company as Company;
-              if (!next[c]) return next;
-              next[c] = next[c].filter((t) => t.id !== row.id);
-            }
-            return next;
-          });
+          if (payload.eventType === "INSERT") {
+            const row = payload.new as DbRow;
+            if (!rowsRef.current.some((r) => r.id === row.id)) rowsRef.current = [...rowsRef.current, row];
+          } else if (payload.eventType === "UPDATE") {
+            const row = payload.new as DbRow;
+            const idx = rowsRef.current.findIndex((r) => r.id === row.id);
+            if (idx === -1) rowsRef.current = [...rowsRef.current, row];
+            else { const next = [...rowsRef.current]; next[idx] = row; rowsRef.current = next; }
+          } else if (payload.eventType === "DELETE") {
+            const row = payload.old as DbRow;
+            rowsRef.current = rowsRef.current.filter((r) => r.id !== row.id);
+          }
+          rebuild();
         })
       .subscribe();
 
     return () => { cancelled = true; supabase.removeChannel(channel); };
-  }, [userId, activeWorkspaceId]);
+  }, [userId, activeWorkspaceId, rebuild]);
 
-  const applyLocal = useCallback((u: (s: ChecklistState) => ChecklistState) => setState((s) => u(s)), []);
-
-  const add = useCallback(async (company: Company, text: string) => {
+  const add = useCallback(async (company: Company, text: string, parentId: string | null = null) => {
     const trimmed = text.trim();
     if (!trimmed || !userIdRef.current || !wsRef.current) return;
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    const position = state[company]?.length ?? 0;
-    applyLocal((s) => ({ ...s, [company]: [...s[company], { id: tempId, text: trimmed, done: false, createdAt: Date.now(), position, priority: "medium" }] }));
+    // Determine sibling position
+    const siblings = parentId
+      ? (findTask(state[company] ?? [], parentId)?.subtasks ?? [])
+      : (state[company] ?? []);
+    const position = siblings.length;
+
+    const optimistic: DbRow = {
+      id: tempId, user_id: userIdRef.current, owner_email: ownerRef.current,
+      company, title: trimmed, assignee: null, status: "pending", priority: "medium",
+      notes: null, done_at: null, position, parent_id: parentId,
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    };
+    rowsRef.current = [...rowsRef.current, optimistic];
+    rebuild();
+
     const { data, error } = await supabase.from("checklist_tasks").insert({
       user_id: userIdRef.current, workspace_id: wsRef.current, owner_email: ownerRef.current,
       company, title: trimmed, position, status: "pending", priority: "medium",
+      parent_id: parentId,
     } as never).select().single();
     if (error) {
       console.error("[checklist] add error", error);
-      applyLocal((s) => ({ ...s, [company]: s[company].filter((t) => t.id !== tempId) }));
+      rowsRef.current = rowsRef.current.filter((r) => r.id !== tempId);
+      rebuild();
       return;
     }
     const row = data as DbRow;
-    applyLocal((s) => ({ ...s, [company]: s[company].map((t) => (t.id === tempId ? rowToTask(row) : t)) }));
-  }, [state, applyLocal]);
+    rowsRef.current = rowsRef.current.map((r) => (r.id === tempId ? row : r));
+    rebuild();
+  }, [state, rebuild]);
 
-  const edit = useCallback(async (company: Company, id: string, text: string) => {
+  const edit = useCallback(async (_company: Company, id: string, text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
-    applyLocal((s) => ({ ...s, [company]: s[company].map((t) => (t.id === id ? { ...t, text: trimmed } : t)) }));
+    rowsRef.current = rowsRef.current.map((r) => (r.id === id ? { ...r, title: trimmed } : r));
+    rebuild();
     const { error } = await supabase.from("checklist_tasks").update({ title: trimmed }).eq("id", id);
     if (error) console.error("[checklist] edit error", error);
-  }, [applyLocal]);
+  }, [rebuild]);
 
   const remove = useCallback(async (company: Company, id: string) => {
-    const prev = state[company];
-    const task = prev.find((t) => t.id === id);
-    applyLocal((s) => ({ ...s, [company]: s[company].filter((t) => t.id !== id) }));
+    const task = findTask(state[company] ?? [], id);
+    const prevRows = rowsRef.current;
+    // Remove the task and all its descendants locally
+    const removeIds = new Set<string>([id]);
+    if (task) for (const t of flatten(task.subtasks)) removeIds.add(t.id);
+    rowsRef.current = rowsRef.current.filter((r) => !removeIds.has(r.id));
+    rebuild();
     const { error } = await supabase.from("checklist_tasks").delete().eq("id", id);
-    if (error) { console.error("[checklist] remove error", error); applyLocal((s) => ({ ...s, [company]: prev })); return; }
+    if (error) {
+      console.error("[checklist] remove error", error);
+      rowsRef.current = prevRows; rebuild(); return;
+    }
     if (task) await logActivity({
       entity_type: "checklist_task", entity_id: id, action: "deleted",
       title: task.text, company, payload: { was_done: task.done, priority: task.priority },
     });
-  }, [state, applyLocal]);
+  }, [state, rebuild]);
 
   const toggle = useCallback(async (company: Company, id: string) => {
-    const task = state[company]?.find((t) => t.id === id);
+    const task = findTask(state[company] ?? [], id);
     if (!task) return;
     const willDone = !task.done;
     const nowIso = new Date().toISOString();
-    applyLocal((s) => ({
-      ...s,
-      [company]: s[company].map((t) => {
-        if (t.id !== id) return t;
-        if (!willDone) return { ...t, done: false, doneAt: undefined };
-        return { ...t, done: true, doneAt: fmtHHMM(nowIso) };
-      }),
-    }));
+    rowsRef.current = rowsRef.current.map((r) => r.id === id
+      ? { ...r, status: willDone ? "done" : "pending", done_at: willDone ? nowIso : null }
+      : r);
+    rebuild();
     const { error } = await supabase.from("checklist_tasks").update({
       status: willDone ? "done" : "pending",
       done_at: willDone ? nowIso : null,
@@ -232,7 +288,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       await supabase.from("ponto_session_tasks").delete()
         .eq("session_id", active.sessionId).eq("task_id", id);
     }
-  }, [state, applyLocal]);
+  }, [state, rebuild]);
 
   const resetAllDone = useCallback(async () => {
     if (!userIdRef.current) return;
@@ -247,39 +303,55 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     return () => { off; };
   }, [resetAllDone]);
 
-  const reorder = useCallback(async (company: Company, fromId: string, toId: string) => {
+  const reorder = useCallback(async (company: Company, fromId: string, toId: string, parentId: string | null = null) => {
     if (fromId === toId) return;
-    const list = [...state[company]];
+    const siblings = parentId
+      ? (findTask(state[company] ?? [], parentId)?.subtasks ?? [])
+      : (state[company] ?? []);
+    const list = [...siblings];
     const fromIdx = list.findIndex((t) => t.id === fromId);
     const toIdx = list.findIndex((t) => t.id === toId);
     if (fromIdx === -1 || toIdx === -1) return;
     const [moved] = list.splice(fromIdx, 1);
     list.splice(toIdx, 0, moved);
-    const reindexed = list.map((t, i) => ({ ...t, position: i }));
-    applyLocal((s) => ({ ...s, [company]: reindexed }));
-    await Promise.all(reindexed.map((t) =>
-      supabase.from("checklist_tasks").update({ position: t.position }).eq("id", t.id)
+    const updates = list.map((t, i) => ({ id: t.id, position: i }));
+    rowsRef.current = rowsRef.current.map((r) => {
+      const u = updates.find((x) => x.id === r.id);
+      return u ? { ...r, position: u.position } : r;
+    });
+    rebuild();
+    await Promise.all(updates.map((u) =>
+      supabase.from("checklist_tasks").update({ position: u.position }).eq("id", u.id)
     ));
-  }, [state, applyLocal]);
+  }, [state, rebuild]);
 
   const clearCompany = useCallback(async (company: Company) => {
     if (!userIdRef.current || !wsRef.current) return;
-    const prev = state[company];
-    applyLocal((s) => ({ ...s, [company]: [] }));
+    const prevTasks = flatten(state[company] ?? []);
+    const prevRows = rowsRef.current;
+    rowsRef.current = rowsRef.current.filter((r) => r.company !== company);
+    rebuild();
     const { error } = await supabase.from("checklist_tasks").delete()
       .eq("workspace_id", wsRef.current).eq("company", company);
-    if (error) { console.error("[checklist] clear error", error); applyLocal((s) => ({ ...s, [company]: prev })); return; }
-    for (const task of prev) {
+    if (error) {
+      console.error("[checklist] clear error", error);
+      rowsRef.current = prevRows; rebuild(); return;
+    }
+    for (const task of prevTasks) {
       logActivity({
         entity_type: "checklist_task", entity_id: task.id, action: "deleted",
         title: task.text, company, payload: { was_done: task.done, bulk: true },
       });
     }
-  }, [state, applyLocal]);
+  }, [state, rebuild]);
 
   const totals = useMemo(() => {
     let total = 0, done = 0;
-    for (const c of COMPANIES) { total += state[c].length; done += state[c].filter((t) => t.done).length; }
+    for (const c of COMPANIES) {
+      const all = flatten(state[c]);
+      total += all.length;
+      done += all.filter((t) => t.done).length;
+    }
     return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
   }, [state]);
 
