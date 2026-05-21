@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Sun, Heart, Target, Compass, Moon, NotebookPen, ChevronLeft, Calendar } from "lucide-react";
+import { Sun, ChevronLeft, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
@@ -11,21 +11,9 @@ export const Route = createFileRoute("/app/gratitude")({
 type Row = {
   id: string;
   entry_date: string;
-  gratitude: string;
-  objectives: string;
-  mission: string;
-  dreams: string;
-  reflection: string;
+  content: string;
   completed_at: string | null;
 };
-
-const FIELDS = [
-  { key: "gratitude", label: "Gratidão", icon: Heart },
-  { key: "objectives", label: "Objetivos", icon: Target },
-  { key: "mission", label: "Missão", icon: Compass },
-  { key: "dreams", label: "Sonhos & metas", icon: Moon },
-  { key: "reflection", label: "Reflexão", icon: NotebookPen },
-] as const;
 
 function formatDate(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
@@ -44,7 +32,7 @@ function GratitudeHistoryPage() {
     (async () => {
       const { data } = await (supabase as any)
         .from("gratitude_entries")
-        .select("*")
+        .select("id,entry_date,content,completed_at")
         .eq("user_id", user.id)
         .order("entry_date", { ascending: false })
         .limit(200);
@@ -93,19 +81,8 @@ function GratitudeHistoryPage() {
                 <ChevronLeft className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "-rotate-90" : "rotate-180"}`} />
               </button>
               {isOpen && (
-                <div className="px-5 pb-5 pt-1 space-y-4 border-t border-border/30">
-                  {FIELDS.map(({ key, label, icon: Icon }) => {
-                    const val = (r as any)[key] as string;
-                    if (!val?.trim()) return null;
-                    return (
-                      <div key={key}>
-                        <div className="flex items-center gap-2 text-[11px] uppercase tracking-wider text-muted-foreground mb-1">
-                          <Icon className="h-3 w-3" /> {label}
-                        </div>
-                        <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{val}</p>
-                      </div>
-                    );
-                  })}
+                <div className="px-5 pb-5 pt-1 border-t border-border/30">
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{r.content}</p>
                 </div>
               )}
             </div>
