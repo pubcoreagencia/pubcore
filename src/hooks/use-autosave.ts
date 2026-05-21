@@ -44,7 +44,8 @@ export function useAutosave<T extends Record<string, unknown>>(
 
   const queue = useCallback((patch: T) => {
     pendingRef.current = { ...(pendingRef.current ?? {}), ...patch } as T;
-    setStatus("saving");
+    // Avoid setState on every keystroke — only flip to "saving" when not already saving
+    setStatus((s) => (s === "saving" ? s : "saving"));
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => { void flush(); }, delay);
   }, [delay, flush]);
