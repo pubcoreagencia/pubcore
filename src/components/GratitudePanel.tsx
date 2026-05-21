@@ -21,8 +21,9 @@ export function GratitudePanel() {
   const { activeWorkspaceId } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [content, setContent] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const contentRef = useRef<string>("");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const initialLoadRef = useRef(false);
 
   // ── 1. Check if today's entry exists / is completed ──
@@ -41,7 +42,8 @@ export function GratitudePanel() {
       if (data?.completed_at) {
         setOpen(false);
       } else {
-        setContent(data?.content ?? "");
+        contentRef.current = data?.content ?? "";
+        if (textareaRef.current) textareaRef.current.value = contentRef.current;
         initialLoadRef.current = true;
         setOpen(true);
       }
@@ -58,7 +60,7 @@ export function GratitudePanel() {
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
-  // ── 3. Autosave hook (debounce 1.2 s) ──
+  // ── 3. Autosave hook (debounce 1.5 s) ──
   const saver = useCallback(
     async (patch: { content: string }) => {
       if (!user || !activeWorkspaceId) return {};
@@ -78,9 +80,9 @@ export function GratitudePanel() {
     [user, activeWorkspaceId]
   );
 
-  const { queue, flush, status } = useAutosave<{ content: string }>(saver, 1200);
+  const { queue, flush, status } = useAutosave<{ content: string }>(saver, 1500);
 
-  // Flush pending saves on blur / tab-switch / unmount
+  // Flush pending saves on tab-switch / unmount
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState === "hidden") flush();
@@ -93,16 +95,18 @@ export function GratitudePanel() {
   }, [flush]);
 
   // ── 4. Handlers ──
-  const handleChange = (value: string) => {
-    setContent(value);               // instant, zero lag
+  // Uncontrolled textarea — store in ref to avoid re-rendering the heavy modal on every keystroke
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    contentRef.current = e.target.value;
     if (initialLoadRef.current) {
-      queue({ content: value });       // debounced background save
+      queue({ content: e.target.value });
     }
   };
 
   const handleBlur = () => {
     flush();
   };
+
 
   const handleComplete = async () => {
     if (!user || !activeWorkspaceId) return;
