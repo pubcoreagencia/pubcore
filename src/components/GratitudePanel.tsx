@@ -110,7 +110,7 @@ export function GratitudePanel() {
 
   const handleComplete = async () => {
     if (!user || !activeWorkspaceId) return;
-    const cur = content.trim();
+    const cur = contentRef.current.trim();
     if (!cur) {
       toast.error("Escreva algo para concluir");
       return;
