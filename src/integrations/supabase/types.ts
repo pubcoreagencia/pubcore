@@ -341,45 +341,33 @@ export type Database = {
       gratitude_entries: {
         Row: {
           completed_at: string | null
+          content: string
           created_at: string
-          dreams: string
           entry_date: string
-          gratitude: string
           id: string
-          mission: string
-          objectives: string
           owner_email: string
-          reflection: string
           updated_at: string
           user_id: string
           workspace_id: string
         }
         Insert: {
           completed_at?: string | null
+          content: string
           created_at?: string
-          dreams?: string
           entry_date?: string
-          gratitude?: string
           id?: string
-          mission?: string
-          objectives?: string
           owner_email: string
-          reflection?: string
           updated_at?: string
           user_id: string
           workspace_id: string
         }
         Update: {
           completed_at?: string | null
+          content?: string
           created_at?: string
-          dreams?: string
           entry_date?: string
-          gratitude?: string
           id?: string
-          mission?: string
-          objectives?: string
           owner_email?: string
-          reflection?: string
           updated_at?: string
           user_id?: string
           workspace_id?: string

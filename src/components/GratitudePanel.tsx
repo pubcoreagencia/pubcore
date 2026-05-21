@@ -1,23 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Sparkles, Sun, Heart, Target, Compass, Moon, NotebookPen, Check, Loader2 } from "lucide-react";
+import { Sparkles, Sun, Check, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-
-type Entry = {
-  id?: string;
-  gratitude: string;
-  objectives: string;
-  mission: string;
-  dreams: string;
-  reflection: string;
-  completed_at?: string | null;
-};
-
-const EMPTY: Entry = { gratitude: "", objectives: "", mission: "", dreams: "", reflection: "" };
 
 function todayISO() {
   const d = new Date();
@@ -27,25 +15,17 @@ function todayISO() {
   return `${y}-${m}-${day}`;
 }
 
-const FIELDS: Array<{ key: keyof Entry; label: string; placeholder: string; icon: typeof Heart; rows: number }> = [
-  { key: "gratitude", label: "Gratidão do dia", placeholder: "Pelo que você é grato hoje?", icon: Heart, rows: 3 },
-  { key: "objectives", label: "Objetivos atuais", placeholder: "O que deseja conquistar nesta fase?", icon: Target, rows: 3 },
-  { key: "mission", label: "Missão principal", placeholder: "Qual é o seu foco principal hoje?", icon: Compass, rows: 2 },
-  { key: "dreams", label: "Sonhos & metas", placeholder: "O que está construindo no longo prazo?", icon: Moon, rows: 3 },
-  { key: "reflection", label: "Reflexão livre", placeholder: "Escreva o que sentir vontade…", icon: NotebookPen, rows: 4 },
-];
-
 export function GratitudePanel() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [entry, setEntry] = useState<Entry>(EMPTY);
+  const [content, setContent] = useState("");
   const [saving, setSaving] = useState<"idle" | "saving" | "saved">("idle");
   const [submitting, setSubmitting] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const entryRef = useRef<Entry>(EMPTY);
-  entryRef.current = entry;
+  const contentRef = useRef<string>("");
+  contentRef.current = content;
 
   // Check if today's entry exists / is completed
   useEffect(() => {
@@ -55,7 +35,7 @@ export function GratitudePanel() {
       const date = todayISO();
       const { data } = await (supabase as any)
         .from("gratitude_entries")
-        .select("*")
+        .select("id,content,completed_at")
         .eq("user_id", user.id)
         .eq("entry_date", date)
         .maybeSingle();
@@ -63,16 +43,7 @@ export function GratitudePanel() {
       if (data?.completed_at) {
         setOpen(false);
       } else {
-        if (data) {
-          setEntry({
-            id: data.id,
-            gratitude: data.gratitude ?? "",
-            objectives: data.objectives ?? "",
-            mission: data.mission ?? "",
-            dreams: data.dreams ?? "",
-            reflection: data.reflection ?? "",
-          });
-        }
+        setContent(data?.content ?? "");
         setOpen(true);
       }
       setLoading(false);
@@ -90,41 +61,33 @@ export function GratitudePanel() {
 
   const saveDraft = useCallback(async () => {
     if (!user || !activeWorkspaceId) return;
-    const cur = entryRef.current;
+    const cur = contentRef.current;
     setSaving("saving");
     const payload = {
       workspace_id: activeWorkspaceId,
       user_id: user.id,
       owner_email: user.email,
       entry_date: todayISO(),
-      gratitude: cur.gratitude,
-      objectives: cur.objectives,
-      mission: cur.mission,
-      dreams: cur.dreams,
-      reflection: cur.reflection,
+      content: cur,
     };
-    const { data, error } = await (supabase as any)
+    const { error } = await (supabase as any)
       .from("gratitude_entries")
-      .upsert(payload, { onConflict: "user_id,entry_date" })
-      .select()
-      .single();
-    if (!error && data?.id) setEntry((e) => ({ ...e, id: data.id }));
+      .upsert(payload, { onConflict: "user_id,entry_date" });
     setSaving(error ? "idle" : "saved");
     if (!error) setTimeout(() => setSaving("idle"), 1500);
   }, [user, activeWorkspaceId]);
 
-  const update = (key: keyof Entry, value: string) => {
-    setEntry((e) => ({ ...e, [key]: value }));
+  const handleChange = (value: string) => {
+    setContent(value);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => { void saveDraft(); }, 700);
   };
 
   const handleComplete = async () => {
     if (!user || !activeWorkspaceId) return;
-    const cur = entryRef.current;
-    const hasContent = (cur.gratitude + cur.objectives + cur.mission + cur.dreams + cur.reflection).trim().length > 0;
-    if (!hasContent) {
-      toast.error("Escreva ao menos uma reflexão para concluir");
+    const cur = contentRef.current.trim();
+    if (!cur) {
+      toast.error("Escreva algo para concluir");
       return;
     }
     setSubmitting(true);
@@ -133,11 +96,7 @@ export function GratitudePanel() {
       user_id: user.id,
       owner_email: user.email,
       entry_date: todayISO(),
-      gratitude: cur.gratitude,
-      objectives: cur.objectives,
-      mission: cur.mission,
-      dreams: cur.dreams,
-      reflection: cur.reflection,
+      content: cur,
       completed_at: new Date().toISOString(),
     };
     const { error } = await (supabase as any)
@@ -173,25 +132,14 @@ export function GratitudePanel() {
             </div>
           </header>
 
-          <div className="px-6 md:px-10 py-6 space-y-6 max-h-[60vh] md:max-h-[55vh] overflow-y-auto">
-            {FIELDS.map((f) => {
-              const Icon = f.icon;
-              return (
-                <div key={f.key} className="space-y-2">
-                  <label className="flex items-center gap-2 text-xs font-medium text-foreground/80 uppercase tracking-wider">
-                    <Icon className="h-3.5 w-3.5 text-amber-400/80" />
-                    {f.label}
-                  </label>
-                  <Textarea
-                    value={entry[f.key] as string}
-                    onChange={(e) => update(f.key, e.target.value)}
-                    placeholder={f.placeholder}
-                    rows={f.rows}
-                    className="resize-none bg-background/40 border-border/40 focus-visible:ring-amber-400/30 placeholder:text-muted-foreground/50 leading-relaxed text-[15px]"
-                  />
-                </div>
-              );
-            })}
+          <div className="px-6 md:px-10 py-6 max-h-[60vh] md:max-h-[55vh] overflow-y-auto">
+            <Textarea
+              value={content}
+              onChange={(e) => handleChange(e.target.value)}
+              placeholder="Escreva o que sentir vontade... gratidão, objetivos, sonhos, reflexões..."
+              rows={12}
+              className="resize-none bg-background/40 border-border/40 focus-visible:ring-amber-400/30 placeholder:text-muted-foreground/50 leading-relaxed text-[15px]"
+            />
           </div>
 
           <footer className="px-6 md:px-10 py-5 border-t border-border/30 flex items-center justify-between gap-3 bg-background/30">
