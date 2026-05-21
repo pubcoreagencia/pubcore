@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Check, Filter, Plus, Trash2, Pencil, GripVertical, X,
-  Play, Pause, StopCircle, RotateCcw,
+  Play, Pause, StopCircle, RotateCcw, ChevronRight,
   TrendingUp, CheckCircle2, AlertTriangle, ListTodo, Activity,
   Sparkles, History, Timer, BarChart3, Users,
 } from "lucide-react";
