@@ -34,12 +34,22 @@ export function PontoAutoTracker() {
   const endingRef = useRef(false);
 
   // Atividade do usuário → reseta o timer de inatividade
+  // IMPORTANTE: throttle agressivo. Sem isso, escrevíamos no localStorage a cada
+  // mousemove/scroll, bloqueando a main thread e causando lag em todo o site.
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mark = () => writeLastActivity(Date.now());
+    let lastWrite = 0;
+    const THROTTLE_MS = 15_000; // basta atualizar a cada 15s para detecção de inatividade (limite é 30min)
+    const mark = () => {
+      const now = Date.now();
+      if (now - lastWrite < THROTTLE_MS) return;
+      lastWrite = now;
+      writeLastActivity(now);
+    };
     const events: (keyof WindowEventMap)[] = ["mousemove", "keydown", "click", "scroll", "touchstart"];
     events.forEach((e) => window.addEventListener(e, mark, { passive: true }));
-    mark();
+    writeLastActivity(Date.now());
+    lastWrite = Date.now();
     return () => events.forEach((e) => window.removeEventListener(e, mark));
   }, []);
 
