@@ -140,10 +140,9 @@ export function GratitudePanel() {
   if (loading || !open) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-stretch justify-center overflow-y-auto bg-background/70 backdrop-blur-xl p-0 md:p-6">
+    <div className="fixed inset-0 z-[100] flex items-stretch justify-center overflow-y-auto bg-background/95 p-0 md:p-6">
       <div className="relative w-full max-w-2xl my-auto md:my-6">
-        <div className="absolute -inset-px rounded-none md:rounded-3xl bg-gradient-to-br from-amber-200/20 via-rose-200/10 to-violet-300/20 blur-xl opacity-60 pointer-events-none" />
-        <div className="relative rounded-none md:rounded-3xl border border-border/40 bg-card/80 backdrop-blur-2xl shadow-2xl">
+        <div className="relative rounded-none md:rounded-3xl border border-border/40 bg-card shadow-2xl">
           <header className="px-6 md:px-10 pt-8 pb-6 text-center border-b border-border/30">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-amber-400/20 to-rose-400/20 ring-1 ring-amber-300/30 mb-4">
               <Sun className="h-6 w-6 text-amber-400" />
