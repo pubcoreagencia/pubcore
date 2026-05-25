@@ -93,9 +93,11 @@ export function PontoAutoTracker() {
           const remoteUpdatedTs = data.updated_at ? new Date(data.updated_at).getTime() : new Date(data.started_at).getTime();
           const idle = Date.now() - remoteUpdatedTs;
           if (idle > IDLE_LIMIT_MS) {
-            // Sessão abandonada → encerra e abre uma nova zerada
+            // Sessão abandonada → encerra usando o horário da última atividade
+            // (updated_at remoto), não "agora". Sem isso a sessão fica registrada
+            // com duração de horas/dias enquanto o usuário esteve fora.
             adoptSession(data as PontoRemoteRow);
-            await end();
+            await end(remoteUpdatedTs);
             await start(user.name, user.email, user.id);
             toast("Expediente anterior encerrado por inatividade. Novo iniciado.", { duration: 3500 });
           } else if (session.sessionId !== data.id) {
@@ -124,13 +126,13 @@ export function PontoAutoTracker() {
     const checkIdle = async () => {
       if (endingRef.current) return;
       if (!isLive) return;
-      const localLast = readLastActivity();
-      const localIdle = Date.now() - localLast;
-      if (localIdle <= IDLE_LIMIT_MS) return;
 
-      // Antes de encerrar, confere updated_at remoto: pode haver outra aba/
-      // dispositivo ativo batendo heartbeat. Se o remoto está fresco, abortamos.
-      let lastActivity = localLast;
+      // Sempre consulta o remoto: o local pode estar "fresco" só porque a aba
+      // acabou de montar (writeLastActivity no mount). A inatividade real é
+      // o max(localLast, remoteUpdatedAt) — se ambos estão velhos, encerra.
+      const localLast = readLastActivity();
+      let remoteTs = 0;
+      let remoteStatus: string | null = null;
       if (session.sessionId) {
         try {
           const { data } = await supabase
@@ -139,20 +141,23 @@ export function PontoAutoTracker() {
             .eq("id", session.sessionId)
             .maybeSingle();
           if (data) {
-            if (data.status === "ended") return; // já encerrado por outro lado
-            const remoteTs = data.updated_at ? new Date(data.updated_at).getTime() : 0;
-            const remoteIdle = Date.now() - remoteTs;
-            if (remoteIdle <= IDLE_LIMIT_MS) {
-              // Outro dispositivo está ativo. Sincroniza nosso relógio local
-              // para não ficar tentando encerrar a cada ciclo.
-              writeLastActivity(remoteTs);
-              return;
-            }
-            lastActivity = Math.max(localLast, remoteTs);
+            remoteStatus = data.status as string;
+            remoteTs = data.updated_at ? new Date(data.updated_at).getTime() : 0;
           }
         } catch (e) {
           console.error("[ponto-auto] remote idle check error", e);
         }
+      }
+
+      if (remoteStatus === "ended") return; // já encerrado em outro lugar
+
+      const lastActivity = Math.max(localLast, remoteTs);
+      const idle = Date.now() - lastActivity;
+      if (idle <= IDLE_LIMIT_MS) {
+        // Outro dispositivo/aba está ativo — sincroniza relógio local para
+        // não tentar encerrar a cada ciclo.
+        if (remoteTs > localLast) writeLastActivity(remoteTs);
+        return;
       }
 
       endingRef.current = true;
