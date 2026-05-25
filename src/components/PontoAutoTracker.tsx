@@ -93,9 +93,11 @@ export function PontoAutoTracker() {
           const remoteUpdatedTs = data.updated_at ? new Date(data.updated_at).getTime() : new Date(data.started_at).getTime();
           const idle = Date.now() - remoteUpdatedTs;
           if (idle > IDLE_LIMIT_MS) {
-            // Sessão abandonada → encerra e abre uma nova zerada
+            // Sessão abandonada → encerra usando o horário da última atividade
+            // (updated_at remoto), não "agora". Sem isso a sessão fica registrada
+            // com duração de horas/dias enquanto o usuário esteve fora.
             adoptSession(data as PontoRemoteRow);
-            await end();
+            await end(remoteUpdatedTs);
             await start(user.name, user.email, user.id);
             toast("Expediente anterior encerrado por inatividade. Novo iniciado.", { duration: 3500 });
           } else if (session.sessionId !== data.id) {
