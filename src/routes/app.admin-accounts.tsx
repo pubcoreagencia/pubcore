@@ -34,7 +34,7 @@ function AdminAccountsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.rpc("list_accounts_by_status", {
-      _status: filter === "all" ? null : filter,
+      _status: filter === "all" ? undefined : filter,
     });
     if (error) toast.error(error.message);
     setAccounts((data as Account[]) ?? []);
