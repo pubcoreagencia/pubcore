@@ -114,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ user, session, loading, signInPassword, signUp, signInGoogle, resetPassword, logout }}>
+    <Ctx.Provider value={{ user, session, loading, accountStatus, refreshAccountStatus, signInPassword, signUp, signInGoogle, resetPassword, logout }}>
       {children}
     </Ctx.Provider>
   );
