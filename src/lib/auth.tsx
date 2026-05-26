@@ -10,10 +10,14 @@ export interface AppUser {
   role: Role;
 }
 
+export type AccountStatus = "pending" | "approved" | "rejected";
+
 interface AuthCtx {
   user: AppUser | null;
   session: Session | null;
   loading: boolean;
+  accountStatus: AccountStatus | null;
+  refreshAccountStatus: () => Promise<void>;
   signInPassword: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ error: string | null }>;
   signInGoogle: () => Promise<{ error: string | null }>;
@@ -34,17 +38,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [accountStatus, setAccountStatus] = useState<AccountStatus | null>(null);
+
+  const fetchStatus = async (uid: string | undefined) => {
+    if (!uid) { setAccountStatus(null); return; }
+    const { data } = await supabase.from("profiles").select("status").eq("id", uid).maybeSingle();
+    const st = (data?.status as AccountStatus | undefined) ?? "approved";
+    setAccountStatus(st);
+  };
+
+  const refreshAccountStatus = async () => {
+    const { data } = await supabase.auth.getSession();
+    await fetchStatus(data.session?.user.id);
+  };
 
   useEffect(() => {
-    // Subscribe FIRST, then load session
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setUser(toAppUser(s?.user));
+      setTimeout(() => { fetchStatus(s?.user.id); }, 0);
     });
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setUser(toAppUser(s?.user));
-      setLoading(false);
+      fetchStatus(s?.user.id).finally(() => setLoading(false));
     });
     return () => subscription.unsubscribe();
   }, []);
