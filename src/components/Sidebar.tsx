@@ -1,5 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, LogOut } from "lucide-react";
+import { LayoutDashboard, LogOut, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
@@ -57,6 +57,22 @@ export function Sidebar() {
             </div>
           </div>
         ))}
+        {isMaster && (
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-primary/70 px-3 mb-1.5">Master</div>
+            <Link
+              to="/app/admin-accounts"
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                path.startsWith("/app/admin-accounts")
+                  ? "bg-secondary text-foreground font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+              }`}
+            >
+              <ShieldCheck className={`h-4 w-4 flex-shrink-0 ${path.startsWith("/app/admin-accounts") ? "text-primary" : ""}`} />
+              <span>Controle de contas</span>
+            </Link>
+          </div>
+        )}
       </nav>
 
       <div className="p-4 border-t border-sidebar-border">

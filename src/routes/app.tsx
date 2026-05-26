@@ -11,13 +11,14 @@ import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
 import { WorkspaceProvider } from "@/lib/workspace";
+import { PendingApprovalScreen } from "@/components/PendingApprovalScreen";
 
 export const Route = createFileRoute("/app")({
   component: AppLayout,
 });
 
 function AppLayout() {
-  const { user, loading } = useAuth();
+  const { user, loading, accountStatus } = useAuth();
   const nav = useNavigate();
 
   useEffect(() => {
@@ -30,6 +31,10 @@ function AppLayout() {
         <div className="text-muted-foreground text-sm">Carregando…</div>
       </div>
     );
+  }
+
+  if (accountStatus && accountStatus !== "approved") {
+    return <PendingApprovalScreen status={accountStatus} />;
   }
 
   return (
