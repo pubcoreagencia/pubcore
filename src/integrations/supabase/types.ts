@@ -772,6 +772,7 @@ export type Database = {
           email: string | null
           id: string
           role: string | null
+          status: string
           updated_at: string
         }
         Insert: {
@@ -781,6 +782,7 @@ export type Database = {
           email?: string | null
           id: string
           role?: string | null
+          status?: string
           updated_at?: string
         }
         Update: {
@@ -790,6 +792,7 @@ export type Database = {
           email?: string | null
           id?: string
           role?: string | null
+          status?: string
           updated_at?: string
         }
         Relationships: []
@@ -1238,6 +1241,16 @@ export type Database = {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean
       }
+      list_accounts_by_status: {
+        Args: { _status?: string }
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          status: string
+        }[]
+      }
       list_workspace_members: {
         Args: { _workspace_id: string }
         Returns: {
@@ -1249,6 +1262,10 @@ export type Database = {
       }
       remove_member: {
         Args: { _user_id: string; _workspace_id: string }
+        Returns: undefined
+      }
+      set_account_status: {
+        Args: { _status: string; _user_id: string }
         Returns: undefined
       }
       set_member_role: {
