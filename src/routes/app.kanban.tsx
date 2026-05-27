@@ -673,9 +673,9 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
           return (
             <div
               key={col.id}
-              draggable={nativeDragEnabled && editingCol !== col.id}
+              draggable={nativeDragEnabled && editingCol !== col.id && adding !== col.id}
               onDragStart={(e) => {
-                if (draggingCard) return;
+                if (draggingCard || adding === col.id || editingCol === col.id) { e.preventDefault(); return; }
                 setDraggingCol(col.id);
                 e.dataTransfer.effectAllowed = "move";
               }}
