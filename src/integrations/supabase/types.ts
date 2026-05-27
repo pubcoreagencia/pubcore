@@ -59,10 +59,15 @@ export type Database = {
       checklist_tasks: {
         Row: {
           assignee: string | null
+          column_id: string | null
           company: string
           created_at: string
+          description: string | null
           done_at: string | null
+          due_date: string | null
+          funnel_id: string | null
           id: string
+          legacy_checklist: Json
           notes: string | null
           owner_email: string
           parent_id: string | null
@@ -76,10 +81,15 @@ export type Database = {
         }
         Insert: {
           assignee?: string | null
+          column_id?: string | null
           company: string
           created_at?: string
+          description?: string | null
           done_at?: string | null
+          due_date?: string | null
+          funnel_id?: string | null
           id?: string
+          legacy_checklist?: Json
           notes?: string | null
           owner_email: string
           parent_id?: string | null
@@ -93,10 +103,15 @@ export type Database = {
         }
         Update: {
           assignee?: string | null
+          column_id?: string | null
           company?: string
           created_at?: string
+          description?: string | null
           done_at?: string | null
+          due_date?: string | null
+          funnel_id?: string | null
           id?: string
+          legacy_checklist?: Json
           notes?: string | null
           owner_email?: string
           parent_id?: string | null
@@ -424,7 +439,7 @@ export type Database = {
         }
         Relationships: []
       }
-      kanban_cards: {
+      kanban_cards_archive: {
         Row: {
           assignee: string | null
           checklist: Json
