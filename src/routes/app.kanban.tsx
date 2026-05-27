@@ -112,7 +112,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
   }, []);
 
   const shouldIgnoreBoardPan = (target: EventTarget | null) => {
-    return target instanceof HTMLElement && Boolean(target.closest("input,textarea,select,[contenteditable='true'],[data-board-pan-lock='true']"));
+    return target instanceof HTMLElement && Boolean(target.closest("input,textarea,select,button,a,[contenteditable='true'],[data-board-pan-lock='true']"));
   };
 
   const handleBoardPointerDown = (e: PointerEvent<HTMLDivElement>) => {
