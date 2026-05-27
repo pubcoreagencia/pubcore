@@ -31,11 +31,10 @@ export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
 });
 
-type Tab = "diario" | "kanban" | "historico" | "ponto" | "metricas";
+type Tab = "diario" | "historico" | "ponto" | "metricas";
 
 const TABS: { id: Tab; label: string; icon: typeof ListTodo }[] = [
   { id: "diario", label: "Checklist Diário", icon: ListTodo },
-  { id: "kanban", label: "Kanban", icon: KanbanSquare },
   { id: "historico", label: "Histórico", icon: History },
   { id: "ponto", label: "Bater Ponto", icon: Timer },
   { id: "metricas", label: "Métricas", icon: BarChart3 },
