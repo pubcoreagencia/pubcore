@@ -200,7 +200,7 @@ function KanbanPage() {
       const [{ data: fs }, { data: cols }, { data: cs }] = await Promise.all([
         supabase.from("kanban_funnels").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
         supabase.from("kanban_columns").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
-        supabase.from("checklist_tasks").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
+        supabase.from("checklist_tasks").select("*").eq("workspace_id", activeWorkspaceId).not("funnel_id", "is", null).order("position"),
       ]);
       if (cancelled) return;
 
@@ -265,7 +265,7 @@ function KanbanPage() {
         setColumns((data ?? []) as Column[]);
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "checklist_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
-        const { data } = await supabase.from("checklist_tasks").select("*").eq("workspace_id", activeWorkspaceId).order("position");
+        const { data } = await supabase.from("checklist_tasks").select("*").eq("workspace_id", activeWorkspaceId).not("funnel_id", "is", null).order("position");
         setCards(((data ?? []) as unknown[]).map(normalizeCard));
       })
       .subscribe();
@@ -273,10 +273,22 @@ function KanbanPage() {
   }, [userId, activeWorkspaceId]);
 
   function normalizeCard(c: any): Card {
+    const list = Array.isArray(c.legacy_checklist) ? c.legacy_checklist : (Array.isArray(c.checklist) ? c.checklist : []);
     return {
-      ...c,
-      checklist: Array.isArray(c.checklist) ? c.checklist : [],
+      id: c.id,
+      title: c.title,
+      description: c.description ?? null,
+      company: c.company,
       priority: (PRIORITIES as string[]).includes(c.priority) ? c.priority : "Média",
+      assignee: c.assignee ?? null,
+      column_id: c.column_id ?? null,
+      column_name: c.column_name ?? null,
+      position: c.position ?? 0,
+      status: c.status ?? "pending",
+      due_date: c.due_date ?? null,
+      notes: c.notes ?? null,
+      checklist: list,
+      funnel_id: c.funnel_id ?? null,
     };
   }
 
@@ -383,13 +395,13 @@ function KanbanPage() {
   const createCard = async (colId: string) => {
     if (!draft.title.trim() || !userId || !activeWorkspaceId || !activeFunnelId) return;
     const colCards = cards.filter(c => c.column_id === colId);
-    const col = columns.find(c => c.id === colId);
     const { error } = await supabase.from("checklist_tasks").insert({
       workspace_id: activeWorkspaceId, user_id: userId,
+      owner_email: user?.email ?? "guest@pubcore.local",
       funnel_id: activeFunnelId,
       title: draft.title.trim(), company: draft.company,
-      priority: "Média", column_id: colId, column_name: col?.name ?? "Backlog",
-      position: colCards.length, status: "pending", checklist: [],
+      priority: "Média", column_id: colId,
+      position: colCards.length, status: "pending", legacy_checklist: [],
     } as never);
     if (error) toast.error(error.message);
     setDraft({ title: "", company: COMPANIES[0] }); setAdding(null);
@@ -413,7 +425,12 @@ function KanbanPage() {
 
   const updateCard = async (id: string, patch: Partial<Card>) => {
     const dbPatch: Record<string, unknown> = { ...patch };
-    if (patch.checklist) dbPatch.checklist = patch.checklist as unknown;
+    if (patch.checklist !== undefined) {
+      dbPatch.legacy_checklist = patch.checklist as unknown;
+      delete (dbPatch as Record<string, unknown>).checklist;
+    }
+    // column_name is derived client-side, never persisted
+    delete (dbPatch as Record<string, unknown>).column_name;
     setCards(cs => cs.map(c => c.id === id ? { ...c, ...patch } : c));
     setOpenCard(c => c && c.id === id ? { ...c, ...patch } : c);
     await supabase.from("checklist_tasks").update(dbPatch as never).eq("id", id);
@@ -446,7 +463,7 @@ function KanbanPage() {
     }));
 
     await Promise.all([
-      ...reposTarget.map(p => supabase.from("checklist_tasks").update({ position: p.position, column_id: p.column_id, column_name: p.column_name }).eq("id", p.id)),
+      ...reposTarget.map(p => supabase.from("checklist_tasks").update({ position: p.position, column_id: p.column_id }).eq("id", p.id)),
       ...reposSource.map(p => supabase.from("checklist_tasks").update({ position: p.position }).eq("id", p.id)),
     ]);
 
@@ -903,7 +920,7 @@ function CardDialog({
                 onChange={(e) => onUpdate({ status: e.target.value })}
                 className="w-full bg-surface rounded px-2 py-1.5 text-sm"
               >
-                <option value="open">Aberto</option>
+                <option value="pending">Aberto</option>
                 <option value="in_progress">Em progresso</option>
                 <option value="blocked">Bloqueado</option>
                 <option value="done">Concluído</option>
