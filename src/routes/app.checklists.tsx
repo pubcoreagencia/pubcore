@@ -24,15 +24,18 @@ import { useAuth } from "@/lib/auth";
 import { usePonto, fmtTime, onPontoEvent } from "@/lib/ponto";
 import { useChecklist, type UserTask } from "@/lib/checklist-store";
 import { useWorkspace } from "@/lib/workspace";
+import { KanbanBoardView } from "./app.kanban";
+import { KanbanSquare } from "lucide-react";
 
 export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
 });
 
-type Tab = "diario" | "historico" | "ponto" | "metricas";
+type Tab = "diario" | "kanban" | "historico" | "ponto" | "metricas";
 
 const TABS: { id: Tab; label: string; icon: typeof ListTodo }[] = [
   { id: "diario", label: "Checklist Diário", icon: ListTodo },
+  { id: "kanban", label: "Kanban", icon: KanbanSquare },
   { id: "historico", label: "Histórico", icon: History },
   { id: "ponto", label: "Bater Ponto", icon: Timer },
   { id: "metricas", label: "Métricas", icon: BarChart3 },
