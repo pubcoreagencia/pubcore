@@ -13,7 +13,9 @@ import { KanbanAttachments } from "@/components/KanbanAttachments";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import type { SaveStatus } from "@/hooks/use-autosave";
 
-export const Route = createFileRoute("/app/kanban")({ component: KanbanPage });
+export const Route = createFileRoute("/app/kanban")({ component: KanbanRoute });
+
+function KanbanRoute() { return <KanbanBoardView />; }
 
 type Priority = "Baixa" | "Média" | "Alta" | "Crítica";
 const PRIORITIES: Priority[] = ["Baixa", "Média", "Alta", "Crítica"];
@@ -82,7 +84,7 @@ function isDoneColumnName(name: string) {
   return /conclu/i.test(name) || /done/i.test(name);
 }
 
-function KanbanPage() {
+export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
