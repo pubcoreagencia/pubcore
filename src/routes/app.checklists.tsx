@@ -104,11 +104,6 @@ function ChecklistsPage() {
       </div>
 
       {tab === "diario" && <DailyTab />}
-      {tab === "kanban" && (
-        <div className="-mx-4 sm:-mx-6 lg:-mx-10">
-          <KanbanBoardView embedded />
-        </div>
-      )}
       {tab === "historico" && <HistoryTab />}
       {tab === "ponto" && <PontoTab />}
       {tab === "metricas" && <MetricsTab />}
