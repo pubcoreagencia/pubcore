@@ -114,11 +114,13 @@ function ChecklistsPage() {
 /* =================== TAB: DIÁRIO =================== */
 
 type StatusFilter = "Todos" | "Concluído" | "Pendente";
+type DailyView = "lista" | "kanban";
 
 function DailyTab() {
   const { state } = useChecklist();
   const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Todos");
+  const [view, setView] = useState<DailyView>("lista");
 
   const visibleCompanies = useMemo(
     () => (companyFilter === "Todas" ? [...COMPANIES] : [companyFilter]),
@@ -136,7 +138,7 @@ function DailyTab() {
 
   return (
     <div className="space-y-5">
-      {/* Filtros */}
+      {/* Toolbar: filtros + alternador de visualização */}
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl border border-border bg-card shadow-card">
         <Filter className="h-4 w-4 text-muted-foreground hidden sm:block" />
         <Select
@@ -145,12 +147,43 @@ function DailyTab() {
           onChange={(v) => setCompanyFilter(v as Company | "Todas")}
           options={["Todas", ...COMPANIES]}
         />
-        <Select
-          label="Status"
-          value={statusFilter}
-          onChange={(v) => setStatusFilter(v as StatusFilter)}
-          options={["Todos", "Pendente", "Concluído"]}
-        />
+        {view === "lista" && (
+          <Select
+            label="Status"
+            value={statusFilter}
+            onChange={(v) => setStatusFilter(v as StatusFilter)}
+            options={["Todos", "Pendente", "Concluído"]}
+          />
+        )}
+
+        {/* View toggle: Lista | Kanban */}
+        <div className="flex items-center gap-1 p-1 rounded-lg border border-border bg-surface">
+          <button
+            onClick={() => setView("lista")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
+              view === "lista"
+                ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="Visualização em lista"
+          >
+            <ListTodo className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Lista</span>
+          </button>
+          <button
+            onClick={() => setView("kanban")}
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-all ${
+              view === "kanban"
+                ? "bg-gradient-primary text-primary-foreground shadow-glow"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            title="Visualização kanban"
+          >
+            <KanbanSquare className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Kanban</span>
+          </button>
+        </div>
+
         <div className="ml-auto flex items-center gap-2 text-xs">
           <span className="text-muted-foreground font-mono hidden sm:inline">{totals.done}/{totals.total} concluídas</span>
           <span className="text-muted-foreground font-mono sm:hidden">{totals.done}/{totals.total}</span>
@@ -158,15 +191,21 @@ function DailyTab() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
-        {visibleCompanies.map((company) => (
-          <CompanyChecklistCard
-            key={company}
-            company={company}
-            statusFilter={statusFilter}
-          />
-        ))}
-      </div>
+      {view === "lista" ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
+          {visibleCompanies.map((company) => (
+            <CompanyChecklistCard
+              key={company}
+              company={company}
+              statusFilter={statusFilter}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="-mx-4 sm:-mx-6 lg:-mx-10">
+          <KanbanBoardView embedded />
+        </div>
+      )}
     </div>
   );
 }
