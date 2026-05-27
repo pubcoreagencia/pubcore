@@ -786,7 +786,12 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
                 })}
 
                 {adding === col.id ? (
-                  <div className="rounded-lg border border-primary/40 bg-card p-2 space-y-2">
+                  <div
+                    className="rounded-lg border border-primary/40 bg-card p-2 space-y-2"
+                    draggable={false}
+                    onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
                     <input
                       autoFocus
                       value={draft.title}
