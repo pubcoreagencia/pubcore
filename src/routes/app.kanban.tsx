@@ -395,6 +395,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
 
   // ----- CARD OPS -----
   const createCard = async (colId: string) => {
+    console.log("[kanban] createCard invoked", { colId, title: draft.title, activeFunnelId, activeWorkspaceId, userId });
     const title = draft.title.trim();
     if (!title) { toast.error("Digite um título para o card"); return; }
     if (!userId || !activeWorkspaceId) { toast.error("Workspace não carregado"); return; }
