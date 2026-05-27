@@ -1,61 +1,12 @@
-## Refatoração do Kanban — Funis + Upload de Arquivos
+Diagnóstico encontrado:
+- A tabela `checklist_tasks` aceita leitura/escrita e não há constraint de `priority` impedindo `Média`.
+- Os GRANTs e RLS estão permitindo INSERT para a conta master/workspace atual.
+- Já existe um card de teste inserido diretamente no banco (`TEST CARD DEBUG`), então o banco em si não parece bloquear a criação.
+- Não houve request `POST` recente para `checklist_tasks` na sessão do usuário; isso indica que o clique/formulário provavelmente não está chegando até a chamada de insert, ou a UI está usando estado/contexto errado no Kanban embutido.
 
-Vou transformar o Kanban atual (1 board único) em um sistema multi-funis com anexos completos.
-
-### 1. Banco de dados (migração)
-
-**Nova tabela `kanban_funnels`** (funis/boards independentes)
-- `name`, `description`, `color`, `icon`, `position`, `workspace_id`, `user_id`
-
-**Nova tabela `kanban_attachments`** (anexos por card)
-- `card_id`, `name`, `url`, `storage_path`, `mime_type`, `size`, `uploaded_by`, `uploader_name`, `workspace_id`
-
-**Alterar `kanban_columns` e `kanban_cards`**
-- Adicionar `funnel_id uuid` (FK lógica para `kanban_funnels`)
-- Backfill: criar funil "Geral" por workspace existente e atribuir colunas/cards a ele
-
-**RLS**: políticas `ws_*` baseadas em `is_workspace_member` (mesmo padrão atual).
-
-**Storage**: criar bucket privado `kanban-attachments` + policies (membros do workspace podem ler/escrever no path `{workspace_id}/{card_id}/...`).
-
-### 2. UI — Funis
-
-- Barra superior com **tabs de funis** (selecionar funil ativo). Cada tab mostra nome + ícone + contador de cards.
-- Botões: **+ Novo funil**, editar (nome/cor/ícone), excluir, reordenar (drag).
-- Só o funil ativo é renderizado (board completo de colunas).
-- Quando não há nenhum funil, criar "Geral" automaticamente.
-
-### 3. UI — Anexos (modal do card)
-
-Adicionar seção **Anexos** dentro do modal `openCard`:
-- Drag-and-drop zone + botão "Adicionar arquivo"
-- Upload múltiplo com **barra de progresso**
-- Lista de anexos: ícone por tipo, nome, tamanho, autor, data
-- Ações: preview (imagens/PDF abrem em nova aba), download, excluir
-- Sincronização realtime via canal `kanban_attachments`
-
-Aceita: imagens, PDFs, docs, vídeos, áudios, ZIPs. Limite por arquivo: 50 MB.
-
-### 4. Realtime e persistência
-
-- Canais Supabase Realtime para `kanban_funnels`, `kanban_columns`, `kanban_cards`, `kanban_attachments` filtrados por `workspace_id`.
-- Autosave em todos os edits inline (já é o padrão).
-- Ordem dos funis/colunas/cards persistida em `position`.
-
-### 5. Visual
-
-Mantém o dark mode atual (tokens semânticos). Tabs de funis com glow sutil no ativo, cards de anexo modulares, ícones por tipo de arquivo.
-
-### Arquivos afetados
-
-- `supabase/migrations/<nova>.sql` — tabelas + bucket + policies
-- `src/routes/app.kanban.tsx` — refator completo (funis + anexos no modal)
-- `src/components/KanbanFunnelTabs.tsx` (novo) — barra de funis
-- `src/components/KanbanAttachments.tsx` (novo) — seção de anexos no modal
-
-### Fora do escopo desta entrega
-
-- Drag-and-drop **entre funis diferentes** (cards permanecem dentro do funil ativo) — pode ser adicionado depois via menu "Mover para funil…".
-- Múltiplos layouts (lista/calendário) — só Kanban por enquanto.
-
-Confirma para eu seguir?
+Plano de correção:
+1. Reproduzir pelo fluxo da UI no preview para capturar o erro exato, verificando console e network no momento do clique em “Criar”.
+2. Ajustar o formulário de criação do card em `src/routes/app.kanban.tsx` para impedir que o drag/pan horizontal do board intercepte cliques, teclado ou foco do formulário no modo embutido.
+3. Tornar `createCard` mais robusto: validar coluna/funil ativo, usar valores compatíveis com a tabela, mostrar erro claro e fazer rollback/estado local consistente.
+4. Se a reprodução revelar erro de RLS/DB específico, aplicar apenas a correção mínima necessária no banco via migration; se for UI/evento, manter a correção apenas no frontend.
+5. Validar criando um card real pelo Kanban na página `/app/checklists` e confirmando que aparece no board e persiste no reload.
