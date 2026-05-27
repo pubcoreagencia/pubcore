@@ -158,7 +158,18 @@ function DailyTab() {
         </div>
       </div>
 
-      {/* Seção 1: Checklist (lista por empresa) */}
+      {/* Seção 1: Kanban (mesma base de dados, acima da checklist) */}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2">
+          <KanbanSquare className="h-4 w-4 text-primary" />
+          <h2 className="font-display text-lg sm:text-xl font-semibold tracking-tight">Kanban Operacional</h2>
+        </div>
+        <div className="-mx-4 sm:-mx-6 lg:-mx-10">
+          <KanbanBoardView embedded />
+        </div>
+      </section>
+
+      {/* Seção 2: Checklist (lista por empresa) */}
       <section className="space-y-3">
         <div className="flex items-center gap-2">
           <ListTodo className="h-4 w-4 text-primary" />
@@ -172,17 +183,6 @@ function DailyTab() {
               statusFilter={statusFilter}
             />
           ))}
-        </div>
-      </section>
-
-      {/* Seção 2: Kanban (mesma base de dados, abaixo da checklist) */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <KanbanSquare className="h-4 w-4 text-primary" />
-          <h2 className="font-display text-lg sm:text-xl font-semibold tracking-tight">Kanban Operacional</h2>
-        </div>
-        <div className="-mx-4 sm:-mx-6 lg:-mx-10">
-          <KanbanBoardView embedded />
         </div>
       </section>
     </div>
