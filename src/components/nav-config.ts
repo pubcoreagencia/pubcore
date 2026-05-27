@@ -1,5 +1,5 @@
 import {
-  LayoutDashboard, KanbanSquare, ListChecks, Calendar, Users2, Settings,
+  LayoutDashboard, ListChecks, Calendar, Users2, Settings,
   StickyNote, Wallet, Boxes, Calculator, Box,
 } from "lucide-react";
 
@@ -14,8 +14,7 @@ export const navGroups: NavGroup[] = [
   {
     label: "Workflow",
     items: [
-      { to: "/app/kanban", label: "Kanban", icon: KanbanSquare },
-      { to: "/app/checklists", label: "Checklists", icon: ListChecks },
+      { to: "/app/checklists", label: "Centro Operacional", icon: ListChecks },
       { to: "/app/calendar", label: "Calendário", icon: Calendar },
       { to: "/app/notes", label: "Notas", icon: StickyNote },
     ],
