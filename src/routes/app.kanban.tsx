@@ -112,7 +112,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
   }, []);
 
   const shouldIgnoreBoardPan = (target: EventTarget | null) => {
-    return target instanceof HTMLElement && Boolean(target.closest("input,textarea,select,[contenteditable='true'],[data-board-pan-lock='true']"));
+    return target instanceof HTMLElement && Boolean(target.closest("input,textarea,select,button,a,[contenteditable='true'],[data-board-pan-lock='true']"));
   };
 
   const handleBoardPointerDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -395,6 +395,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
 
   // ----- CARD OPS -----
   const createCard = async (colId: string) => {
+    console.log("[kanban] createCard invoked", { colId, title: draft.title, activeFunnelId, activeWorkspaceId, userId });
     const title = draft.title.trim();
     if (!title) { toast.error("Digite um título para o card"); return; }
     if (!userId || !activeWorkspaceId) { toast.error("Workspace não carregado"); return; }
@@ -673,9 +674,9 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
           return (
             <div
               key={col.id}
-              draggable={nativeDragEnabled && editingCol !== col.id}
+              draggable={nativeDragEnabled && editingCol !== col.id && adding !== col.id}
               onDragStart={(e) => {
-                if (draggingCard) return;
+                if (draggingCard || adding === col.id || editingCol === col.id) { e.preventDefault(); return; }
                 setDraggingCol(col.id);
                 e.dataTransfer.effectAllowed = "move";
               }}
@@ -788,9 +789,12 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
                 {adding === col.id ? (
                   <div
                     className="rounded-lg border border-primary/40 bg-card p-2 space-y-2"
+                    data-board-pan-lock="true"
                     draggable={false}
                     onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <input
                       autoFocus
@@ -808,13 +812,15 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
                       {COMPANIES.map((c) => <option key={c}>{c}</option>)}
                     </select>
                     <div className="flex gap-2">
-                      <button onClick={() => createCard(col.id)} className="flex-1 rounded bg-gradient-primary py-1.5 text-xs font-bold text-primary-foreground">Criar</button>
-                      <button onClick={() => setAdding(null)} className="rounded border border-border px-2 text-xs">×</button>
+                      <button type="button" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); createCard(col.id); }} className="flex-1 rounded bg-gradient-primary py-1.5 text-xs font-bold text-primary-foreground">Criar</button>
+                      <button type="button" onClick={(e) => { e.stopPropagation(); setAdding(null); }} className="rounded border border-border px-2 text-xs">×</button>
                     </div>
                   </div>
                 ) : (
                   <button
-                    onClick={() => setAdding(col.id)}
+                    type="button"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); setAdding(col.id); }}
                     className="w-full rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition flex items-center justify-center gap-1"
                   >
                     <Plus className="h-3 w-3" /> Adicionar card
