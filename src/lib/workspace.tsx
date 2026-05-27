@@ -93,16 +93,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     initRef.current = false;
   }, [userId]);
 
-  // Pick a default workspace once loaded
+  // Pick a default workspace once loaded.
+  // MASTER sempre cai no workspace próprio (PUB CORE) por padrão.
   useEffect(() => {
     if (loading || !userId) return;
     if (initRef.current && activeWorkspaceId && workspaces.some((w) => w.id === activeWorkspaceId)) return;
     if (workspaces.length === 0) return;
     const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    const pick = (stored && workspaces.find((w) => w.id === stored)) ? stored : workspaces[0].id;
+    const ownWs = workspaces.find((w) => w.owner_id === userId);
+    let pick: string;
+    if (isMaster) {
+      // master: prioriza o workspace dele mesmo, ignorando localStorage de sessões anteriores
+      pick = ownWs?.id ?? (stored && workspaces.find((w) => w.id === stored) ? stored : workspaces[0].id);
+    } else {
+      pick = (stored && workspaces.find((w) => w.id === stored)) ? stored : (ownWs?.id ?? workspaces[0].id);
+    }
     setActiveWorkspaceIdState(pick);
     initRef.current = true;
-  }, [loading, workspaces, userId, activeWorkspaceId]);
+  }, [loading, workspaces, userId, activeWorkspaceId, isMaster]);
 
   // Persist + sync globally
   useEffect(() => {
