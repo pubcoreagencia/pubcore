@@ -200,7 +200,7 @@ function KanbanPage() {
       const [{ data: fs }, { data: cols }, { data: cs }] = await Promise.all([
         supabase.from("kanban_funnels").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
         supabase.from("kanban_columns").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
-        supabase.from("kanban_cards").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
+        supabase.from("checklist_tasks").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
       ]);
       if (cancelled) return;
 
@@ -245,7 +245,7 @@ function KanbanPage() {
       const orphanCards = cardList.filter(c => !c.funnel_id);
       if (orphanCards.length > 0 && firstFunnelId) {
         await Promise.all(orphanCards.map(c =>
-          supabase.from("kanban_cards").update({ funnel_id: firstFunnelId }).eq("id", c.id)
+          supabase.from("checklist_tasks").update({ funnel_id: firstFunnelId }).eq("id", c.id)
         ));
         cardList.forEach(c => { if (!c.funnel_id) c.funnel_id = firstFunnelId; });
       }
@@ -264,8 +264,8 @@ function KanbanPage() {
         const { data } = await supabase.from("kanban_columns").select("*").eq("workspace_id", activeWorkspaceId).order("position");
         setColumns((data ?? []) as Column[]);
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_cards", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
-        const { data } = await supabase.from("kanban_cards").select("*").eq("workspace_id", activeWorkspaceId).order("position");
+      .on("postgres_changes", { event: "*", schema: "public", table: "checklist_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
+        const { data } = await supabase.from("checklist_tasks").select("*").eq("workspace_id", activeWorkspaceId).order("position");
         setCards(((data ?? []) as unknown[]).map(normalizeCard));
       })
       .subscribe();
@@ -308,7 +308,7 @@ function KanbanPage() {
     const colsIn = columns.filter(c => c.funnel_id === id);
     const cardsIn = cards.filter(c => c.funnel_id === id);
     if (!confirm(`Excluir funil "${f?.name}" com ${colsIn.length} coluna(s) e ${cardsIn.length} card(s)?`)) return;
-    await supabase.from("kanban_cards").delete().eq("funnel_id", id);
+    await supabase.from("checklist_tasks").delete().eq("funnel_id", id);
     await supabase.from("kanban_columns").delete().eq("funnel_id", id);
     await supabase.from("kanban_funnels").delete().eq("id", id);
     if (activeFunnelId === id) {
@@ -355,7 +355,7 @@ function KanbanPage() {
     const colCards = cards.filter(c => c.column_id === id);
     const col = columns.find(c => c.id === id);
     if (colCards.length > 0 && !confirm(`Excluir coluna com ${colCards.length} card(s)? Os cards também serão removidos.`)) return;
-    await supabase.from("kanban_cards").delete().eq("column_id", id);
+    await supabase.from("checklist_tasks").delete().eq("column_id", id);
     await supabase.from("kanban_columns").delete().eq("id", id);
     if (col) await logActivity({
       entity_type: "kanban_column", entity_id: id, action: "deleted",
@@ -384,12 +384,12 @@ function KanbanPage() {
     if (!draft.title.trim() || !userId || !activeWorkspaceId || !activeFunnelId) return;
     const colCards = cards.filter(c => c.column_id === colId);
     const col = columns.find(c => c.id === colId);
-    const { error } = await supabase.from("kanban_cards").insert({
+    const { error } = await supabase.from("checklist_tasks").insert({
       workspace_id: activeWorkspaceId, user_id: userId,
       funnel_id: activeFunnelId,
       title: draft.title.trim(), company: draft.company,
       priority: "Média", column_id: colId, column_name: col?.name ?? "Backlog",
-      position: colCards.length, status: "open", checklist: [],
+      position: colCards.length, status: "pending", checklist: [],
     } as never);
     if (error) toast.error(error.message);
     setDraft({ title: "", company: COMPANIES[0] }); setAdding(null);
@@ -403,7 +403,7 @@ function KanbanPage() {
       await supabase.storage.from("kanban-attachments").remove(atts.map(a => a.storage_path));
       await supabase.from("kanban_attachments").delete().eq("card_id", id);
     }
-    await supabase.from("kanban_cards").delete().eq("id", id);
+    await supabase.from("checklist_tasks").delete().eq("id", id);
     if (card) await logActivity({
       entity_type: "kanban_card", entity_id: id, action: "deleted",
       title: card.title, company: card.company,
@@ -416,7 +416,7 @@ function KanbanPage() {
     if (patch.checklist) dbPatch.checklist = patch.checklist as unknown;
     setCards(cs => cs.map(c => c.id === id ? { ...c, ...patch } : c));
     setOpenCard(c => c && c.id === id ? { ...c, ...patch } : c);
-    await supabase.from("kanban_cards").update(dbPatch as never).eq("id", id);
+    await supabase.from("checklist_tasks").update(dbPatch as never).eq("id", id);
   };
 
   const moveCard = async (cardId: string, targetColId: string, targetIdx?: number) => {
@@ -446,12 +446,12 @@ function KanbanPage() {
     }));
 
     await Promise.all([
-      ...reposTarget.map(p => supabase.from("kanban_cards").update({ position: p.position, column_id: p.column_id, column_name: p.column_name }).eq("id", p.id)),
-      ...reposSource.map(p => supabase.from("kanban_cards").update({ position: p.position }).eq("id", p.id)),
+      ...reposTarget.map(p => supabase.from("checklist_tasks").update({ position: p.position, column_id: p.column_id, column_name: p.column_name }).eq("id", p.id)),
+      ...reposSource.map(p => supabase.from("checklist_tasks").update({ position: p.position }).eq("id", p.id)),
     ]);
 
     if (isDoneColumnName(col.name) && card.status !== "done") {
-      await supabase.from("kanban_cards").update({ status: "done" }).eq("id", cardId);
+      await supabase.from("checklist_tasks").update({ status: "done" }).eq("id", cardId);
       const active = getActivePontoSession();
       if (active.sessionId && userId && activeWorkspaceId) {
         await supabase.from("ponto_session_tasks").insert({
@@ -464,7 +464,7 @@ function KanbanPage() {
         toast.success("Card concluído e registrado no ponto");
       }
     } else if (!isDoneColumnName(col.name) && card.status === "done") {
-      await supabase.from("kanban_cards").update({ status: "open" }).eq("id", cardId);
+      await supabase.from("checklist_tasks").update({ status: "pending" }).eq("id", cardId);
     }
   };
 
