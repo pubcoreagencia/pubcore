@@ -395,18 +395,40 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
 
   // ----- CARD OPS -----
   const createCard = async (colId: string) => {
-    if (!draft.title.trim() || !userId || !activeWorkspaceId || !activeFunnelId) return;
+    const title = draft.title.trim();
+    if (!title) { toast.error("Digite um título para o card"); return; }
+    if (!userId || !activeWorkspaceId) { toast.error("Workspace não carregado"); return; }
+    if (!activeFunnelId) { toast.error("Selecione um funil primeiro"); return; }
     const colCards = cards.filter(c => c.column_id === colId);
-    const { error } = await supabase.from("checklist_tasks").insert({
-      workspace_id: activeWorkspaceId, user_id: userId,
+    const payload = {
+      workspace_id: activeWorkspaceId,
+      user_id: userId,
       owner_email: user?.email ?? "guest@pubcore.local",
       funnel_id: activeFunnelId,
-      title: draft.title.trim(), company: draft.company,
-      priority: "Média", column_id: colId,
-      position: colCards.length, status: "pending", legacy_checklist: [],
-    } as never);
-    if (error) toast.error(error.message);
-    setDraft({ title: "", company: COMPANIES[0] }); setAdding(null);
+      title,
+      company: draft.company,
+      priority: "Média",
+      column_id: colId,
+      position: colCards.length,
+      status: "pending",
+      legacy_checklist: [] as ChecklistItem[],
+    };
+    const { data, error } = await supabase
+      .from("checklist_tasks")
+      .insert(payload as never)
+      .select()
+      .single();
+    if (error) {
+      console.error("[kanban] createCard error", error);
+      toast.error(error.message || "Erro ao criar card");
+      return;
+    }
+    if (data) {
+      const newCard = normalizeCard(data);
+      setCards(cs => cs.some(c => c.id === newCard.id) ? cs : [...cs, newCard]);
+    }
+    setDraft({ title: "", company: COMPANIES[0] });
+    setAdding(null);
   };
 
   const deleteCard = async (id: string) => {
@@ -764,7 +786,12 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
                 })}
 
                 {adding === col.id ? (
-                  <div className="rounded-lg border border-primary/40 bg-card p-2 space-y-2">
+                  <div
+                    className="rounded-lg border border-primary/40 bg-card p-2 space-y-2"
+                    draggable={false}
+                    onDragStart={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
                     <input
                       autoFocus
                       value={draft.title}
