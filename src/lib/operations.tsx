@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./auth";
+import { useWorkspace } from "./workspace";
 import { COMPANIES, type Company } from "./mock-data";
 
 export interface SessionRow {
@@ -35,11 +36,13 @@ export interface ChecklistRow {
 }
 
 /**
- * Loads all operational data for the current user with realtime sync.
- * Single source of truth for Dashboard, Histórico and Métricas.
+ * Loads all operational data for the current user, scoped to the active
+ * workspace, with realtime sync. Refetches whenever the active workspace
+ * changes so the dashboard reflects the selected workspace.
  */
 export function useOperationalData() {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id ?? null;
 
   const [sessions, setSessions] = useState<SessionRow[]>([]);
@@ -48,28 +51,34 @@ export function useOperationalData() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!userId) {
+    if (!userId || !activeWorkspaceId) {
       setSessions([]); setSessionTasks([]); setChecklist([]); setLoading(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
+    // Clear stale data immediately on workspace switch so the UI doesn't
+    // momentarily show the previous workspace's numbers.
+    setSessions([]); setSessionTasks([]); setChecklist([]);
 
     const load = async () => {
       const [s, st, ch] = await Promise.all([
         supabase.from("ponto_sessions")
           .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, owner_email")
           .eq("user_id", userId)
+          .eq("workspace_id", activeWorkspaceId)
           .order("started_at", { ascending: false })
           .limit(500),
         supabase.from("ponto_session_tasks")
           .select("id, session_id, company, title, completed_at, user_name")
           .eq("user_id", userId)
+          .eq("workspace_id", activeWorkspaceId)
           .order("completed_at", { ascending: false })
           .limit(1000),
         supabase.from("checklist_tasks")
           .select("id, company, title, status, done_at, created_at, updated_at")
           .eq("user_id", userId)
+          .eq("workspace_id", activeWorkspaceId)
           .limit(1000),
       ]);
       if (cancelled) return;
@@ -80,18 +89,19 @@ export function useOperationalData() {
     };
     load();
 
-    const channelName = `operations:${userId}:${Math.random().toString(36).slice(2, 10)}`;
+    const channelName = `operations:${userId}:${activeWorkspaceId}:${Math.random().toString(36).slice(2, 10)}`;
     const ch = supabase.channel(channelName);
-    ch.on("postgres_changes", { event: "*", schema: "public", table: "ponto_sessions", filter: `user_id=eq.${userId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "ponto_session_tasks", filter: `user_id=eq.${userId}` }, () => load())
-      .on("postgres_changes", { event: "*", schema: "public", table: "checklist_tasks", filter: `user_id=eq.${userId}` }, () => load())
+    ch.on("postgres_changes", { event: "*", schema: "public", table: "ponto_sessions", filter: `workspace_id=eq.${activeWorkspaceId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ponto_session_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "checklist_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` }, () => load())
       .subscribe();
 
     return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [userId]);
+  }, [userId, activeWorkspaceId]);
 
   return { sessions, sessionTasks, checklist, loading };
 }
+
 
 export function startOfDay(d: Date) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
 export function endOfDay(d: Date) { const x = new Date(d); x.setHours(23,59,59,999); return x; }
