@@ -44,11 +44,13 @@ import {
   Tooltip,
 } from "recharts";
 import { useAuth } from "@/lib/auth";
+import { useWorkspace } from "@/lib/workspace";
 import { COMPANIES, COMPANY_COLORS, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
 import { useOperationalData, buildDailySeries, tasksByCompany } from "@/lib/operations";
 import { fmtTime } from "@/lib/ponto";
+
 
 export const Route = createFileRoute("/app/")({
   component: Dashboard,
