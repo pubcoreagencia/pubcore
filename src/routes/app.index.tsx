@@ -82,12 +82,13 @@ interface NoteRow {
 
 function Dashboard() {
   const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
   const { sessions, sessionTasks, checklist, loading } = useOperationalData();
 
   // Próximos eventos (calendar_events) com realtime
   const [events, setEvents] = useState<CalendarRow[]>([]);
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !activeWorkspaceId) { setEvents([]); return; }
     let cancelled = false;
     const today = new Date().toISOString().slice(0, 10);
     const load = async () => {
@@ -95,6 +96,7 @@ function Dashboard() {
         .from("calendar_events")
         .select("id, title, type, company, event_date, event_time")
         .eq("user_id", user.id)
+        .eq("workspace_id", activeWorkspaceId)
         .gte("event_date", today)
         .order("event_date", { ascending: true })
         .limit(8);
@@ -102,10 +104,10 @@ function Dashboard() {
     };
     load();
     const ch = supabase
-      .channel(`dash_calendar:${user.id}`)
+      .channel(`dash_calendar:${user.id}:${activeWorkspaceId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "calendar_events", filter: `user_id=eq.${user.id}` },
+        { event: "*", schema: "public", table: "calendar_events", filter: `workspace_id=eq.${activeWorkspaceId}` },
         () => load(),
       )
       .subscribe();
@@ -113,18 +115,18 @@ function Dashboard() {
       cancelled = true;
       supabase.removeChannel(ch);
     };
-  }, [user?.id]);
+  }, [user?.id, activeWorkspaceId]);
 
   // Itens de estoque com baixa quantidade (<= 10)
   const [lowStock, setLowStock] = useState<StockItemRow[]>([]);
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !activeWorkspaceId) { setLowStock([]); return; }
     let cancelled = false;
     const load = async () => {
       const { data } = await supabase
         .from("stock_items")
         .select("id, name, sku, quantity, company_id")
-        .eq("workspace_id", user.id)
+        .eq("workspace_id", activeWorkspaceId)
         .lte("quantity", 10)
         .order("quantity", { ascending: true })
         .limit(5);
@@ -132,14 +134,14 @@ function Dashboard() {
     };
     load();
     const ch = supabase
-      .channel(`dash_stock:${user.id}`)
+      .channel(`dash_stock:${user.id}:${activeWorkspaceId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "stock_items",
-          filter: `workspace_id=eq.${user.id}`,
+          filter: `workspace_id=eq.${activeWorkspaceId}`,
         },
         () => load(),
       )
@@ -148,28 +150,29 @@ function Dashboard() {
       cancelled = true;
       supabase.removeChannel(ch);
     };
-  }, [user?.id]);
+  }, [user?.id, activeWorkspaceId]);
 
   // Notas recentes
   const [recentNotes, setRecentNotes] = useState<NoteRow[]>([]);
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !activeWorkspaceId) { setRecentNotes([]); return; }
     let cancelled = false;
     const load = async () => {
       const { data } = await supabase
         .from("notes")
         .select("id, title, company, updated_at")
         .eq("user_id", user.id)
+        .eq("workspace_id", activeWorkspaceId)
         .order("updated_at", { ascending: false })
         .limit(5);
       if (!cancelled) setRecentNotes((data ?? []) as NoteRow[]);
     };
     load();
     const ch = supabase
-      .channel(`dash_notes:${user.id}`)
+      .channel(`dash_notes:${user.id}:${activeWorkspaceId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "notes", filter: `user_id=eq.${user.id}` },
+        { event: "*", schema: "public", table: "notes", filter: `workspace_id=eq.${activeWorkspaceId}` },
         () => load(),
       )
       .subscribe();
@@ -177,7 +180,8 @@ function Dashboard() {
       cancelled = true;
       supabase.removeChannel(ch);
     };
-  }, [user?.id]);
+  }, [user?.id, activeWorkspaceId]);
+
 
   // KPIs derivados de dados reais
   const todayStart = useMemo(() => {
