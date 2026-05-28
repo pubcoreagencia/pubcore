@@ -120,7 +120,9 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     if (shouldIgnoreBoardPan(e.target)) return;
     const el = boardRef.current;
     if (!el || el.scrollWidth <= el.clientWidth) return;
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // NOTE: do NOT call setPointerCapture here — it would redirect the
+    // subsequent `click` event to the board and prevent card clicks from
+    // opening the card dialog. We only capture once a pan actually starts.
     boardPointerRef.current = { active: true, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, startLeft: el.scrollLeft, moved: false };
     boardDragMovedRef.current = false;
   };
@@ -133,6 +135,10 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     const dy = e.clientY - state.startY;
     if (!state.moved && Math.abs(dx) < 6) return;
     if (Math.abs(dx) < Math.abs(dy)) return;
+    if (!state.moved) {
+      // Now we're committing to a pan — capture so we keep getting moves.
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* noop */ }
+    }
     state.moved = true;
     boardDragMovedRef.current = true;
     e.preventDefault();
