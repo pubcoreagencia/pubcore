@@ -4,42 +4,42 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePonto, type PontoRemoteRow } from "@/lib/ponto";
 import { getActiveWorkspaceId } from "@/lib/workspace";
+import { COMPANIES, type Company } from "@/lib/mock-data";
 
-const IDLE_LIMIT_MS = 30 * 60 * 1000; // 30 minutos
+const IDLE_LIMIT_MS = 30 * 60 * 1000;
 const ACTIVITY_KEY = "pubcore_ponto_last_activity";
 const CHECK_INTERVAL_MS = 30_000;
 
-function startOfTodayISO() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
-}
-
+function startOfTodayISO() { const d = new Date(); d.setHours(0,0,0,0); return d.toISOString(); }
 function readLastActivity(): number {
   if (typeof window === "undefined") return Date.now();
   const raw = localStorage.getItem(ACTIVITY_KEY);
   const v = raw ? Number(raw) : NaN;
   return Number.isFinite(v) ? v : Date.now();
 }
-
 function writeLastActivity(ts: number) {
   if (typeof window === "undefined") return;
   localStorage.setItem(ACTIVITY_KEY, String(ts));
 }
 
+/**
+ * Auto-tracker dos expedientes por empresa.
+ * - NÃO auto-inicia mais sessões. O usuário escolhe a empresa.
+ * - Ao logar, adota sessões em andamento (working/paused) do dia.
+ * - Se a empresa ativa ficar inativa por mais de 30min, encerra automaticamente.
+ * - Mantém heartbeat de updated_at para detecção cross-device.
+ */
 export function PontoAutoTracker() {
   const { user } = useAuth();
-  const { session, isLive, start, end, adoptSession } = usePonto();
+  const { sessions, activeCompany, endCompany, adoptSession } = usePonto();
   const bootstrappedForUser = useRef<string | null>(null);
   const endingRef = useRef(false);
 
-  // Atividade do usuário → reseta o timer de inatividade
-  // IMPORTANTE: throttle agressivo. Sem isso, escrevíamos no localStorage a cada
-  // mousemove/scroll, bloqueando a main thread e causando lag em todo o site.
+  // Atividade do usuário (throttled)
   useEffect(() => {
     if (typeof window === "undefined") return;
     let lastWrite = 0;
-    const THROTTLE_MS = 15_000; // basta atualizar a cada 15s para detecção de inatividade (limite é 30min)
+    const THROTTLE_MS = 15_000;
     const mark = () => {
       const now = Date.now();
       if (now - lastWrite < THROTTLE_MS) return;
@@ -53,159 +53,110 @@ export function PontoAutoTracker() {
     return () => events.forEach((e) => window.removeEventListener(e, mark));
   }, []);
 
-  // Bootstrap automático: ao logar, recupera ou cria sessão do dia
+  // Bootstrap: adopt in-progress sessions of the day
   useEffect(() => {
-    if (!user) {
-      bootstrappedForUser.current = null;
-      return;
-    }
+    if (!user) { bootstrappedForUser.current = null; return; }
     if (bootstrappedForUser.current === user.id) return;
-
     let cancelled = false;
     (async () => {
-      // Aguarda workspace ativo (resolvido pelo WorkspaceProvider)
       let tries = 0;
       while (!getActiveWorkspaceId() && tries < 20) {
         await new Promise((r) => setTimeout(r, 150));
         tries++;
       }
       if (cancelled) return;
-
       try {
         const { data, error } = await supabase
           .from("ponto_sessions")
-          .select("id, started_at, ended_at, status, pauses, user_name, owner_email, updated_at")
+          .select("id, started_at, ended_at, status, pauses, user_name, owner_email, company, updated_at, productive_ms, total_ms")
           .eq("user_id", user.id)
           .gte("started_at", startOfTodayISO())
           .in("status", ["working", "paused"])
-          .order("started_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (cancelled) return;
-        if (error) {
-          console.error("[ponto-auto] lookup error", error);
-          return;
-        }
-        if (data) {
-          // Inatividade real = tempo desde o último updated_at remoto.
-          // localStorage não serve aqui pois num browser/aba novo ele zera
-          // e fazia o sistema adotar sessões abandonadas (mostrando timer "fantasma").
-          const remoteUpdatedTs = data.updated_at ? new Date(data.updated_at).getTime() : new Date(data.started_at).getTime();
-          const idle = Date.now() - remoteUpdatedTs;
-          if (idle > IDLE_LIMIT_MS) {
-            // Sessão abandonada → encerra usando o horário da última atividade
-            // (updated_at remoto), não "agora". Sem isso a sessão fica registrada
-            // com duração de horas/dias enquanto o usuário esteve fora.
-            adoptSession(data as PontoRemoteRow);
-            await end(remoteUpdatedTs);
-            await start(user.name, user.email, user.id);
-            toast("Expediente anterior encerrado por inatividade. Novo iniciado.", { duration: 3500 });
-          } else if (session.sessionId !== data.id) {
-            adoptSession(data as PontoRemoteRow);
-          }
-        } else if (!isLive) {
-          await start(user.name, user.email, user.id);
-          toast("Expediente iniciado automaticamente", { duration: 2500 });
+          .order("started_at", { ascending: false });
+        if (cancelled || error || !data) return;
+        const seen = new Set<Company>();
+        for (const row of data) {
+          const company = (row.company as Company | null);
+          if (!company || !COMPANIES.includes(company) || seen.has(company)) continue;
+          seen.add(company);
+          adoptSession(row as PontoRemoteRow);
         }
         writeLastActivity(Date.now());
         bootstrappedForUser.current = user.id;
       } catch (e) {
-        console.error("[ponto-auto] bootstrap exception", e);
+        console.error("[ponto-auto] bootstrap error", e);
       }
     })();
+    return () => { cancelled = true; };
+  }, [user, adoptSession]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [user, isLive, session.sessionId, start, end, adoptSession]);
-
-  // Verifica inatividade periodicamente e ao retornar à aba
+  // Idle check apenas para a empresa ativa
   useEffect(() => {
-    if (!user) return;
+    if (!user || !activeCompany) return;
+    const activeSession = sessions[activeCompany];
+    if (!activeSession || activeSession.status !== "working") return;
 
     const checkIdle = async () => {
       if (endingRef.current) return;
-      if (!isLive) return;
-
-      // Sempre consulta o remoto: o local pode estar "fresco" só porque a aba
-      // acabou de montar (writeLastActivity no mount). A inatividade real é
-      // o max(localLast, remoteUpdatedAt) — se ambos estão velhos, encerra.
       const localLast = readLastActivity();
       let remoteTs = 0;
       let remoteStatus: string | null = null;
-      if (session.sessionId) {
+      if (activeSession.sessionId) {
         try {
           const { data } = await supabase
             .from("ponto_sessions")
             .select("updated_at, status")
-            .eq("id", session.sessionId)
+            .eq("id", activeSession.sessionId)
             .maybeSingle();
           if (data) {
             remoteStatus = data.status as string;
             remoteTs = data.updated_at ? new Date(data.updated_at).getTime() : 0;
           }
-        } catch (e) {
-          console.error("[ponto-auto] remote idle check error", e);
-        }
+        } catch { /* noop */ }
       }
-
-      if (remoteStatus === "ended") return; // já encerrado em outro lugar
-
+      if (remoteStatus === "ended") return;
       const lastActivity = Math.max(localLast, remoteTs);
       const idle = Date.now() - lastActivity;
       if (idle <= IDLE_LIMIT_MS) {
-        // Outro dispositivo/aba está ativo — sincroniza relógio local para
-        // não tentar encerrar a cada ciclo.
         if (remoteTs > localLast) writeLastActivity(remoteTs);
         return;
       }
-
       endingRef.current = true;
       try {
-        await end(lastActivity);
-        toast("Expediente encerrado automaticamente por inatividade", { duration: 4000 });
+        await endCompany(activeCompany, lastActivity);
+        toast(`Expediente de ${activeCompany} encerrado por inatividade`, { duration: 4000 });
       } finally {
         endingRef.current = false;
       }
     };
 
     const interval = window.setInterval(checkIdle, CHECK_INTERVAL_MS);
-    const onVisible = () => {
-      if (document.visibilityState === "visible") checkIdle();
-    };
+    const onVisible = () => { if (document.visibilityState === "visible") checkIdle(); };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
-
     return () => {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onVisible);
     };
-  }, [user, isLive, end, session.sessionId]);
+  }, [user, activeCompany, sessions, endCompany]);
 
-  // Heartbeat: enquanto o expediente está ativo, mantém updated_at fresco
-  // no Supabase para que a detecção de abandono em outro browser/aba funcione.
+  // Heartbeat
   useEffect(() => {
-    if (!user || !isLive || !session.sessionId) return;
-    const sid = session.sessionId;
+    if (!user || !activeCompany) return;
+    const sid = sessions[activeCompany]?.sessionId;
+    if (!sid) return;
     const beat = async () => {
-      // Só bate o coração se houve atividade recente nesta aba
       const idle = Date.now() - readLastActivity();
       if (idle > IDLE_LIMIT_MS) return;
       try {
-        await supabase
-          .from("ponto_sessions")
-          .update({ updated_at: new Date().toISOString() })
-          .eq("id", sid);
-      } catch (e) {
-        console.error("[ponto-auto] heartbeat error", e);
-      }
+        await supabase.from("ponto_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sid);
+      } catch { /* noop */ }
     };
     beat();
     const id = window.setInterval(beat, 60_000);
     return () => window.clearInterval(id);
-  }, [user, isLive, session.sessionId]);
+  }, [user, activeCompany, sessions]);
 
   return null;
 }
-
