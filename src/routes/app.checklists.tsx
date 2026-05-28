@@ -777,7 +777,7 @@ function HistoryTab() {
 
 /* =================== TAB: BATER PONTO =================== */
 
-interface PastSession {
+interface DaySessionRow {
   id: string;
   started_at: string;
   ended_at: string | null;
@@ -786,296 +786,238 @@ interface PastSession {
   productive_ms: number | null;
   pause_ms: number | null;
   user_name: string | null;
-  task_count?: number;
-  companies?: Company[];
+  company: string | null;
 }
+
+const HOUR_LIMIT_MS = 90 * 60 * 1000;
 
 function PontoTab() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const {
-    session, liveWorkMs: liveWork, livePauseMs: livePause, productiveMs, isLive,
-    start: startPonto, pause, resume, end, reset,
+    sessions: pontoSessions, activeCompany,
+    computeFor, dailyProductiveMs, dailyTotalMs,
+    startCompany, pauseCompany, resumeCompany, endCompany,
   } = usePonto();
-  const status = session.status;
-  const start = () => startPonto(user?.name, user?.email, user?.id);
-  const startedAt = session.startedAt;
 
-  // Tarefas concluídas vinculadas à sessão atual
-  const [sessionTasks, setSessionTasks] = useState<
-    { id: string; company: Company; title: string; completed_at: string }[]
-  >([]);
-
-  useEffect(() => {
-    let cancelled = false;
-    const sid = session.sessionId;
-    if (!sid) { setSessionTasks([]); return; }
-    const load = async () => {
-      const { data, error } = await supabase
-        .from("ponto_session_tasks")
-        .select("id, company, title, completed_at")
-        .eq("session_id", sid)
-        .order("completed_at", { ascending: true });
-      if (!cancelled && !error && data) {
-        setSessionTasks(data as typeof sessionTasks);
-      }
-    };
-    load();
-    const ch = supabase
-      .channel(`ponto_session_tasks:${sid}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "ponto_session_tasks", filter: `session_id=eq.${sid}` },
-        () => load()
-      )
-      .subscribe();
-    return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [session.sessionId]);
-
-  const companiesOperated = useMemo(
-    () => Array.from(new Set(sessionTasks.map((t) => t.company))) as Company[],
-    [sessionTasks]
+  const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
+    typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
   );
 
-  // Histórico de sessões anteriores
-  const [history, setHistory] = useState<PastSession[]>([]);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const requestNotif = async () => {
+    if (typeof window === "undefined" || !("Notification" in window)) return;
+    try { const res = await Notification.requestPermission(); setPermission(res); } catch { /* noop */ }
+  };
+
+  const handleStart = (company: Company) => {
+    startCompany(company, user?.name, user?.email, user?.id);
+  };
+
+  const [history, setHistory] = useState<DaySessionRow[]>([]);
   useEffect(() => {
     if (!user?.id || !activeWorkspaceId) { setHistory([]); return; }
     let cancelled = false;
     const load = async () => {
-      const { data: sessions, error } = await supabase
+      const { data, error } = await supabase
         .from("ponto_sessions")
-        .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name")
+        .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company")
         .eq("workspace_id", activeWorkspaceId)
         .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
         .eq("status", "ended")
         .order("started_at", { ascending: false })
-        .limit(10);
-      if (error) console.error("[ponto] history load error", error);
-      if (!sessions || cancelled) return;
-      const ids = sessions.map((s) => s.id);
-      const counts: Record<string, { count: number; companies: Set<string> }> = {};
-      if (ids.length > 0) {
-        const { data: tasks } = await supabase
-          .from("ponto_session_tasks")
-          .select("session_id, company")
-          .in("session_id", ids);
-        if (tasks) {
-          for (const t of tasks) {
-            const k = t.session_id as string;
-            if (!counts[k]) counts[k] = { count: 0, companies: new Set() };
-            counts[k].count++;
-            counts[k].companies.add(t.company as string);
-          }
-        }
-      }
-      if (!cancelled) {
-        setHistory(
-          sessions.map((s) => ({
-            ...s,
-            task_count: counts[s.id]?.count ?? 0,
-            companies: Array.from(counts[s.id]?.companies ?? []) as Company[],
-          }))
-        );
-      }
+        .limit(200);
+      if (error) console.error("[ponto] history error", error);
+      if (!cancelled) setHistory((data ?? []) as DaySessionRow[]);
     };
     load();
-    const offPontoEvent = onPontoEvent((event) => {
-      if (event.type === "ended" && event.ownerEmail === user.email) load();
-    });
+    const offEvt = onPontoEvent((e) => { if (e.type === "ended" && e.ownerEmail === user.email) load(); });
     const ch = supabase
-      .channel(`ponto_sessions_history:${activeWorkspaceId}:${user.id}`)
-      .on(
-        "postgres_changes",
+      .channel(`ponto_sessions_history_v3:${activeWorkspaceId}:${user.id}`)
+      .on("postgres_changes",
         { event: "*", schema: "public", table: "ponto_sessions", filter: `workspace_id=eq.${activeWorkspaceId}` },
         () => load()
       )
       .subscribe();
-    return () => { cancelled = true; offPontoEvent(); supabase.removeChannel(ch); };
-  }, [user?.id, user?.email, activeWorkspaceId, session.status]);
+    return () => { cancelled = true; offEvt(); supabase.removeChannel(ch); };
+  }, [user?.id, user?.email, activeWorkspaceId]);
+
+  const grouped = useMemo(() => {
+    const byDay = new Map<string, { day: string; total: number; byCompany: Map<Company, { total: number; productive: number; sessions: DaySessionRow[] }> }>();
+    for (const s of history) {
+      const day = new Date(s.started_at).toISOString().slice(0, 10);
+      const c = (s.company as Company | null) ?? null;
+      if (!c || !COMPANIES.includes(c)) continue;
+      const entry = byDay.get(day) ?? { day, total: 0, byCompany: new Map() };
+      entry.total += s.total_ms ?? 0;
+      const co = entry.byCompany.get(c) ?? { total: 0, productive: 0, sessions: [] };
+      co.total += s.total_ms ?? 0;
+      co.productive += s.productive_ms ?? 0;
+      co.sessions.push(s);
+      entry.byCompany.set(c, co);
+      byDay.set(day, entry);
+    }
+    return Array.from(byDay.values()).sort((a, b) => (a.day < b.day ? 1 : -1));
+  }, [history]);
+
+  const [tasksBySession, setTasksBySession] = useState<Record<string, { id: string; title: string; company: Company; completed_at: string }[]>>({});
+  useEffect(() => {
+    if (history.length === 0) { setTasksBySession({}); return; }
+    let cancelled = false;
+    (async () => {
+      const ids = history.map((h) => h.id);
+      const { data } = await supabase
+        .from("ponto_session_tasks")
+        .select("id, session_id, title, company, completed_at")
+        .in("session_id", ids);
+      if (cancelled || !data) return;
+      const map: Record<string, { id: string; title: string; company: Company; completed_at: string }[]> = {};
+      for (const t of data as Array<{ id: string; session_id: string; title: string; company: string; completed_at: string }>) {
+        (map[t.session_id] ??= []).push({ id: t.id, title: t.title, company: t.company as Company, completed_at: t.completed_at });
+      }
+      setTasksBySession(map);
+    })();
+  }, [history]);
 
   const fmtClock = (ts: number | string | null) =>
     ts ? new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
-
-  const statusLabel =
-    status === "working" ? "Em expediente" :
-    status === "paused" ? "Pausado" :
-    status === "ended" ? "Encerrado" : "Offline";
-
-  const statusColor =
-    status === "working" ? "border-success/30 bg-success/10 text-success" :
-    status === "paused" ? "border-warning/30 bg-warning/10 text-warning" :
-    status === "ended" ? "border-primary/30 bg-primary/10 text-primary" :
-    "border-border bg-surface text-muted-foreground";
+  const fmtDateLabel = (day: string) => {
+    const d = new Date(day + "T00:00:00");
+    return d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" });
+  };
 
   return (
     <div className="space-y-5">
-      {/* 1 + 2: Status + Timer Operacional */}
-      <div className="rounded-2xl border border-border bg-card p-5 sm:p-8 shadow-card relative overflow-hidden">
-        <div className="absolute inset-0 bg-glow opacity-50 pointer-events-none" />
-        <div className="relative">
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${statusColor}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${isLive ? "bg-current animate-pulse" : "bg-current opacity-60"}`} />
-              {statusLabel}
-            </span>
-            {user && <span className="text-[11px] sm:text-xs text-muted-foreground truncate">{user.name} · {user.role}</span>}
+      {permission === "default" && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+          <Sparkles className="h-4 w-4 text-primary shrink-0" />
+          <div className="flex-1 min-w-[200px]">
+            <div className="font-semibold">Ative as notificações nativas</div>
+            <div className="text-xs text-muted-foreground">Você será avisado quando uma empresa cruzar 1h30 de expediente, mesmo com a aba minimizada.</div>
           </div>
-
-          <div className="mt-5 sm:mt-6">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Tempo de expediente</div>
-            <div className="font-display text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight tabular-nums mt-1">
-              {fmtTime(liveWork)}
-            </div>
-          </div>
-
-          <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <SummaryRow label="Entrada" value={fmtClock(startedAt)} />
-            <SummaryRow label="Tempo ativo" value={fmtTime(productiveMs)} />
-            <SummaryRow label="Tempo pausado" value={fmtTime(livePause)} />
-            <SummaryRow label="Saída" value={fmtClock(session.endedAt)} />
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-2">
-            {status === "off" && (
-              <PontoBtn onClick={start} icon={Play} variant="primary">Iniciar expediente</PontoBtn>
-            )}
-            {status === "working" && (
-              <>
-                <PontoBtn onClick={pause} icon={Pause} variant="warning">Pausar</PontoBtn>
-                <PontoBtn onClick={end} icon={StopCircle} variant="destructive">Encerrar</PontoBtn>
-              </>
-            )}
-            {status === "paused" && (
-              <>
-                <PontoBtn onClick={resume} icon={Play} variant="primary">Retornar</PontoBtn>
-                <PontoBtn onClick={end} icon={StopCircle} variant="destructive">Encerrar</PontoBtn>
-              </>
-            )}
-            {status === "ended" && (
-              <PontoBtn onClick={reset} icon={RotateCcw} variant="ghost">Novo expediente</PontoBtn>
-            )}
-          </div>
+          <button onClick={requestNotif} className="rounded-md bg-gradient-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold shadow-glow">
+            Permitir
+          </button>
         </div>
-      </div>
-
-      {/* 3: Resumo Operacional do Dia */}
-      {(isLive || status === "ended") && (
-        <div className="rounded-xl border border-border bg-card p-6 shadow-card">
-          <div className="flex items-center gap-2 mb-4">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h3 className="font-display font-semibold">
-              {status === "ended" ? "Resumo operacional do dia" : "Resumo operacional"}
-            </h3>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard label="Tarefas concluídas" value={`${sessionTasks.length}`} icon={CheckCircle2} accent="success" />
-            <StatCard label="Empresas operadas" value={`${companiesOperated.length}`} icon={Users} accent="info" hint={`${COMPANIES.length} possíveis`} />
-            <StatCard label="Tempo trabalhado" value={fmtTime(liveWork)} icon={Timer} accent="primary" />
-            <StatCard label="Tempo produtivo" value={fmtTime(productiveMs)} icon={TrendingUp} accent="warning" />
-          </div>
-
-          {companiesOperated.length > 0 && (
-            <div className="mt-5">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Empresas operadas</div>
-              <div className="flex flex-wrap gap-2">
-                {companiesOperated.map((c) => <CompanyTag key={c} company={c} />)}
-              </div>
-            </div>
-          )}
-
-          <div className="mt-5">
-            <div className="flex items-center justify-between mb-2">
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Tarefas realizadas</div>
-              <span className="text-xs text-muted-foreground">{sessionTasks.length} itens</span>
-            </div>
-            {sessionTasks.length === 0 ? (
-              <div className="text-sm text-muted-foreground py-4 text-center rounded-lg bg-surface/40 border border-border">
-                Nenhuma tarefa concluída {status === "ended" ? "neste expediente." : "ainda."}
-              </div>
-            ) : (
-              <ul className="divide-y divide-border rounded-lg border border-border bg-surface/40 overflow-hidden">
-                {sessionTasks.map((t) => (
-                  <li key={t.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                    <span className="font-mono text-[10px] text-muted-foreground tabular-nums w-12 shrink-0">
-                      {new Date(t.completed_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                    <CompanyTag company={t.company} />
-                    <span className="flex-1 truncate">{t.title}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+      )}
+      {permission === "denied" && (
+        <div className="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/5 p-3 text-xs text-warning">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Notificações nativas bloqueadas — você verá apenas alertas internos.
         </div>
       )}
 
-      {/* 4: Histórico de Sessões */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-card">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        {COMPANIES.map((c) => {
+          const s = pontoSessions[c];
+          const m = computeFor(c);
+          const dailyMs = dailyProductiveMs(c);
+          const totalDay = dailyTotalMs(c);
+          const status = s?.status ?? "off";
+          const isActive = activeCompany === c && (status === "working" || status === "paused");
+          const isWorking = status === "working";
+          const isPaused = status === "paused";
+          const overLimit = dailyMs >= HOUR_LIMIT_MS;
+          const color = COMPANY_COLORS[c];
+          const pct = Math.min(100, Math.round((dailyMs / HOUR_LIMIT_MS) * 100));
+
+          return (
+            <div key={c} className={`relative rounded-2xl border bg-card p-5 shadow-card overflow-hidden transition ${isActive ? "border-primary/40" : "border-border"}`}>
+              <div className="absolute inset-0 opacity-30 pointer-events-none"
+                style={{ background: `radial-gradient(120% 80% at 0% 0%, color-mix(in oklab, ${color} 18%, transparent), transparent 60%)` }} />
+              <div className="relative flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color, boxShadow: isWorking ? `0 0 12px ${color}` : undefined }} />
+                    <span className="font-display font-bold tracking-tight">{c}</span>
+                  </div>
+                  <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full border ${
+                    isWorking ? "border-success/40 bg-success/10 text-success" :
+                    isPaused ? "border-warning/40 bg-warning/10 text-warning" :
+                    status === "ended" ? "border-primary/30 bg-primary/10 text-primary" :
+                    "border-border bg-surface text-muted-foreground"
+                  }`}>
+                    {isWorking ? "Ativo" : isPaused ? "Pausado" : status === "ended" ? "Encerrado" : "Parado"}
+                  </span>
+                </div>
+
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Sessão atual</div>
+                  <div className="font-display text-3xl sm:text-4xl font-bold tabular-nums">{fmtTime(m.liveWorkMs)}</div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
+                    <span>Total do dia</span>
+                    <span className={overLimit ? "text-warning" : ""}>{fmtTime(totalDay)} / 1h30</span>
+                  </div>
+                  <div className="mt-1.5 h-1.5 rounded-full bg-surface overflow-hidden">
+                    <div className="h-full transition-all rounded-full"
+                      style={{ width: `${pct}%`, backgroundColor: overLimit ? "oklch(0.78 0.16 65)" : color }} />
+                  </div>
+                  {overLimit && (
+                    <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-warning font-medium">
+                      <AlertTriangle className="h-3 w-3" /> Limite diário excedido
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {status === "off" || status === "ended" ? (
+                    <button onClick={() => handleStart(c)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold bg-gradient-primary text-primary-foreground shadow-glow">
+                      <Play className="h-3.5 w-3.5" /> Iniciar expediente
+                    </button>
+                  ) : isWorking ? (
+                    <>
+                      <button onClick={() => pauseCompany(c)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold bg-warning/15 text-warning border border-warning/30 hover:bg-warning/25">
+                        <Pause className="h-3.5 w-3.5" /> Pausar
+                      </button>
+                      <button onClick={() => endCompany(c)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive/25">
+                        <StopCircle className="h-3.5 w-3.5" /> Encerrar
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button onClick={() => resumeCompany(c)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold bg-gradient-primary text-primary-foreground shadow-glow">
+                        <Play className="h-3.5 w-3.5" /> Retomar
+                      </button>
+                      <button onClick={() => endCompany(c)} className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive/25">
+                        <StopCircle className="h-3.5 w-3.5" /> Encerrar
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {s?.startedAt && (
+                  <div className="text-[10px] text-muted-foreground font-mono">
+                    Início {fmtClock(s.startedAt)} · pausa {fmtTime(m.livePauseMs)} · prod {fmtTime(m.productiveMs)}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-5 shadow-card">
         <div className="flex items-center justify-between mb-4 gap-3">
           <h3 className="font-display font-semibold flex items-center gap-2">
-            <History className="h-4 w-4 text-primary" /> Histórico de sessões
+            <History className="h-4 w-4 text-primary" /> Histórico diário
           </h3>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{history.length} sessões</span>
-            {history.length > 0 && (
-              <button
-                onClick={async () => {
-                  if (!user?.id || !activeWorkspaceId) return;
-                  if (!confirm("Limpar todo o histórico de sessões? Esta ação não pode ser desfeita.")) return;
-                  const ids = history.map((h) => h.id);
-                  if (ids.length === 0) return;
-                  await supabase.from("ponto_session_tasks").delete().in("session_id", ids);
-                  const { error } = await supabase
-                    .from("ponto_sessions")
-                    .delete()
-                    .in("id", ids)
-                    .eq("workspace_id", activeWorkspaceId);
-                  if (error) { console.error("[ponto] clear history error", error); return; }
-                  setHistory([]);
-                }}
-                className="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive hover:bg-destructive/20 transition"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-                Limpar histórico
-              </button>
-            )}
-          </div>
+          <span className="text-xs text-muted-foreground">{grouped.length} dias</span>
         </div>
-        {history.length === 0 ? (
-          <div className="text-sm text-muted-foreground py-8 text-center">
-            Nenhuma sessão encerrada ainda.
-          </div>
+        {grouped.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-8 text-center">Nenhum expediente encerrado ainda.</div>
         ) : (
-          <ul className="divide-y divide-border rounded-lg border border-border bg-surface/40 overflow-hidden">
-            {history.map((s) => {
-              const date = new Date(s.started_at);
-              const dur = s.total_ms ?? 0;
-              return (
-                <li key={s.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-                  <div className="min-w-[120px]">
-                    <div className="text-xs text-muted-foreground">
-                      {date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
-                    </div>
-                    <div className="font-mono text-xs">
-                      {fmtClock(s.started_at)} → {fmtClock(s.ended_at)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Timer className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="font-mono text-xs tabular-nums">{fmtTime(dur)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                    <span className="text-xs">{s.task_count ?? 0} tarefas</span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1 ml-auto">
-                    {(s.companies ?? []).map((c) => <CompanyTag key={c} company={c} />)}
-                  </div>
-                </li>
-              );
-            })}
+          <ul className="space-y-2">
+            {grouped.map((d) => (
+              <DayHistoryRow key={d.day} day={d} tasksBySession={tasksBySession} fmtClock={fmtClock} fmtDateLabel={fmtDateLabel} />
+            ))}
           </ul>
         )}
       </div>
@@ -1083,34 +1025,68 @@ function PontoTab() {
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-surface/40 px-3 py-2">
-      <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</div>
-      <div className="font-mono text-sm font-semibold tabular-nums mt-0.5">{value}</div>
-    </div>
-  );
-}
-
-function PontoBtn({
-  children, onClick, icon: Icon, variant,
+function DayHistoryRow({
+  day, tasksBySession, fmtClock, fmtDateLabel,
 }: {
-  children: React.ReactNode;
-  onClick: () => void;
-  icon: typeof Play;
-  variant: "primary" | "warning" | "destructive" | "ghost";
+  day: { day: string; total: number; byCompany: Map<Company, { total: number; productive: number; sessions: DaySessionRow[] }> };
+  tasksBySession: Record<string, { id: string; title: string; company: Company; completed_at: string }[]>;
+  fmtClock: (ts: number | string | null) => string;
+  fmtDateLabel: (day: string) => string;
 }) {
-  const styles = {
-    primary: "bg-gradient-primary text-primary-foreground shadow-glow hover:opacity-90",
-    warning: "bg-warning/15 text-warning border border-warning/30 hover:bg-warning/25",
-    destructive: "bg-destructive/15 text-destructive border border-destructive/30 hover:bg-destructive/25",
-    ghost: "bg-surface text-foreground border border-border hover:bg-surface-elevated",
-  };
+  const [open, setOpen] = useState(false);
   return (
-    <button onClick={onClick} className={`inline-flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition ${styles[variant]}`}>
-      <Icon className="h-4 w-4" />
-      {children}
-    </button>
+    <li className="rounded-lg border border-border bg-surface/30 overflow-hidden">
+      <button onClick={() => setOpen((v) => !v)} className="w-full flex flex-wrap items-center gap-3 px-4 py-3 text-sm hover:bg-surface/60 transition">
+        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
+        <div className="min-w-[140px] text-left">
+          <div className="text-xs text-muted-foreground capitalize">{fmtDateLabel(day.day)}</div>
+          <div className="font-mono text-xs">Total: {fmtTime(day.total)}</div>
+        </div>
+        <div className="flex flex-wrap items-center gap-1 ml-auto">
+          {Array.from(day.byCompany.keys()).map((c) => <CompanyTag key={c} company={c} />)}
+        </div>
+      </button>
+      {open && (
+        <div className="border-t border-border bg-card/40 px-4 py-3 space-y-3">
+          {Array.from(day.byCompany.entries()).map(([c, info]) => {
+            const tasks = info.sessions.flatMap((s) => tasksBySession[s.id] ?? []);
+            return (
+              <div key={c} className="rounded-md border border-border bg-surface/50 p-3">
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <CompanyTag company={c} />
+                  <span className="font-mono text-xs"><Timer className="inline h-3 w-3 mr-1" />{fmtTime(info.total)}</span>
+                  <span className="text-xs text-muted-foreground">prod {fmtTime(info.productive)}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">{info.sessions.length} subponto{info.sessions.length > 1 ? "s" : ""}</span>
+                </div>
+                <div className="mt-2 text-[11px] text-muted-foreground space-y-0.5">
+                  {info.sessions.map((s) => (
+                    <div key={s.id} className="font-mono">
+                      {fmtClock(s.started_at)} → {fmtClock(s.ended_at)} ({fmtTime(s.total_ms ?? 0)})
+                    </div>
+                  ))}
+                </div>
+                {tasks.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border/60">
+                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Tarefas concluídas</div>
+                    <ul className="space-y-0.5">
+                      {tasks.map((t) => (
+                        <li key={t.id} className="flex items-center gap-2 text-xs">
+                          <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
+                          <span className="font-mono text-[10px] text-muted-foreground tabular-nums w-10 shrink-0">
+                            {new Date(t.completed_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                          <span className="truncate">{t.title}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </li>
   );
 }
 
