@@ -290,18 +290,20 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state, rebuild]);
 
-  const resetAllDone = useCallback(async () => {
-    if (!userIdRef.current) return;
+  const resetCompanyDone = useCallback(async (company: Company) => {
+    if (!userIdRef.current || !wsRef.current) return;
     const { error } = await supabase.from("checklist_tasks")
       .update({ status: "pending", done_at: null })
-      .eq("user_id", userIdRef.current).eq("status", "done");
+      .eq("workspace_id", wsRef.current)
+      .eq("company", company)
+      .eq("status", "done");
     if (error) console.error("[checklist] reset error", error);
   }, []);
 
   useEffect(() => {
-    const off = onPontoEvent((e) => { if (e.type === "ended") resetAllDone(); });
-    return () => { off; };
-  }, [resetAllDone]);
+    const off = onPontoEvent((e) => { if (e.type === "ended" && e.company) resetCompanyDone(e.company as Company); });
+    return () => { off(); };
+  }, [resetCompanyDone]);
 
   const reorder = useCallback(async (company: Company, fromId: string, toId: string, parentId: string | null = null) => {
     if (fromId === toId) return;

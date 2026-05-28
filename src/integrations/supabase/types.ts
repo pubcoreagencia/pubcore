@@ -727,6 +727,7 @@ export type Database = {
       }
       ponto_sessions: {
         Row: {
+          company: string | null
           created_at: string
           ended_at: string | null
           id: string
@@ -744,6 +745,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          company?: string | null
           created_at?: string
           ended_at?: string | null
           id?: string
@@ -761,6 +763,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          company?: string | null
           created_at?: string
           ended_at?: string | null
           id?: string
