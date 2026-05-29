@@ -789,7 +789,7 @@ interface DaySessionRow {
   company: string | null;
 }
 
-const HOUR_LIMIT_MS = 90 * 60 * 1000;
+const HOUR_LIMIT_MS = 30 * 60 * 1000;
 
 function PontoTab() {
   const { user } = useAuth();
@@ -873,7 +873,7 @@ function PontoTab() {
           <Sparkles className="h-4 w-4 text-primary shrink-0" />
           <div className="flex-1 min-w-[200px]">
             <div className="font-semibold">Ative as notificações nativas</div>
-            <div className="text-xs text-muted-foreground">Você será avisado quando uma empresa cruzar 1h30 de expediente, mesmo com a aba minimizada.</div>
+            <div className="text-xs text-muted-foreground">Você será avisado quando uma empresa cruzar 30min de expediente, mesmo com a aba minimizada.</div>
           </div>
           <button onClick={requestNotif} className="rounded-md bg-gradient-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold shadow-glow">
             Permitir
@@ -929,7 +929,7 @@ function PontoTab() {
                 <div>
                   <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
                     <span>Total do dia</span>
-                    <span className={overLimit ? "text-warning" : ""}>{fmtTime(totalDay)} / 1h30</span>
+                    <span className={overLimit ? "text-warning" : ""}>{fmtTime(totalDay)} / 30min</span>
                   </div>
                   <div className="mt-1.5 h-1.5 rounded-full bg-surface overflow-hidden">
                     <div className="h-full transition-all rounded-full"
