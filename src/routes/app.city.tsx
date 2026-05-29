@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Building2, X, ListChecks, Activity, Layers, Users2, MapPin,
   DoorOpen, ArrowLeft, Anchor, Trees, UtensilsCrossed, Cpu, Factory,
-  ShoppingBag, Coins, Music, Keyboard,
+  ShoppingBag, Coins, Music, Keyboard, Circle, Wifi,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
@@ -31,20 +31,52 @@ interface CompanyStats {
   recentTasks: { id: string; title: string; status: string }[];
 }
 
+interface PresencePayload {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  x: number;        // world x in outdoor
+  y: number;
+  ix: number;       // interior x
+  iy: number;
+  company: string | null;
+  sector: string | null;
+  color: string;
+  ts: number;
+}
+
 // ============ MAP CONSTANTS ============
 const WORLD_W = 3200;
 const WORLD_H = 2200;
 const TILE_W = 128;
 const TILE_H = 64;
+const INTERIOR_W = 1040;
+const INTERIOR_H = 640;
 
-function toIso(x: number, y: number) {
-  return { x: (x - y) * (TILE_W / 2), y: (x + y) * (TILE_H / 2) };
-}
+function toIsoUnused(_x: number, _y: number) { return { x: 0, y: 0 }; }
+void toIsoUnused;
 
 function formatHours(ms: number) {
   const h = Math.floor(ms / 3_600_000);
   const m = Math.floor((ms % 3_600_000) / 60_000);
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+// stable hash for deterministic positioning / colors
+function hashStr(s: string) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function colorForUser(id: string) {
+  const palette = [
+    "oklch(0.72 0.18 250)", "oklch(0.72 0.18 30)", "oklch(0.72 0.18 140)",
+    "oklch(0.72 0.18 330)", "oklch(0.72 0.18 80)", "oklch(0.72 0.18 200)",
+    "oklch(0.72 0.18 280)", "oklch(0.72 0.18 10)",
+  ];
+  return palette[hashStr(id) % palette.length];
 }
 
 // ============ DISTRICTS (Búzios-inspired) ============
@@ -55,78 +87,88 @@ type District = {
   icon: typeof Building2;
   companies: string[];
   color: string;
-  // world rect (px)
   x: number; y: number; w: number; h: number;
 };
 
 const DISTRICTS: District[] = [
-  {
-    id: "admin", name: "Centro Administrativo", subtitle: "Praça Santos Dumont",
-    icon: Building2, color: "oklch(0.72 0.14 250)",
-    companies: ["PUB CORE", "PUB"],
-    x: 1300, y: 950, w: 600, h: 400,
-  },
-  {
-    id: "tech", name: "Vale Tech", subtitle: "Morro do Humaitá",
-    icon: Cpu, color: "oklch(0.70 0.18 200)",
-    companies: ["PUB IA", "PUB 3D", "PUB ADSENSE"],
-    x: 1100, y: 250, w: 900, h: 450,
-  },
-  {
-    id: "finance", name: "Distrito Financeiro", subtitle: "Centro-Oeste",
-    icon: Coins, color: "oklch(0.78 0.16 90)",
-    companies: ["PUB CRYPTO", "PUB IMÓVEIS"],
-    x: 600, y: 900, w: 550, h: 380,
-  },
-  {
-    id: "ent", name: "Rua das Pedras", subtitle: "Entretenimento",
-    icon: Music, color: "oklch(0.65 0.22 330)",
-    companies: ["PUB RECORDS", "PUB FILMS", "PUB CASSINO", "PUB LANÇAMENTOS"],
-    x: 1100, y: 1450, w: 1100, h: 380,
-  },
-  {
-    id: "food", name: "Orla Bardot", subtitle: "Gastronômico",
-    icon: UtensilsCrossed, color: "oklch(0.72 0.18 40)",
-    companies: ["PUB FOOD"],
-    x: 350, y: 1380, w: 480, h: 280,
-  },
-  {
-    id: "industrial", name: "Zona Industrial", subtitle: "Manguinhos",
-    icon: Factory, color: "oklch(0.55 0.10 50)",
-    companies: ["PUB BRICKS", "PUB TÊXTIL"],
-    x: 180, y: 480, w: 520, h: 380,
-  },
-  {
-    id: "commerce", name: "Marina & Comércio", subtitle: "Porto Búzios",
-    icon: ShoppingBag, color: "oklch(0.70 0.16 160)",
-    companies: ["PUB ECOM", "PUB FISHING"],
-    x: 2200, y: 750, w: 550, h: 480,
-  },
+  { id: "admin", name: "Centro Administrativo", subtitle: "Praça Santos Dumont", icon: Building2, color: "oklch(0.72 0.14 250)", companies: ["PUB CORE", "PUB"], x: 1300, y: 950, w: 600, h: 400 },
+  { id: "tech", name: "Vale Tech", subtitle: "Morro do Humaitá", icon: Cpu, color: "oklch(0.70 0.18 200)", companies: ["PUB IA", "PUB 3D", "PUB ADSENSE"], x: 1100, y: 250, w: 900, h: 450 },
+  { id: "finance", name: "Distrito Financeiro", subtitle: "Centro-Oeste", icon: Coins, color: "oklch(0.78 0.16 90)", companies: ["PUB CRYPTO", "PUB IMÓVEIS"], x: 600, y: 900, w: 550, h: 380 },
+  { id: "ent", name: "Rua das Pedras", subtitle: "Entretenimento", icon: Music, color: "oklch(0.65 0.22 330)", companies: ["PUB RECORDS", "PUB FILMS", "PUB CASSINO", "PUB LANÇAMENTOS"], x: 1100, y: 1450, w: 1100, h: 380 },
+  { id: "food", name: "Orla Bardot", subtitle: "Gastronômico", icon: UtensilsCrossed, color: "oklch(0.72 0.18 40)", companies: ["PUB FOOD"], x: 350, y: 1380, w: 480, h: 280 },
+  { id: "industrial", name: "Zona Industrial", subtitle: "Manguinhos", icon: Factory, color: "oklch(0.55 0.10 50)", companies: ["PUB BRICKS", "PUB TÊXTIL"], x: 180, y: 480, w: 520, h: 380 },
+  { id: "commerce", name: "Marina & Comércio", subtitle: "Porto Búzios", icon: ShoppingBag, color: "oklch(0.70 0.16 160)", companies: ["PUB ECOM", "PUB FISHING"], x: 2200, y: 750, w: 550, h: 480 },
 ];
 
 function districtOf(companyName: string): District | undefined {
   return DISTRICTS.find((d) => d.companies.includes(companyName));
 }
 
-// stable hash for deterministic positioning
-function hashStr(s: string) {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
+// ============ SECTORS PER COMPANY ============
+const COMPANY_SECTORS: Record<string, string[]> = {
+  "PUB CORE": ["Recepção", "Diretoria", "Operações", "Pessoas"],
+  "PUB": ["Recepção", "Estratégia", "Holding"],
+  "PUB IA": ["Recepção", "Desenvolvimento", "Automações", "Pesquisa"],
+  "PUB 3D": ["Recepção", "Modelagem", "Renderização", "Impressão"],
+  "PUB ADSENSE": ["Recepção", "Mídia", "Performance", "Criativo"],
+  "PUB CRYPTO": ["Recepção", "Trading", "Análise", "Compliance"],
+  "PUB IMÓVEIS": ["Recepção", "Captação", "Vendas", "Locação"],
+  "PUB RECORDS": ["Recepção", "Produção", "Marketing", "Distribuição"],
+  "PUB FILMS": ["Recepção", "Produção", "Edição", "Distribuição"],
+  "PUB CASSINO": ["Recepção", "Mesas", "Slots", "VIP"],
+  "PUB LANÇAMENTOS": ["Recepção", "Captação", "Lançamento", "Pós-venda"],
+  "PUB FOOD": ["Recepção", "Operação", "Cozinha", "Delivery"],
+  "PUB BRICKS": ["Recepção", "Fábrica", "Logística"],
+  "PUB TÊXTIL": ["Recepção", "Produção", "Estamparia", "Embalagem"],
+  "PUB FISHING": ["Recepção", "Captura", "Beneficiamento"],
+  "PUB ECOM": ["Recepção", "Vendas", "Atendimento", "Logística"],
+};
+function sectorsOf(name: string): string[] {
+  return COMPANY_SECTORS[name] ?? ["Recepção", "Operação"];
+}
+
+// 4-zone floor layout (relative to INTERIOR_W x INTERIOR_H)
+function sectorRects(count: number): { x: number; y: number; w: number; h: number }[] {
+  const pad = 30;
+  if (count <= 2) {
+    return [
+      { x: pad, y: pad, w: (INTERIOR_W - pad * 3) / 2, h: INTERIOR_H - pad * 2 - 60 },
+      { x: pad * 2 + (INTERIOR_W - pad * 3) / 2, y: pad, w: (INTERIOR_W - pad * 3) / 2, h: INTERIOR_H - pad * 2 - 60 },
+    ].slice(0, count);
+  }
+  if (count === 3) {
+    const colW = (INTERIOR_W - pad * 4) / 3;
+    return [0, 1, 2].map((i) => ({ x: pad + i * (colW + pad), y: pad, w: colW, h: INTERIOR_H - pad * 2 - 60 }));
+  }
+  // 4+
+  const cols = 2;
+  const rows = Math.ceil(count / cols);
+  const cellW = (INTERIOR_W - pad * (cols + 1)) / cols;
+  const cellH = (INTERIOR_H - 60 - pad * (rows + 1)) / rows;
+  const out: { x: number; y: number; w: number; h: number }[] = [];
+  for (let i = 0; i < count; i++) {
+    const cx = i % cols;
+    const ry = Math.floor(i / cols);
+    out.push({ x: pad + cx * (cellW + pad), y: pad + ry * (cellH + pad), w: cellW, h: cellH });
+  }
+  return out;
 }
 
 // ============ ROUTE COMPONENT ============
 function CityPage() {
   const { activeWorkspaceId } = useWorkspace();
   const { user } = useAuth();
+
   const [companies, setCompanies] = useState<Company[]>([]);
   const [stats, setStats] = useState<Record<string, CompanyStats>>({});
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Company | null>(null);
   const [interior, setInterior] = useState<Company | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [remote, setRemote] = useState<PresencePayload[]>([]);
+  const [proximityUser, setProximityUser] = useState<PresencePayload | null>(null);
 
-  // ===== Refresh data =====
+  // ===== Refresh aggregated company data =====
   const refresh = useCallback(async () => {
     if (!activeWorkspaceId) return;
     const [co, tasks, sessions, archive] = await Promise.all([
@@ -137,7 +179,6 @@ function CityPage() {
     ]);
     const cs = (co.data ?? []) as Company[];
     setCompanies(cs);
-
     const agg: Record<string, CompanyStats> = {};
     for (const c of cs) agg[c.name] = { activeTasks: 0, productiveMs: 0, projects: 0, collaborators: [], recentTasks: [] };
     for (const t of (tasks.data ?? []) as Array<{ id: string; title: string; company: string; status: string }>) {
@@ -185,30 +226,33 @@ function CityPage() {
     return result;
   }, [companies]);
 
-  // ===== Avatar + Camera =====
+  // ===== Game state =====
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const worldRef = useRef<HTMLDivElement | null>(null);
-  const avatarRef = useRef<HTMLDivElement | null>(null);
+  const avatarOutRef = useRef<HTMLDivElement | null>(null);
+  const avatarInRef = useRef<HTMLDivElement | null>(null);
   const promptRef = useRef<HTMLDivElement | null>(null);
+  const interiorRef = useRef<Company | null>(null);
+  interiorRef.current = interior;
 
-  // mutable game state (not React state, to avoid rerenders per frame)
   const gs = useRef({
-    avatar: { x: 1600, y: 1150 }, // center of admin district
+    avatar: { x: 1600, y: 1150 },
+    target: null as { x: number; y: number } | null,
     cam: { x: 0, y: 0, scale: 0.9 },
     keys: { up: false, down: false, left: false, right: false },
     joy: { dx: 0, dy: 0, active: false },
     manualPan: false,
     nearest: null as null | { c: Company; dist: number; sx: number; sy: number },
-    interiorMode: false,
-    interior: { x: 400, y: 300 },
+    interior: { x: INTERIOR_W / 2, y: INTERIOR_H - 60 },
+    interiorTarget: null as { x: number; y: number } | null,
   });
 
-  // We DO use React state for the nearest building label, but throttled
   const [nearestUI, setNearestUI] = useState<{ name: string; color: string } | null>(null);
 
   // ===== keyboard =====
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.tagName === "INPUT" || (e.target as HTMLElement)?.tagName === "TEXTAREA") return;
       const k = e.key.toLowerCase();
       if (k === "w" || k === "arrowup") gs.current.keys.up = true;
       else if (k === "s" || k === "arrowdown") gs.current.keys.down = true;
@@ -216,8 +260,13 @@ function CityPage() {
       else if (k === "d" || k === "arrowright") gs.current.keys.right = true;
       else if (k === "e") {
         const n = gs.current.nearest;
-        if (n && !gs.current.interiorMode) { enterBuilding(n.c); }
-      } else if (k === "escape" && gs.current.interiorMode) { exitBuilding(); }
+        if (n && !interiorRef.current) enterBuilding(n.c);
+      } else if (k === "escape" && interiorRef.current) exitBuilding();
+      // any key cancels click-to-move
+      if (["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(k)) {
+        gs.current.target = null;
+        gs.current.interiorTarget = null;
+      }
     };
     const up = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
@@ -231,44 +280,137 @@ function CityPage() {
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
   }, []);
 
+  // ===== Realtime presence =====
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const lastTrackRef = useRef(0);
+
+  useEffect(() => {
+    if (!activeWorkspaceId || !user) return;
+    const myColor = colorForUser(user.id);
+    const ch = supabase.channel(`pub-city:${activeWorkspaceId}`, {
+      config: { presence: { key: user.id } },
+    });
+    channelRef.current = ch;
+
+    ch.on("presence", { event: "sync" }, () => {
+      const state = ch.presenceState() as Record<string, PresencePayload[]>;
+      const others: PresencePayload[] = [];
+      for (const [uid, arr] of Object.entries(state)) {
+        if (uid === user.id) continue;
+        const last = arr[arr.length - 1];
+        if (last) others.push(last);
+      }
+      setRemote(others);
+    });
+
+    ch.subscribe(async (status) => {
+      if (status === "SUBSCRIBED") {
+        await ch.track({
+          id: user.id,
+          name: user.name,
+          role: user.role || "Membro",
+          email: user.email,
+          x: gs.current.avatar.x,
+          y: gs.current.avatar.y,
+          ix: gs.current.interior.x,
+          iy: gs.current.interior.y,
+          company: null,
+          sector: null,
+          color: myColor,
+          ts: Date.now(),
+        } satisfies PresencePayload);
+      }
+    });
+
+    return () => { ch.unsubscribe(); channelRef.current = null; };
+  }, [activeWorkspaceId, user]);
+
+  const trackPresence = useCallback(() => {
+    const ch = channelRef.current;
+    if (!ch || !user) return;
+    const now = Date.now();
+    if (now - lastTrackRef.current < 300) return;
+    lastTrackRef.current = now;
+    const cur = interiorRef.current;
+    let sector: string | null = null;
+    if (cur) {
+      const list = sectorsOf(cur.name);
+      const rects = sectorRects(list.length);
+      const ix = gs.current.interior.x;
+      const iy = gs.current.interior.y;
+      for (let i = 0; i < rects.length; i++) {
+        const r = rects[i];
+        if (ix >= r.x && ix <= r.x + r.w && iy >= r.y && iy <= r.y + r.h) { sector = list[i]; break; }
+      }
+    }
+    ch.track({
+      id: user.id,
+      name: user.name,
+      role: user.role || "Membro",
+      email: user.email,
+      x: gs.current.avatar.x,
+      y: gs.current.avatar.y,
+      ix: gs.current.interior.x,
+      iy: gs.current.interior.y,
+      company: cur?.name ?? null,
+      sector,
+      color: colorForUser(user.id),
+      ts: now,
+    } satisfies PresencePayload);
+  }, [user]);
+
   // ===== animation loop =====
   useEffect(() => {
     let raf = 0;
     let last = performance.now();
-    const SPEED = 220; // px/s in world coords
+    const SPEED = 230;
     const loop = (t: number) => {
       const dt = Math.min(0.05, (t - last) / 1000);
       last = t;
       const s = gs.current;
+      const inInterior = !!interiorRef.current;
 
-      // input
+      // input vector
       let vx = 0, vy = 0;
       if (s.keys.up) vy -= 1;
       if (s.keys.down) vy += 1;
       if (s.keys.left) vx -= 1;
       if (s.keys.right) vx += 1;
       if (s.joy.active) { vx += s.joy.dx; vy += s.joy.dy; }
-      const mag = Math.hypot(vx, vy);
-      if (mag > 0) { vx /= mag; vy /= mag; }
 
-      if (s.interiorMode) {
-        s.interior.x = Math.max(40, Math.min(960, s.interior.x + vx * SPEED * dt));
-        s.interior.y = Math.max(40, Math.min(560, s.interior.y + vy * SPEED * dt));
-        if (avatarRef.current) {
-          avatarRef.current.style.transform = `translate(${s.interior.x - 16}px, ${s.interior.y - 16}px)`;
+      // click-to-move steering
+      const tgt = inInterior ? s.interiorTarget : s.target;
+      if (tgt && vx === 0 && vy === 0) {
+        const pos = inInterior ? s.interior : s.avatar;
+        const dx = tgt.x - pos.x;
+        const dy = tgt.y - pos.y;
+        const d = Math.hypot(dx, dy);
+        if (d < 4) {
+          if (inInterior) s.interiorTarget = null; else s.target = null;
+        } else {
+          vx = dx / d; vy = dy / d;
+        }
+      }
+      const mag = Math.hypot(vx, vy);
+      if (mag > 1) { vx /= mag; vy /= mag; }
+
+      if (inInterior) {
+        s.interior.x = Math.max(20, Math.min(INTERIOR_W - 20, s.interior.x + vx * SPEED * dt));
+        s.interior.y = Math.max(20, Math.min(INTERIOR_H - 20, s.interior.y + vy * SPEED * dt));
+        if (avatarInRef.current) {
+          avatarInRef.current.style.transform = `translate(${s.interior.x - 16}px, ${s.interior.y - 16}px)`;
         }
       } else {
         s.avatar.x = Math.max(40, Math.min(WORLD_W - 40, s.avatar.x + vx * SPEED * dt));
         s.avatar.y = Math.max(40, Math.min(WORLD_H - 40, s.avatar.y + vy * SPEED * dt));
 
-        // camera follows when not manual panning, or when moving
         if (!s.manualPan || mag > 0) {
           const vp = viewportRef.current?.getBoundingClientRect();
           if (vp) {
-            const targetX = vp.width / 2 - s.avatar.x * s.cam.scale;
-            const targetY = vp.height / 2 - s.avatar.y * s.cam.scale;
-            s.cam.x += (targetX - s.cam.x) * Math.min(1, dt * 6);
-            s.cam.y += (targetY - s.cam.y) * Math.min(1, dt * 6);
+            const tx = vp.width / 2 - s.avatar.x * s.cam.scale;
+            const ty = vp.height / 2 - s.avatar.y * s.cam.scale;
+            s.cam.x += (tx - s.cam.x) * Math.min(1, dt * 6);
+            s.cam.y += (ty - s.cam.y) * Math.min(1, dt * 6);
           }
           s.manualPan = false;
         }
@@ -281,13 +423,8 @@ function CityPage() {
         }
         s.nearest = best && best.dist < 110 ? best : null;
 
-        // apply transforms
-        if (worldRef.current) {
-          worldRef.current.style.transform = `translate(${s.cam.x}px, ${s.cam.y}px) scale(${s.cam.scale})`;
-        }
-        if (avatarRef.current) {
-          avatarRef.current.style.transform = `translate(${s.avatar.x - 16}px, ${s.avatar.y - 16}px)`;
-        }
+        if (worldRef.current) worldRef.current.style.transform = `translate(${s.cam.x}px, ${s.cam.y}px) scale(${s.cam.scale})`;
+        if (avatarOutRef.current) avatarOutRef.current.style.transform = `translate(${s.avatar.x - 16}px, ${s.avatar.y - 16}px)`;
         if (promptRef.current) {
           if (s.nearest) {
             promptRef.current.style.display = "block";
@@ -298,19 +435,52 @@ function CityPage() {
         }
       }
 
-      // UI nearest (throttled with simple diff)
+      // throttled UI updates
       const cur = s.nearest?.c.name ?? null;
-      const prev = avatarRef.current?.dataset.near ?? null;
+      const prev = avatarOutRef.current?.dataset.near ?? null;
       if (cur !== prev) {
-        if (avatarRef.current) avatarRef.current.dataset.near = cur ?? "";
+        if (avatarOutRef.current) avatarOutRef.current.dataset.near = cur ?? "";
         setNearestUI(s.nearest ? { name: s.nearest.c.name, color: s.nearest.c.color } : null);
       }
+
+      // presence broadcast
+      if (mag > 0 || s.target || s.interiorTarget) trackPresence();
 
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [buildings]);
+  }, [buildings, trackPresence]);
+
+  // periodic presence heartbeat even when idle
+  useEffect(() => {
+    const t = setInterval(trackPresence, 4000);
+    return () => clearInterval(t);
+  }, [trackPresence]);
+
+  // recompute proximity (nearest remote user) every 300ms
+  useEffect(() => {
+    const t = setInterval(() => {
+      const s = gs.current;
+      const inInterior = !!interiorRef.current;
+      const curCo = interiorRef.current?.name ?? null;
+      let best: PresencePayload | null = null;
+      let bestD = inInterior ? 80 : 90;
+      for (const r of remote) {
+        if (inInterior) {
+          if (r.company !== curCo) continue;
+          const d = Math.hypot(r.ix - s.interior.x, r.iy - s.interior.y);
+          if (d < bestD) { bestD = d; best = r; }
+        } else {
+          if (r.company) continue; // remote is indoors
+          const d = Math.hypot(r.x - s.avatar.x, r.y - s.avatar.y);
+          if (d < bestD) { bestD = d; best = r; }
+        }
+      }
+      setProximityUser((prev) => (prev?.id === best?.id ? prev : best));
+    }, 300);
+    return () => clearInterval(t);
+  }, [remote]);
 
   // initial camera centering
   useEffect(() => {
@@ -339,7 +509,17 @@ function CityPage() {
     gs.current.cam.y = dragRef.current.vy + dy;
     gs.current.manualPan = true;
   };
-  const onPointerUp = () => { dragRef.current = null; };
+  const onPointerUp = (e: React.PointerEvent) => {
+    const wasDrag = dragRef.current?.moved;
+    dragRef.current = null;
+    if (wasDrag) return;
+    // click-to-move (outdoor)
+    const vp = viewportRef.current?.getBoundingClientRect();
+    if (!vp) return;
+    const wx = (e.clientX - vp.left - gs.current.cam.x) / gs.current.cam.scale;
+    const wy = (e.clientY - vp.top - gs.current.cam.y) / gs.current.cam.scale;
+    gs.current.target = { x: wx, y: wy };
+  };
 
   const onWheel = (e: React.WheelEvent) => {
     const delta = -e.deltaY * 0.0015;
@@ -353,6 +533,7 @@ function CityPage() {
     if (!joyRef.current) return;
     (e.target as Element).setPointerCapture?.(e.pointerId);
     gs.current.joy.active = true;
+    gs.current.target = null; gs.current.interiorTarget = null;
   };
   const onJoyMove = (e: React.PointerEvent) => {
     if (!gs.current.joy.active || !joyRef.current) return;
@@ -378,23 +559,35 @@ function CityPage() {
 
   // ===== Enter / exit buildings =====
   function enterBuilding(c: Company) {
-    gs.current.interiorMode = true;
-    gs.current.interior = { x: 500, y: 480 }; // start at "door" bottom-center
+    gs.current.interior = { x: INTERIOR_W / 2, y: INTERIOR_H - 60 };
+    gs.current.interiorTarget = null;
     setInterior(c);
+    setTimeout(trackPresence, 50);
   }
   function exitBuilding() {
-    gs.current.interiorMode = false;
     setInterior(null);
+    setTimeout(trackPresence, 50);
   }
 
-  // ===== Building click (also opens interior) =====
   const handleBuildingClick = (c: Company) => {
     if (dragRef.current?.moved) return;
     setSelected(c);
   };
 
   const userInitial = (user?.name || user?.email || "?").trim().charAt(0).toUpperCase();
-  const primary = "oklch(0.72 0.18 250)";
+  const myColor = user ? colorForUser(user.id) : "oklch(0.72 0.18 250)";
+
+  // who's online list
+  const onlineList = useMemo(() => {
+    const list: Array<{ id: string; name: string; role: string; company: string | null; sector: string | null; color: string; self?: boolean }> = [];
+    if (user) list.push({ id: user.id, name: user.name + " (você)", role: user.role || "Membro", company: interior?.name ?? null, sector: null, color: myColor, self: true });
+    for (const r of remote) list.push({ id: r.id, name: r.name, role: r.role, company: r.company, sector: r.sector, color: r.color });
+    return list;
+  }, [remote, user, interior, myColor]);
+
+  // remote avatars relevant to current scene
+  const remoteOutdoor = remote.filter((r) => !r.company);
+  const remoteIndoor = remote.filter((r) => interior && r.company === interior.name);
 
   return (
     <div className="relative h-[calc(100dvh-120px)] w-full overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-[oklch(0.14_0.02_260)] via-[oklch(0.10_0.02_240)] to-[oklch(0.07_0.02_220)]">
@@ -406,7 +599,7 @@ function CityPage() {
             PUB CITY · Búzios
           </div>
           <div className="text-[10px] text-white/50">
-            {loading ? "Carregando cidade…" : `${companies.length} empresas · ${DISTRICTS.length} distritos`}
+            {loading ? "Carregando cidade…" : `${companies.length} empresas · ${onlineList.length} online`}
           </div>
         </div>
         <div className="pointer-events-auto flex items-center gap-1 rounded-xl border border-white/10 bg-black/50 p-1 backdrop-blur-md">
@@ -419,18 +612,43 @@ function CityPage() {
         </div>
       </div>
 
-      {/* Help bubble */}
       {helpOpen && (
         <div className="absolute right-3 top-16 z-20 w-64 rounded-xl border border-white/10 bg-black/70 p-3 text-xs text-white/80 backdrop-blur-md">
           <div className="mb-2 font-semibold text-white">Controles</div>
           <div className="space-y-1">
             <div><kbd className="rounded bg-white/10 px-1.5">W A S D</kbd> ou setas — andar</div>
+            <div><span className="rounded bg-white/10 px-1.5">Clique</span> no mapa — mover até o ponto</div>
             <div><kbd className="rounded bg-white/10 px-1.5">E</kbd> — entrar no prédio próximo</div>
             <div><kbd className="rounded bg-white/10 px-1.5">Esc</kbd> — sair do prédio</div>
-            <div>Arraste o mapa ou use o joystick no toque.</div>
           </div>
         </div>
       )}
+
+      {/* ===== Online panel ===== */}
+      <div className="pointer-events-none absolute left-3 top-20 z-20 hidden md:block">
+        <div className="pointer-events-auto w-56 rounded-xl border border-white/10 bg-black/50 p-2 backdrop-blur-md">
+          <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/70">
+            <Wifi className="h-3 w-3 text-emerald-400" /> Online · {onlineList.length}
+          </div>
+          <div className="max-h-64 space-y-1 overflow-auto pr-1">
+            {onlineList.map((u) => (
+              <div key={u.id} className={cn("flex items-center gap-2 rounded-md px-1.5 py-1 text-[11px]", u.self ? "bg-white/10" : "hover:bg-white/5")}>
+                <div className="relative">
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                    style={{ background: u.color }}>{u.name.charAt(0).toUpperCase()}</div>
+                  <Circle className="absolute -bottom-0.5 -right-0.5 h-2 w-2 fill-emerald-400 text-emerald-400" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-white">{u.name}</div>
+                  <div className="truncate text-[9px] text-white/40">
+                    {u.company ? <>em <span style={{ color: "oklch(0.85 0.10 200)" }}>{u.company}</span>{u.sector ? ` · ${u.sector}` : ""}</> : <>{u.role} · na cidade</>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* ===== Viewport ===== */}
       <div
@@ -439,7 +657,7 @@ function CityPage() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={() => { dragRef.current = null; }}
         onWheel={onWheel}
       >
         <div
@@ -447,71 +665,46 @@ function CityPage() {
           className="absolute left-0 top-0 will-change-transform"
           style={{ width: WORLD_W, height: WORLD_H, transformOrigin: "0 0" }}
         >
-          {/* ====== TERRAIN ====== */}
           <Terrain />
 
-          {/* ====== Districts zones ====== */}
-          {DISTRICTS.map((d) => (
-            <DistrictZone key={d.id} d={d} />
-          ))}
+          {DISTRICTS.map((d) => <DistrictZone key={d.id} d={d} />)}
 
-          {/* ====== Buildings ====== */}
           {buildings
             .slice()
             .sort((a, b) => a.y - b.y)
             .map(({ c, x, y, h }) => (
-              <Building
-                key={c.id}
-                company={c}
-                x={x}
-                y={y}
-                h={h}
-                stats={stats[c.name]}
-                onClick={() => handleBuildingClick(c)}
-              />
+              <Building key={c.id} company={c} x={x} y={y} h={h} stats={stats[c.name]} onClick={() => handleBuildingClick(c)} />
             ))}
 
-          {/* Avatar (world) */}
+          {/* Click-to-move target marker */}
+          <ClickMarker getTarget={() => gs.current.target} />
+
+          {/* Remote avatars (outdoor) */}
+          {remoteOutdoor.map((r) => (
+            <RemoteAvatar key={r.id} payload={r} />
+          ))}
+
+          {/* My avatar */}
           <div
-            ref={avatarRef}
+            ref={avatarOutRef}
             className="pointer-events-none absolute left-0 top-0 z-30 h-8 w-8 will-change-transform"
             style={{ transform: `translate(${gs.current.avatar.x - 16}px, ${gs.current.avatar.y - 16}px)` }}
           >
-            <div className="absolute -bottom-1 left-1/2 h-2 w-7 -translate-x-1/2 rounded-full bg-black/50 blur-sm" />
-            <div
-              className="relative flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-lg ring-2 ring-white/60"
-              style={{ background: `linear-gradient(135deg, ${primary}, oklch(0.55 0.20 280))` }}
-            >
-              {userInitial}
-            </div>
+            <AvatarChip name={user?.name ?? "Você"} initial={userInitial} color={myColor} self />
           </div>
 
           {/* Enter prompt */}
-          <div
-            ref={promptRef}
-            className="pointer-events-none absolute left-0 top-0 z-30 hidden"
-          >
+          <div ref={promptRef} className="pointer-events-none absolute left-0 top-0 z-30 hidden">
             <div className="rounded-md border border-white/20 bg-black/80 px-2 py-1 text-[11px] text-white shadow-lg backdrop-blur">
               <span className="font-semibold" style={{ color: nearestUI?.color }}>{nearestUI?.name}</span>
               <span className="ml-2 text-white/70">• <kbd className="rounded bg-white/10 px-1">E</kbd> entrar</span>
             </div>
           </div>
-
-          {buildings.length === 0 && !loading && (
-            <div className="absolute" style={{ left: WORLD_W / 2 - 150, top: WORLD_H / 2 }}>
-              <div className="w-[300px] rounded-xl border border-white/10 bg-black/50 p-4 text-center text-sm text-white/70 backdrop-blur-md">
-                Nenhuma empresa cadastrada ainda.
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
       {/* ===== Mobile joystick ===== */}
-      <div
-        data-joystick
-        className="absolute bottom-4 left-4 z-20 select-none touch-none md:hidden"
-      >
+      <div data-joystick className="absolute bottom-4 left-4 z-20 select-none touch-none md:hidden">
         <div
           ref={joyRef}
           onPointerDown={onJoyDown}
@@ -520,20 +713,14 @@ function CityPage() {
           onPointerCancel={onJoyUp}
           className="relative h-28 w-28 rounded-full border border-white/20 bg-black/40 backdrop-blur-md"
         >
-          <div
-            ref={joyKnobRef}
-            className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80 shadow-lg"
-          />
+          <div ref={joyKnobRef} className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80 shadow-lg" />
         </div>
       </div>
 
-      {/* Enter button (always visible if nearest) */}
+      {/* Enter button */}
       {nearestUI && !interior && (
         <button
-          onClick={() => {
-            const n = gs.current.nearest;
-            if (n) enterBuilding(n.c);
-          }}
+          onClick={() => { const n = gs.current.nearest; if (n) enterBuilding(n.c); }}
           className="absolute bottom-6 right-6 z-20 flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white shadow-2xl backdrop-blur-md transition-all hover:scale-105"
           style={{ background: `linear-gradient(135deg, ${nearestUI.color}, color-mix(in oklab, ${nearestUI.color} 50%, black))` }}
         >
@@ -542,36 +729,56 @@ function CityPage() {
         </button>
       )}
 
+      {/* Proximity card */}
+      {proximityUser && (
+        <div className="absolute bottom-6 left-1/2 z-30 -translate-x-1/2 rounded-xl border border-white/20 bg-black/80 px-4 py-2 text-xs text-white shadow-2xl backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: proximityUser.color }}>
+              {proximityUser.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="font-semibold">{proximityUser.name}</div>
+              <div className="text-[10px] text-white/60">
+                {proximityUser.role}
+                {proximityUser.company && <> · em <span style={{ color: "oklch(0.85 0.10 200)" }}>{proximityUser.company}</span>{proximityUser.sector ? ` · ${proximityUser.sector}` : ""}</>}
+              </div>
+              <div className="mt-1 flex gap-1.5 text-[9px] uppercase tracking-wider text-white/40">
+                <span className="rounded bg-white/5 px-1.5 py-0.5">chat (em breve)</span>
+                <span className="rounded bg-white/5 px-1.5 py-0.5">voz (em breve)</span>
+                <span className="rounded bg-white/5 px-1.5 py-0.5">reunião (em breve)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ===== Interior overlay ===== */}
       {interior && (
         <BuildingInterior
           company={interior}
           stats={stats[interior.name]}
           onExit={exitBuilding}
-          avatarRef={avatarRef}
+          avatarRef={avatarInRef}
           avatarInitial={userInitial}
-          avatarColor={primary}
+          avatarColor={myColor}
+          remote={remoteIndoor}
+          onClickFloor={(x, y) => { gs.current.interiorTarget = { x, y }; }}
         />
       )}
 
-      {/* ===== Detail Sheet (long-press / click info) ===== */}
+      {/* ===== Detail Sheet ===== */}
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
         <SheetContent className="w-[380px] border-l border-white/10 bg-[oklch(0.12_0.02_260)] text-white sm:max-w-[380px]">
           {selected && (
             <>
               <SheetHeader>
                 <div className="flex items-center gap-3">
-                  <div
-                    className="flex h-12 w-12 items-center justify-center rounded-lg"
-                    style={{ background: `color-mix(in oklab, ${selected.color} 35%, transparent)`, border: `1px solid ${selected.color}` }}
-                  >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg" style={{ background: `color-mix(in oklab, ${selected.color} 35%, transparent)`, border: `1px solid ${selected.color}` }}>
                     <Building2 className="h-6 w-6" style={{ color: selected.color }} />
                   </div>
                   <div>
                     <SheetTitle className="text-white">{selected.name}</SheetTitle>
-                    <SheetDescription className="text-white/50">
-                      {districtOf(selected.name)?.name ?? "PUB City"}
-                    </SheetDescription>
+                    <SheetDescription className="text-white/50">{districtOf(selected.name)?.name ?? "PUB City"}</SheetDescription>
                   </div>
                 </div>
               </SheetHeader>
@@ -583,11 +790,16 @@ function CityPage() {
                 <Stat icon={Users2} label="Colaboradores" value={stats[selected.name]?.collaborators.length ?? 0} color={selected.color} />
               </div>
 
-              <Button
-                className="mt-4 w-full"
-                style={{ background: selected.color, color: "white" }}
-                onClick={() => { enterBuilding(selected); setSelected(null); }}
-              >
+              <div className="mt-4">
+                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">Setores</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {sectorsOf(selected.name).map((s) => (
+                    <span key={s} className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70">{s}</span>
+                  ))}
+                </div>
+              </div>
+
+              <Button className="mt-4 w-full" style={{ background: selected.color, color: "white" }} onClick={() => { enterBuilding(selected); setSelected(null); }}>
                 <DoorOpen className="mr-2 h-4 w-4" /> Entrar no prédio
               </Button>
 
@@ -602,10 +814,68 @@ function CityPage() {
   );
 }
 
-// ============ TERRAIN (Búzios geography) ============
+// ============ Avatar chip ============
+function AvatarChip({ name, initial, color, self }: { name: string; initial: string; color: string; self?: boolean }) {
+  return (
+    <div className="relative">
+      <div className="absolute -bottom-1 left-1/2 h-2 w-7 -translate-x-1/2 rounded-full bg-black/50 blur-sm" />
+      <div
+        className={cn("relative flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-lg", self ? "ring-2 ring-white/70" : "ring-2 ring-white/30")}
+        style={{ background: `linear-gradient(135deg, ${color}, color-mix(in oklab, ${color} 40%, black))` }}
+      >
+        {initial}
+      </div>
+      <div className="pointer-events-none absolute left-1/2 top-[-18px] -translate-x-1/2 whitespace-nowrap rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-medium text-white/90 backdrop-blur">
+        {name}
+      </div>
+    </div>
+  );
+}
+
+// ============ Remote outdoor avatar — uses raw style updates via key prop ============
+function RemoteAvatar({ payload }: { payload: PresencePayload }) {
+  return (
+    <div
+      className="pointer-events-none absolute left-0 top-0 z-20 h-8 w-8 transition-transform duration-300 ease-linear will-change-transform"
+      style={{ transform: `translate(${payload.x - 16}px, ${payload.y - 16}px)` }}
+    >
+      <AvatarChip name={payload.name} initial={payload.name.charAt(0).toUpperCase()} color={payload.color} />
+    </div>
+  );
+}
+
+// ============ Click target marker ============
+function ClickMarker({ getTarget }: { getTarget: () => { x: number; y: number } | null }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const t = getTarget();
+      if (ref.current) {
+        if (t) {
+          ref.current.style.display = "block";
+          ref.current.style.transform = `translate(${t.x - 14}px, ${t.y - 14}px)`;
+        } else {
+          ref.current.style.display = "none";
+        }
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [getTarget]);
+  return (
+    <div ref={ref} className="pointer-events-none absolute left-0 top-0 z-10 h-7 w-7 hidden">
+      <div className="h-7 w-7 animate-ping rounded-full border-2 border-white/80" />
+      <div className="absolute inset-2 rounded-full bg-white/80" />
+    </div>
+  );
+}
+
+// ============ TERRAIN ============
 function Terrain() {
   return (
-    <svg width={WORLD_W} height={WORLD_H} className="absolute left-0 top-0 pointer-events-none">
+    <svg width={WORLD_W} height={WORLD_H} className="pointer-events-none absolute left-0 top-0">
       <defs>
         <radialGradient id="sea-grad" cx="80%" cy="60%" r="80%">
           <stop offset="0%" stopColor="oklch(0.62 0.10 220)" />
@@ -629,17 +899,12 @@ function Terrain() {
         </pattern>
       </defs>
 
-      {/* Sea (east/south, large) */}
       <path d={`M ${WORLD_W * 0.62} 0 L ${WORLD_W} 0 L ${WORLD_W} ${WORLD_H} L ${WORLD_W * 0.28} ${WORLD_H} 
                 Q ${WORLD_W * 0.45} ${WORLD_H * 0.78}, ${WORLD_W * 0.55} ${WORLD_H * 0.65}
                 Q ${WORLD_W * 0.66} ${WORLD_H * 0.5}, ${WORLD_W * 0.62} 0 Z`} fill="url(#sea-grad)" />
-
-      {/* Sea (west - marina bay) */}
       <path d={`M 0 ${WORLD_H * 0.32} L ${WORLD_W * 0.13} ${WORLD_H * 0.34}
                 Q ${WORLD_W * 0.18} ${WORLD_H * 0.5}, ${WORLD_W * 0.10} ${WORLD_H * 0.62}
                 L 0 ${WORLD_H * 0.66} Z`} fill="url(#sea-grad)" opacity={0.95} />
-
-      {/* Ground island */}
       <path d={`M 0 0 L ${WORLD_W * 0.62} 0
                 Q ${WORLD_W * 0.66} ${WORLD_H * 0.5}, ${WORLD_W * 0.55} ${WORLD_H * 0.65}
                 Q ${WORLD_W * 0.45} ${WORLD_H * 0.78}, ${WORLD_W * 0.28} ${WORLD_H}
@@ -648,31 +913,15 @@ function Terrain() {
                 Q ${WORLD_W * 0.10} ${WORLD_H * 0.62}, ${WORLD_W * 0.18} ${WORLD_H * 0.5}
                 Q ${WORLD_W * 0.13} ${WORLD_H * 0.34}, 0 ${WORLD_H * 0.32} Z`}
         fill="url(#ground-grad)" />
-
-      {/* Iso grid on ground */}
       <rect width={WORLD_W} height={WORLD_H} fill="url(#iso-grid-light)" opacity={0.4} />
 
-      {/* Beaches (sand arcs) */}
-      {/* Praia de Geribá (south) */}
-      <path d={`M ${WORLD_W * 0.30} ${WORLD_H - 8}
-                Q ${WORLD_W * 0.40} ${WORLD_H - 80}, ${WORLD_W * 0.52} ${WORLD_H * 0.78}`}
-        stroke="url(#sand-grad)" strokeWidth="70" strokeLinecap="round" fill="none" />
-      {/* Praia da Ferradura (east) */}
-      <path d={`M ${WORLD_W * 0.60} ${WORLD_H * 0.55}
-                Q ${WORLD_W * 0.52} ${WORLD_H * 0.62}, ${WORLD_W * 0.55} ${WORLD_H * 0.72}`}
-        stroke="url(#sand-grad)" strokeWidth="55" strokeLinecap="round" fill="none" />
-      {/* Praia João Fernandes (NE) */}
-      <path d={`M ${WORLD_W * 0.62} ${WORLD_H * 0.08}
-                Q ${WORLD_W * 0.58} ${WORLD_H * 0.18}, ${WORLD_W * 0.62} ${WORLD_H * 0.28}`}
-        stroke="url(#sand-grad)" strokeWidth="50" strokeLinecap="round" fill="none" />
+      <path d={`M ${WORLD_W * 0.30} ${WORLD_H - 8} Q ${WORLD_W * 0.40} ${WORLD_H - 80}, ${WORLD_W * 0.52} ${WORLD_H * 0.78}`} stroke="url(#sand-grad)" strokeWidth="70" strokeLinecap="round" fill="none" />
+      <path d={`M ${WORLD_W * 0.60} ${WORLD_H * 0.55} Q ${WORLD_W * 0.52} ${WORLD_H * 0.62}, ${WORLD_W * 0.55} ${WORLD_H * 0.72}`} stroke="url(#sand-grad)" strokeWidth="55" strokeLinecap="round" fill="none" />
+      <path d={`M ${WORLD_W * 0.62} ${WORLD_H * 0.08} Q ${WORLD_W * 0.58} ${WORLD_H * 0.18}, ${WORLD_W * 0.62} ${WORLD_H * 0.28}`} stroke="url(#sand-grad)" strokeWidth="50" strokeLinecap="round" fill="none" />
 
-      {/* Marina pier (west) */}
       <g>
-        <rect x={WORLD_W * 0.10} y={WORLD_H * 0.46} width={WORLD_W * 0.06} height={14}
-          fill="oklch(0.40 0.04 60)" />
-        <rect x={WORLD_W * 0.08} y={WORLD_H * 0.50} width={WORLD_W * 0.04} height={14}
-          fill="oklch(0.40 0.04 60)" />
-        {/* boats */}
+        <rect x={WORLD_W * 0.10} y={WORLD_H * 0.46} width={WORLD_W * 0.06} height={14} fill="oklch(0.40 0.04 60)" />
+        <rect x={WORLD_W * 0.08} y={WORLD_H * 0.50} width={WORLD_W * 0.04} height={14} fill="oklch(0.40 0.04 60)" />
         {[0, 1, 2].map((i) => (
           <g key={i} transform={`translate(${WORLD_W * 0.06 + i * 30}, ${WORLD_H * 0.55 + i * 12})`}>
             <path d="M 0 0 L 24 0 L 20 8 L 4 8 Z" fill="oklch(0.85 0.02 60)" />
@@ -681,13 +930,9 @@ function Terrain() {
         ))}
       </g>
 
-      {/* Hills/morros north (silhouettes) */}
       <g opacity={0.85}>
-        <path d={`M 200 ${WORLD_H * 0.05} Q 500 ${WORLD_H * 0.01}, 800 ${WORLD_H * 0.06} T 1500 ${WORLD_H * 0.05} T 2400 ${WORLD_H * 0.07}`}
-          fill="url(#hill-grad)" stroke="oklch(0.5 0.10 145 / 0.3)" />
-        <path d={`M 300 ${WORLD_H * 0.04} Q 600 ${WORLD_H * 0.10}, 900 ${WORLD_H * 0.06} T 1700 ${WORLD_H * 0.08} T 2300 ${WORLD_H * 0.04} L 2300 0 L 300 0 Z`}
-          fill="oklch(0.20 0.04 145)" opacity={0.7} />
-        {/* trees dots */}
+        <path d={`M 200 ${WORLD_H * 0.05} Q 500 ${WORLD_H * 0.01}, 800 ${WORLD_H * 0.06} T 1500 ${WORLD_H * 0.05} T 2400 ${WORLD_H * 0.07}`} fill="url(#hill-grad)" />
+        <path d={`M 300 ${WORLD_H * 0.04} Q 600 ${WORLD_H * 0.10}, 900 ${WORLD_H * 0.06} T 1700 ${WORLD_H * 0.08} T 2300 ${WORLD_H * 0.04} L 2300 0 L 300 0 Z`} fill="oklch(0.20 0.04 145)" opacity={0.7} />
         {Array.from({ length: 24 }).map((_, i) => {
           const x = 220 + i * 95 + ((i * 37) % 50);
           const y = WORLD_H * 0.06 + ((i * 19) % 30);
@@ -695,18 +940,10 @@ function Terrain() {
         })}
       </g>
 
-      {/* Rua das Pedras - diagonal cobble street */}
-      <path d={`M ${WORLD_W * 0.32} ${WORLD_H * 0.74} L ${WORLD_W * 0.70} ${WORLD_H * 0.66}`}
-        stroke="oklch(0.50 0.03 60)" strokeWidth="44" strokeLinecap="round" />
-      <path d={`M ${WORLD_W * 0.32} ${WORLD_H * 0.74} L ${WORLD_W * 0.70} ${WORLD_H * 0.66}`}
-        stroke="oklch(0.62 0.04 60 / 0.6)" strokeWidth="40" strokeLinecap="round" strokeDasharray="4 6" />
+      <path d={`M ${WORLD_W * 0.32} ${WORLD_H * 0.74} L ${WORLD_W * 0.70} ${WORLD_H * 0.66}`} stroke="oklch(0.50 0.03 60)" strokeWidth="44" strokeLinecap="round" />
+      <path d={`M ${WORLD_W * 0.32} ${WORLD_H * 0.74} L ${WORLD_W * 0.70} ${WORLD_H * 0.66}`} stroke="oklch(0.62 0.04 60 / 0.6)" strokeWidth="40" strokeLinecap="round" strokeDasharray="4 6" />
+      <path d={`M ${WORLD_W * 0.10} ${WORLD_H * 0.62} Q ${WORLD_W * 0.25} ${WORLD_H * 0.74}, ${WORLD_W * 0.40} ${WORLD_H * 0.72}`} stroke="oklch(0.55 0.04 80)" strokeWidth="34" fill="none" strokeLinecap="round" />
 
-      {/* Orla Bardot — curved promenade */}
-      <path d={`M ${WORLD_W * 0.10} ${WORLD_H * 0.62}
-                Q ${WORLD_W * 0.25} ${WORLD_H * 0.74}, ${WORLD_W * 0.40} ${WORLD_H * 0.72}`}
-        stroke="oklch(0.55 0.04 80)" strokeWidth="34" fill="none" strokeLinecap="round" />
-
-      {/* Praça Santos Dumont — central plaza */}
       <g transform={`translate(${WORLD_W * 0.50}, ${WORLD_H * 0.55})`}>
         <circle r="80" fill="oklch(0.42 0.04 100)" />
         <circle r="80" fill="none" stroke="oklch(0.60 0.05 100 / 0.4)" strokeWidth="2" />
@@ -714,20 +951,17 @@ function Terrain() {
         <circle r="4" fill="oklch(0.75 0.10 60)" />
       </g>
 
-      {/* Connecting roads (subtle) */}
       {[
-        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.50, WORLD_H * 0.20], // to tech
-        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.25, WORLD_H * 0.50], // to finance
-        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.18, WORLD_H * 0.28], // to industrial
-        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.78, WORLD_H * 0.50], // to commerce
-        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.50, WORLD_H * 0.72], // to ent
-        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.20, WORLD_H * 0.68], // to food
+        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.50, WORLD_H * 0.20],
+        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.25, WORLD_H * 0.50],
+        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.18, WORLD_H * 0.28],
+        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.78, WORLD_H * 0.50],
+        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.50, WORLD_H * 0.72],
+        [WORLD_W * 0.50, WORLD_H * 0.55, WORLD_W * 0.20, WORLD_H * 0.68],
       ].map(([x1, y1, x2, y2], i) => (
-        <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-          stroke="oklch(0.42 0.03 100 / 0.5)" strokeWidth="14" strokeLinecap="round" />
+        <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="oklch(0.42 0.03 100 / 0.5)" strokeWidth="14" strokeLinecap="round" />
       ))}
 
-      {/* Labels on the map */}
       <g fill="oklch(0.85 0.05 220)" fontFamily="ui-sans-serif" fontWeight={700}>
         <text x={WORLD_W * 0.80} y={WORLD_H * 0.45} fontSize="34" opacity={0.5} letterSpacing="6">OCEANO</text>
         <text x={WORLD_W * 0.80} y={WORLD_H * 0.49} fontSize="14" opacity={0.4} letterSpacing="8">ATLÂNTICO</text>
@@ -746,34 +980,17 @@ function Terrain() {
 function DistrictZone({ d }: { d: District }) {
   const Icon = d.icon;
   return (
-    <div
-      className="pointer-events-none absolute"
-      style={{ left: d.x, top: d.y, width: d.w, height: d.h }}
-    >
-      <div
-        className="absolute inset-0 rounded-[40px]"
-        style={{
-          background: `radial-gradient(ellipse at center, color-mix(in oklab, ${d.color} 18%, transparent), transparent 70%)`,
-          border: `1px dashed color-mix(in oklab, ${d.color} 40%, transparent)`,
-        }}
-      />
-      <div
-        className="absolute -top-3 left-4 flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wider backdrop-blur"
-        style={{
-          background: "rgba(0,0,0,0.55)",
-          color: d.color,
-          borderColor: `color-mix(in oklab, ${d.color} 60%, transparent)`,
-        }}
-      >
+    <div className="pointer-events-none absolute" style={{ left: d.x, top: d.y, width: d.w, height: d.h }}>
+      <div className="absolute inset-0 rounded-[40px]" style={{ background: `radial-gradient(ellipse at center, color-mix(in oklab, ${d.color} 18%, transparent), transparent 70%)`, border: `1px dashed color-mix(in oklab, ${d.color} 40%, transparent)` }} />
+      <div className="absolute -top-3 left-4 flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-bold tracking-wider backdrop-blur" style={{ background: "rgba(0,0,0,0.55)", color: d.color, borderColor: `color-mix(in oklab, ${d.color} 60%, transparent)` }}>
         <Icon className="h-3 w-3" />
         {d.name.toUpperCase()}
-        <span className="text-white/40 font-normal">· {d.subtitle}</span>
+        <span className="font-normal text-white/40">· {d.subtitle}</span>
       </div>
     </div>
   );
 }
 
-// ============ Stat card ============
 function Stat({ icon: Icon, label, value, color }: { icon: typeof Building2; label: string; value: number | string; color: string }) {
   return (
     <div className="rounded-lg border border-white/10 bg-white/5 p-3">
@@ -784,7 +1001,7 @@ function Stat({ icon: Icon, label, value, color }: { icon: typeof Building2; lab
   );
 }
 
-// ============ BUILDING (isometric) ============
+// ============ BUILDING ============
 function Building({ company, x, y, h, stats, onClick }: { company: Company; x: number; y: number; h: number; stats?: CompanyStats; onClick: () => void }) {
   const color = company.color || "oklch(0.72 0.16 220)";
   const w = TILE_W * 0.78;
@@ -792,61 +1009,34 @@ function Building({ company, x, y, h, stats, onClick }: { company: Company; x: n
   const active = (stats?.activeTasks ?? 0) > 0;
 
   return (
-    <div
-      data-building-click
-      className={cn("group absolute cursor-pointer transition-transform hover:-translate-y-1")}
-      style={{ left: x - w / 2, top: y - h }}
-      onClick={(e) => { e.stopPropagation(); onClick(); }}
-    >
+    <div data-building-click className={cn("group absolute cursor-pointer transition-transform hover:-translate-y-1")} style={{ left: x - w / 2, top: y - h }} onClick={(e) => { e.stopPropagation(); onClick(); }}>
       <svg width={w} height={h + d} style={{ overflow: "visible", filter: "drop-shadow(0 12px 24px rgba(0,0,0,0.6))" }}>
-        <polygon
-          points={`0,${d / 2} ${w / 2},${d} ${w / 2},${d + h} 0,${d / 2 + h}`}
-          fill={`color-mix(in oklab, ${color} 55%, black)`}
-          stroke={color}
-          strokeWidth="1"
-        />
-        <polygon
-          points={`${w / 2},${d} ${w},${d / 2} ${w},${d / 2 + h} ${w / 2},${d + h}`}
-          fill={`color-mix(in oklab, ${color} 75%, black)`}
-          stroke={color}
-          strokeWidth="1"
-        />
-        <polygon
-          points={`0,${d / 2} ${w / 2},0 ${w},${d / 2} ${w / 2},${d}`}
-          fill={color}
-          stroke="oklch(0.95 0.02 260 / 0.4)"
-          strokeWidth="1"
-        />
+        <polygon points={`0,${d / 2} ${w / 2},${d} ${w / 2},${d + h} 0,${d / 2 + h}`} fill={`color-mix(in oklab, ${color} 55%, black)`} stroke={color} strokeWidth="1" />
+        <polygon points={`${w / 2},${d} ${w},${d / 2} ${w},${d / 2 + h} ${w / 2},${d + h}`} fill={`color-mix(in oklab, ${color} 75%, black)`} stroke={color} strokeWidth="1" />
+        <polygon points={`0,${d / 2} ${w / 2},0 ${w},${d / 2} ${w / 2},${d}`} fill={color} stroke="oklch(0.95 0.02 260 / 0.4)" strokeWidth="1" />
         {Array.from({ length: Math.max(2, Math.floor(h / 22)) }).map((_, row) => (
           <g key={row}>
             <rect x={6} y={d / 2 + 10 + row * 22} width={w / 2 - 14} height={10} fill="oklch(0.92 0.12 80 / 0.6)" opacity={active && row % 2 === 0 ? 1 : 0.35} />
             <rect x={w / 2 + 6} y={d / 2 + 10 + row * 22} width={w / 2 - 12} height={10} fill="oklch(0.92 0.12 80 / 0.45)" opacity={active && row % 2 === 1 ? 1 : 0.3} />
           </g>
         ))}
-        {/* door */}
         <rect x={w / 2 - 9} y={h + d - 18} width={18} height={18} fill={`color-mix(in oklab, ${color} 30%, black)`} stroke={color} strokeWidth="0.5" />
       </svg>
-
       <div className="pointer-events-none absolute left-1/2 top-[-30px] -translate-x-1/2 whitespace-nowrap">
-        <div
-          className="rounded-md border px-2 py-0.5 text-[10px] font-semibold backdrop-blur-md"
-          style={{ background: "rgba(0,0,0,0.55)", borderColor: color, color }}
-        >
+        <div className="rounded-md border px-2 py-0.5 text-[10px] font-semibold backdrop-blur-md" style={{ background: "rgba(0,0,0,0.55)", borderColor: color, color }}>
           {company.name}
         </div>
       </div>
-
       {active && (
-        <div className="pointer-events-none absolute left-1/2 top-[-8px] h-2 w-2 -translate-x-1/2 rounded-full"
-          style={{ background: color, boxShadow: `0 0 12px ${color}` }} />
+        <div className="pointer-events-none absolute left-1/2 top-[-8px] h-2 w-2 -translate-x-1/2 rounded-full" style={{ background: color, boxShadow: `0 0 12px ${color}` }} />
       )}
     </div>
   );
 }
 
-// ============ INTERIOR (top-down sectors) ============
+// ============ INTERIOR (top-down) ============
 function BuildingInterior({
-  company, stats, onExit, avatarRef, avatarInitial, avatarColor,
+  company, stats, onExit, avatarRef, avatarInitial, avatarColor, remote, onClickFloor,
 }: {
   company: Company;
   stats?: CompanyStats;
@@ -854,65 +1044,27 @@ function BuildingInterior({
   avatarRef: React.RefObject<HTMLDivElement | null>;
   avatarInitial: string;
   avatarColor: string;
+  remote: PresencePayload[];
+  onClickFloor: (x: number, y: number) => void;
 }) {
   const color = company.color || "oklch(0.72 0.16 220)";
+  const sectors = sectorsOf(company.name);
+  const rects = sectorRects(sectors.length);
 
-  const sectors = [
-    { id: "reception", title: "Recepção", x: 420, y: 60, w: 200, h: 120, icon: Building2, content: <>Bem-vindo à <b>{company.name}</b><div className="mt-1 text-white/50 text-[10px]">{districtOf(company.name)?.name}</div></> },
-    { id: "tasks", title: "Mesa de Tarefas", x: 60, y: 60, w: 320, h: 200, icon: ListChecks, content: (
-      <>
-        <div className="text-2xl font-bold tabular-nums">{stats?.activeTasks ?? 0}</div>
-        <div className="text-[10px] uppercase tracking-wider text-white/50">ativas</div>
-        <ul className="mt-2 space-y-1 text-[11px] text-white/80">
-          {(stats?.recentTasks ?? []).slice(0, 4).map((t) => (
-            <li key={t.id} className="flex items-center gap-1.5 truncate">
-              <span className={cn("h-1.5 w-1.5 rounded-full", t.status === "done" ? "bg-emerald-400" : "bg-amber-400")} />
-              <span className="truncate">{t.title}</span>
-            </li>
-          ))}
-          {(!stats || stats.recentTasks.length === 0) && <li className="text-white/40">Sem tarefas registradas.</li>}
-        </ul>
-      </>
-    ) },
-    { id: "ponto", title: "Sala do Ponto", x: 660, y: 60, w: 280, h: 200, icon: Activity, content: (
-      <>
-        <div className="text-2xl font-bold tabular-nums">{formatHours(stats?.productiveMs ?? 0)}</div>
-        <div className="text-[10px] uppercase tracking-wider text-white/50">produtividade total</div>
-        <div className="mt-2 text-[11px] text-white/70">{stats?.collaborators.length ?? 0} colaborador(es)</div>
-      </>
-    ) },
-    { id: "projects", title: "Sala de Projetos", x: 60, y: 320, w: 380, h: 200, icon: Layers, content: (
-      <>
-        <div className="text-2xl font-bold tabular-nums">{stats?.projects ?? 0}</div>
-        <div className="text-[10px] uppercase tracking-wider text-white/50">projetos arquivados</div>
-      </>
-    ) },
-    { id: "team", title: "Sala da Equipe", x: 480, y: 320, w: 460, h: 200, icon: Users2, content: (
-      <>
-        <div className="text-[10px] uppercase tracking-wider text-white/50 mb-1.5">colaboradores</div>
-        <div className="flex flex-wrap gap-1.5">
-          {(stats?.collaborators ?? []).slice(0, 12).map((n) => (
-            <div key={n} className="flex items-center gap-1.5 rounded-md bg-white/10 px-2 py-1 text-[10px] text-white/80">
-              <div className="h-5 w-5 rounded-full text-center text-[10px] leading-5" style={{ background: color }}>
-                {n.charAt(0).toUpperCase()}
-              </div>
-              {n}
-            </div>
-          ))}
-          {(!stats || stats.collaborators.length === 0) && <span className="text-[11px] text-white/40">Nenhuma sessão registrada.</span>}
-        </div>
-      </>
-    ) },
-  ];
+  const floorRef = useRef<HTMLDivElement | null>(null);
+  const handleFloorClick = (e: React.MouseEvent) => {
+    if (!floorRef.current) return;
+    const r = floorRef.current.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * INTERIOR_W;
+    const y = ((e.clientY - r.top) / r.height) * INTERIOR_H;
+    onClickFloor(x, y);
+  };
 
   return (
     <div
       className="absolute inset-0 z-40 animate-in fade-in zoom-in-95 duration-200"
-      style={{
-        background: `linear-gradient(135deg, color-mix(in oklab, ${color} 12%, oklch(0.08 0.02 260)), oklch(0.06 0.02 260))`,
-      }}
+      style={{ background: `linear-gradient(135deg, color-mix(in oklab, ${color} 12%, oklch(0.08 0.02 260)), oklch(0.06 0.02 260))` }}
     >
-      {/* Header */}
       <div className="absolute left-0 right-0 top-0 z-10 flex items-center justify-between p-3">
         <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/50 px-3 py-2 backdrop-blur-md">
           <div className="flex h-8 w-8 items-center justify-center rounded-md" style={{ background: color }}>
@@ -920,7 +1072,7 @@ function BuildingInterior({
           </div>
           <div>
             <div className="text-sm font-semibold text-white">{company.name}</div>
-            <div className="text-[10px] text-white/50">Interior · {districtOf(company.name)?.name}</div>
+            <div className="text-[10px] text-white/50">Interior · {districtOf(company.name)?.name} · {remote.length + 1} pessoa(s)</div>
           </div>
         </div>
         <Button onClick={onExit} variant="ghost" className="rounded-xl border border-white/10 bg-black/50 text-white/80 backdrop-blur-md hover:text-white">
@@ -928,67 +1080,93 @@ function BuildingInterior({
         </Button>
       </div>
 
-      {/* Floor plan area */}
       <div className="absolute inset-0 flex items-center justify-center p-12 pt-20">
         <div
-          className="relative h-full max-h-[640px] w-full max-w-[1040px] rounded-2xl border-2"
+          ref={floorRef}
+          onClick={handleFloorClick}
+          className="relative cursor-crosshair overflow-hidden rounded-2xl border-2"
           style={{
+            width: "min(100%, 1040px)",
+            aspectRatio: `${INTERIOR_W} / ${INTERIOR_H}`,
             background: `repeating-linear-gradient(45deg, color-mix(in oklab, ${color} 6%, oklch(0.12 0.02 260)) 0 14px, color-mix(in oklab, ${color} 9%, oklch(0.10 0.02 260)) 14px 28px)`,
             borderColor: `color-mix(in oklab, ${color} 60%, transparent)`,
             boxShadow: `0 0 80px color-mix(in oklab, ${color} 25%, transparent) inset`,
           }}
         >
-          {sectors.map((s) => {
-            const Icon = s.icon;
-            return (
+          {/* Scaling wrapper using viewBox-like fixed coords */}
+          <div className="absolute inset-0" style={{ width: "100%", height: "100%" }}>
+            <svg viewBox={`0 0 ${INTERIOR_W} ${INTERIOR_H}`} className="absolute inset-0 h-full w-full">
+              {/* corridor between sectors */}
+              <rect x="0" y={INTERIOR_H / 2 - 18} width={INTERIOR_W} height="36" fill="oklch(0.18 0.02 260 / 0.7)" />
+              <rect x={INTERIOR_W / 2 - 18} y="0" width="36" height={INTERIOR_H} fill="oklch(0.18 0.02 260 / 0.5)" />
+
+              {/* sector rooms */}
+              {rects.map((r, i) => {
+                const isReception = sectors[i].toLowerCase().startsWith("recep");
+                return (
+                  <g key={i}>
+                    <rect x={r.x} y={r.y} width={r.w} height={r.h} rx="14"
+                      fill={`color-mix(in oklab, ${color} ${isReception ? 18 : 10}%, oklch(0.10 0.02 260))`}
+                      stroke={`color-mix(in oklab, ${color} 55%, transparent)`} strokeWidth="2" />
+                    {/* Desk / table decoration */}
+                    <rect x={r.x + r.w * 0.18} y={r.y + r.h * 0.55} width={r.w * 0.64} height={r.h * 0.15} rx="6"
+                      fill={`color-mix(in oklab, ${color} 30%, black)`} opacity={0.7} />
+                    {/* Chairs */}
+                    <circle cx={r.x + r.w * 0.28} cy={r.y + r.h * 0.78} r="6" fill="oklch(0.25 0.02 260)" />
+                    <circle cx={r.x + r.w * 0.5} cy={r.y + r.h * 0.82} r="6" fill="oklch(0.25 0.02 260)" />
+                    <circle cx={r.x + r.w * 0.72} cy={r.y + r.h * 0.78} r="6" fill="oklch(0.25 0.02 260)" />
+                    {/* Plant */}
+                    <circle cx={r.x + 18} cy={r.y + r.h - 18} r="8" fill="oklch(0.45 0.12 150)" />
+                    <rect x={r.x + 14} y={r.y + r.h - 12} width="8" height="6" fill="oklch(0.30 0.04 60)" />
+                    {/* Label */}
+                    <text x={r.x + 14} y={r.y + 22} fill={color} fontSize="13" fontWeight={700} letterSpacing="2">{sectors[i].toUpperCase()}</text>
+                  </g>
+                );
+              })}
+
+              {/* Reception decoration (lobby zone) bottom */}
+              <rect x={INTERIOR_W / 2 - 70} y={INTERIOR_H - 50} width="140" height="14" rx="4" fill={color} opacity={0.7} />
+              <text x={INTERIOR_W / 2} y={INTERIOR_H - 16} textAnchor="middle" fill="white" fontSize="10" fontWeight={700} letterSpacing="3" opacity={0.6}>SAÍDA</text>
+            </svg>
+
+            {/* Remote avatars inside */}
+            {remote.map((r) => (
               <div
-                key={s.id}
-                className="absolute rounded-lg border bg-black/40 p-3 backdrop-blur-sm"
-                style={{
-                  left: s.x, top: s.y, width: s.w, height: s.h,
-                  borderColor: `color-mix(in oklab, ${color} 50%, transparent)`,
-                  boxShadow: `0 6px 18px color-mix(in oklab, ${color} 20%, transparent)`,
-                }}
+                key={r.id}
+                className="pointer-events-none absolute h-8 w-8 transition-transform duration-300 ease-linear will-change-transform"
+                style={{ left: 0, top: 0, transform: `translate(calc(${(r.ix / INTERIOR_W) * 100}% - 16px), calc(${(r.iy / INTERIOR_H) * 100}% - 16px))` }}
               >
-                <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color }}>
-                  <Icon className="h-3 w-3" />
-                  {s.title}
-                </div>
-                <div className="text-white text-xs">{s.content}</div>
+                <AvatarChip name={r.name} initial={r.name.charAt(0).toUpperCase()} color={r.color} />
               </div>
-            );
-          })}
+            ))}
 
-          {/* Door bottom */}
-          <div
-            className="absolute -bottom-1 left-1/2 h-6 w-24 -translate-x-1/2 rounded-t-md border-t-2 text-center text-[10px] font-semibold uppercase tracking-wider"
-            style={{ background: color, borderColor: color, color: "white", lineHeight: "20px" }}
-          >
-            Saída
-          </div>
-
-          {/* Avatar inside */}
-          <div
-            ref={avatarRef}
-            className="pointer-events-none absolute left-0 top-0 h-8 w-8 will-change-transform"
-          >
-            <div className="absolute -bottom-1 left-1/2 h-2 w-7 -translate-x-1/2 rounded-full bg-black/50 blur-sm" />
+            {/* My avatar inside */}
             <div
-              className="relative flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-lg ring-2 ring-white/60"
-              style={{ background: `linear-gradient(135deg, ${avatarColor}, oklch(0.55 0.20 280))` }}
+              ref={avatarRef}
+              className="pointer-events-none absolute left-0 top-0 h-8 w-8 will-change-transform"
+              style={{ transform: `translate(calc(${(INTERIOR_W / 2 / INTERIOR_W) * 100}% - 16px), calc(${((INTERIOR_H - 60) / INTERIOR_H) * 100}% - 16px))` }}
             >
-              {avatarInitial}
+              <AvatarChip name="Você" initial={avatarInitial} color={avatarColor} self />
             </div>
           </div>
         </div>
       </div>
 
-      {/* Hints */}
       <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] text-white/60 backdrop-blur">
-        <kbd className="rounded bg-white/10 px-1.5">W A S D</kbd> andar · <kbd className="rounded bg-white/10 px-1.5">Esc</kbd> sair
+        <kbd className="rounded bg-white/10 px-1.5">W A S D</kbd> andar · <span className="rounded bg-white/10 px-1.5">clique</span> mover · <kbd className="rounded bg-white/10 px-1.5">Esc</kbd> sair
       </div>
 
-      {/* Decorative beach elements for orla / marina vibe based on district */}
+      {/* Stats strip */}
+      <div className="pointer-events-none absolute right-3 top-20 hidden w-56 rounded-xl border border-white/10 bg-black/60 p-3 backdrop-blur-md md:block">
+        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">Operação</div>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div><div className="text-white/50 text-[10px]">Tarefas</div><div className="font-semibold tabular-nums text-white">{stats?.activeTasks ?? 0}</div></div>
+          <div><div className="text-white/50 text-[10px]">Projetos</div><div className="font-semibold tabular-nums text-white">{stats?.projects ?? 0}</div></div>
+          <div><div className="text-white/50 text-[10px]">Tempo</div><div className="font-semibold tabular-nums text-white">{formatHours(stats?.productiveMs ?? 0)}</div></div>
+          <div><div className="text-white/50 text-[10px]">Colab.</div><div className="font-semibold tabular-nums text-white">{stats?.collaborators.length ?? 0}</div></div>
+        </div>
+      </div>
+
       <DecorativeIcons district={districtOf(company.name)?.id} />
     </div>
   );
