@@ -255,7 +255,7 @@ export interface Lead {
   company: string;
   stage: "Novo" | "Qualificado" | "Proposta" | "Negociação" | "Fechado";
   value: number;
-  owner: Company;
+  owner: string;
 }
 
 export const LEADS: Lead[] = [
