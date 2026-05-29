@@ -49,7 +49,8 @@ interface Product {
   stock: number; category: string | null; notes: string | null;
 }
 
-const COMPANIES = ["Pub 3D", "Pub IA", "Pub RECORDS", "Pub Films", "Bricks", "Têxtil"];
+import { COMPANIES as HOLDING_COMPANIES } from "@/lib/mock-data";
+const COMPANIES = [...HOLDING_COMPANIES];
 const BRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
 
@@ -888,7 +889,7 @@ function ProductsTab({ products, companyOptions }: { products: Product[]; compan
 function ProductDialog({ initial, workspaceId, userId, onClose }: { initial: Product | null; workspaceId: string | null; userId: string; onClose: () => void }) {
   const [form, setForm] = useState({
     name: initial?.name ?? "",
-    company: initial?.company ?? "Pub 3D",
+    company: initial?.company ?? COMPANIES[0],
     cost: initial?.cost?.toString() ?? "",
     price: initial?.price?.toString() ?? "",
     avg_demand_monthly: initial?.avg_demand_monthly?.toString() ?? "0",

@@ -155,14 +155,13 @@ interface Movement {
   occurred_at: string;
 }
 
-const DEFAULT_COMPANIES: Array<{ name: string; slug: string; color: string }> = [
-  { name: "Pub 3D", slug: "pub-3d", color: "oklch(0.72 0.18 240)" },
-  { name: "Pub IA", slug: "pub-ia", color: "oklch(0.72 0.20 290)" },
-  { name: "Pub RECORDS", slug: "pub-records", color: "oklch(0.74 0.18 30)" },
-  { name: "Pub Films", slug: "pub-films", color: "oklch(0.72 0.16 200)" },
-  { name: "Bricks", slug: "bricks", color: "oklch(0.74 0.16 60)" },
-  { name: "Têxtil", slug: "textil", color: "oklch(0.72 0.18 340)" },
-];
+import { COMPANIES as HOLDING_COMPANIES, COMPANY_COLORS as HOLDING_COLORS } from "@/lib/mock-data";
+
+const DEFAULT_COMPANIES: Array<{ name: string; slug: string; color: string }> = HOLDING_COMPANIES.map((name) => ({
+  name,
+  slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+  color: HOLDING_COLORS[name] ?? "oklch(0.72 0.10 260)",
+}));
 
 const SYSTEM_FIELDS: Array<{ key: string; label: string; type: FieldType; position: number }> = [
   { key: "name", label: "Nome", type: "text", position: 0 },
