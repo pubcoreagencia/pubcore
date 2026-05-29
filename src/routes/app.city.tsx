@@ -52,7 +52,7 @@ function CityPage() {
 
   const refresh = useCallback(async () => {
     if (!activeWorkspaceId) return;
-    const [co, tasks, sessions, archive, members] = await Promise.all([
+    const [co, tasks, sessions, archive] = await Promise.all([
       supabase.from("stock_companies").select("id,name,color,slug").eq("workspace_id", activeWorkspaceId).order("position"),
       supabase.from("checklist_tasks").select("company,status").eq("workspace_id", activeWorkspaceId),
       supabase.from("ponto_sessions").select("company,productive_ms,user_name,owner_email").eq("workspace_id", activeWorkspaceId),
