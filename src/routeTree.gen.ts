@@ -22,6 +22,7 @@ import { Route as AppKanbanRouteImport } from './routes/app.kanban'
 import { Route as AppGratitudeRouteImport } from './routes/app.gratitude'
 import { Route as AppFinanceRouteImport } from './routes/app.finance'
 import { Route as AppCrmRouteImport } from './routes/app.crm'
+import { Route as AppCityRouteImport } from './routes/app.city'
 import { Route as AppChecklistsRouteImport } from './routes/app.checklists'
 import { Route as AppCalendarRouteImport } from './routes/app.calendar'
 import { Route as AppCalculatorRouteImport } from './routes/app.calculator'
@@ -93,6 +94,11 @@ const AppCrmRoute = AppCrmRouteImport.update({
   path: '/crm',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCityRoute = AppCityRouteImport.update({
+  id: '/city',
+  path: '/city',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppChecklistsRoute = AppChecklistsRouteImport.update({
   id: '/checklists',
   path: '/checklists',
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/app/calculator': typeof AppCalculatorRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
+  '/app/city': typeof AppCityRoute
   '/app/crm': typeof AppCrmRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByTo {
   '/app/calculator': typeof AppCalculatorRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
+  '/app/city': typeof AppCityRoute
   '/app/crm': typeof AppCrmRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/app/calculator': typeof AppCalculatorRoute
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
+  '/app/city': typeof AppCityRoute
   '/app/crm': typeof AppCrmRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
     | '/app/calculator'
     | '/app/calendar'
     | '/app/checklists'
+    | '/app/city'
     | '/app/crm'
     | '/app/finance'
     | '/app/gratitude'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/app/calculator'
     | '/app/calendar'
     | '/app/checklists'
+    | '/app/city'
     | '/app/crm'
     | '/app/finance'
     | '/app/gratitude'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/app/calculator'
     | '/app/calendar'
     | '/app/checklists'
+    | '/app/city'
     | '/app/crm'
     | '/app/finance'
     | '/app/gratitude'
@@ -341,6 +353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCrmRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/city': {
+      id: '/app/city'
+      path: '/city'
+      fullPath: '/app/city'
+      preLoaderRoute: typeof AppCityRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/checklists': {
       id: '/app/checklists'
       path: '/checklists'
@@ -385,6 +404,7 @@ interface AppRouteChildren {
   AppCalculatorRoute: typeof AppCalculatorRoute
   AppCalendarRoute: typeof AppCalendarRoute
   AppChecklistsRoute: typeof AppChecklistsRoute
+  AppCityRoute: typeof AppCityRoute
   AppCrmRoute: typeof AppCrmRoute
   AppFinanceRoute: typeof AppFinanceRoute
   AppGratitudeRoute: typeof AppGratitudeRoute
@@ -402,6 +422,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalculatorRoute: AppCalculatorRoute,
   AppCalendarRoute: AppCalendarRoute,
   AppChecklistsRoute: AppChecklistsRoute,
+  AppCityRoute: AppCityRoute,
   AppCrmRoute: AppCrmRoute,
   AppFinanceRoute: AppFinanceRoute,
   AppGratitudeRoute: AppGratitudeRoute,
@@ -424,12 +445,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

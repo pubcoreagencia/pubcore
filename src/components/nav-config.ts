@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, ListChecks, Calendar, Users2, Settings,
-  StickyNote, Wallet, Boxes, Calculator, Box,
+  StickyNote, Wallet, Boxes, Calculator, Box, MapPin,
 } from "lucide-react";
 
 export type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
@@ -9,7 +9,10 @@ export type NavGroup = { label: string; items: NavItem[] };
 export const navGroups: NavGroup[] = [
   {
     label: "Operação",
-    items: [{ to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true }],
+    items: [
+      { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
+      { to: "/app/city", label: "PUB City", icon: MapPin },
+    ],
   },
   {
     label: "Workflow",
