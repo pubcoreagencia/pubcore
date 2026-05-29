@@ -4,6 +4,8 @@ import {
   Building2, X, ListChecks, Activity, Layers, Users2, MapPin,
   DoorOpen, ArrowLeft, Anchor, Trees, UtensilsCrossed, Cpu, Factory,
   ShoppingBag, Coins, Music, Keyboard, Circle, Wifi,
+  Megaphone, Briefcase, Wrench, DollarSign, Coffee, Send, MessageSquare,
+  Sparkles, Clock,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
@@ -23,12 +25,26 @@ interface Company {
   slug: string;
 }
 
+interface ActivityItem {
+  id: string;
+  kind: "task" | "session";
+  text: string;
+  ts: number;
+}
+
 interface CompanyStats {
   activeTasks: number;
+  pendingTasks: number;
   productiveMs: number;
   projects: number;
   collaborators: string[];
   recentTasks: { id: string; title: string; status: string }[];
+  recentActivities: ActivityItem[];
+}
+
+interface ChatMsg {
+  text: string;
+  ts: number;
 }
 
 interface PresencePayload {
@@ -43,6 +59,7 @@ interface PresencePayload {
   company: string | null;
   sector: string | null;
   color: string;
+  msg: ChatMsg | null;
   ts: number;
 }
 
@@ -53,9 +70,9 @@ const TILE_W = 128;
 const TILE_H = 64;
 const INTERIOR_W = 1040;
 const INTERIOR_H = 640;
-
-function toIsoUnused(_x: number, _y: number) { return { x: 0, y: 0 }; }
-void toIsoUnused;
+const CHAT_TTL = 6000;
+const PROX_RADIUS_OUT = 180;
+const PROX_RADIUS_IN = 200;
 
 function formatHours(ms: number) {
   const h = Math.floor(ms / 3_600_000);
@@ -63,7 +80,16 @@ function formatHours(ms: number) {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-// stable hash for deterministic positioning / colors
+function timeAgo(ts: number) {
+  const s = Math.max(1, Math.floor((Date.now() - ts) / 1000));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
+}
+
 function hashStr(s: string) {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
@@ -104,54 +130,76 @@ function districtOf(companyName: string): District | undefined {
   return DISTRICTS.find((d) => d.companies.includes(companyName));
 }
 
-// ============ SECTORS PER COMPANY ============
-const COMPANY_SECTORS: Record<string, string[]> = {
-  "PUB CORE": ["Recepção", "Diretoria", "Operações", "Pessoas"],
-  "PUB": ["Recepção", "Estratégia", "Holding"],
-  "PUB IA": ["Recepção", "Desenvolvimento", "Automações", "Pesquisa"],
-  "PUB 3D": ["Recepção", "Modelagem", "Renderização", "Impressão"],
-  "PUB ADSENSE": ["Recepção", "Mídia", "Performance", "Criativo"],
-  "PUB CRYPTO": ["Recepção", "Trading", "Análise", "Compliance"],
-  "PUB IMÓVEIS": ["Recepção", "Captação", "Vendas", "Locação"],
-  "PUB RECORDS": ["Recepção", "Produção", "Marketing", "Distribuição"],
-  "PUB FILMS": ["Recepção", "Produção", "Edição", "Distribuição"],
-  "PUB CASSINO": ["Recepção", "Mesas", "Slots", "VIP"],
-  "PUB LANÇAMENTOS": ["Recepção", "Captação", "Lançamento", "Pós-venda"],
-  "PUB FOOD": ["Recepção", "Operação", "Cozinha", "Delivery"],
-  "PUB BRICKS": ["Recepção", "Fábrica", "Logística"],
-  "PUB TÊXTIL": ["Recepção", "Produção", "Estamparia", "Embalagem"],
-  "PUB FISHING": ["Recepção", "Captura", "Beneficiamento"],
-  "PUB ECOM": ["Recepção", "Vendas", "Atendimento", "Logística"],
+// ============ STANDARD WORKSTATIONS ============
+// Each company shares the same operational layout so users always know where to go.
+const STANDARD_SECTORS = [
+  "Marketing",
+  "Comercial",
+  "Sala de Reunião",
+  "Produção",
+  "Financeiro",
+  "Operação",
+  "Recepção",
+] as const;
+type SectorName = (typeof STANDARD_SECTORS)[number];
+
+const SECTOR_ICON: Record<SectorName, typeof Building2> = {
+  "Marketing": Megaphone,
+  "Comercial": Briefcase,
+  "Sala de Reunião": Users2,
+  "Produção": Wrench,
+  "Financeiro": DollarSign,
+  "Operação": Activity,
+  "Recepção": Coffee,
 };
-function sectorsOf(name: string): string[] {
-  return COMPANY_SECTORS[name] ?? ["Recepção", "Operação"];
+
+const SECTOR_HINT: Record<SectorName, string> = {
+  "Marketing": "Campanhas, conteúdo e branding",
+  "Comercial": "Pipeline, propostas e fechamentos",
+  "Sala de Reunião": "Encontros e alinhamentos",
+  "Produção": "Execução, entregas e operações criativas",
+  "Financeiro": "Receita, despesas e fluxo",
+  "Operação": "Processos, suporte e bastidores",
+  "Recepção": "Boas-vindas e visão geral",
+};
+
+function sectorsOf(_name: string): SectorName[] {
+  return [...STANDARD_SECTORS];
 }
 
-// 4-zone floor layout (relative to INTERIOR_W x INTERIOR_H)
-function sectorRects(count: number): { x: number; y: number; w: number; h: number }[] {
-  const pad = 30;
-  if (count <= 2) {
-    return [
-      { x: pad, y: pad, w: (INTERIOR_W - pad * 3) / 2, h: INTERIOR_H - pad * 2 - 60 },
-      { x: pad * 2 + (INTERIOR_W - pad * 3) / 2, y: pad, w: (INTERIOR_W - pad * 3) / 2, h: INTERIOR_H - pad * 2 - 60 },
-    ].slice(0, count);
-  }
-  if (count === 3) {
-    const colW = (INTERIOR_W - pad * 4) / 3;
-    return [0, 1, 2].map((i) => ({ x: pad + i * (colW + pad), y: pad, w: colW, h: INTERIOR_H - pad * 2 - 60 }));
-  }
-  // 4+
-  const cols = 2;
-  const rows = Math.ceil(count / cols);
-  const cellW = (INTERIOR_W - pad * (cols + 1)) / cols;
-  const cellH = (INTERIOR_H - 60 - pad * (rows + 1)) / rows;
-  const out: { x: number; y: number; w: number; h: number }[] = [];
-  for (let i = 0; i < count; i++) {
-    const cx = i % cols;
-    const ry = Math.floor(i / cols);
-    out.push({ x: pad + cx * (cellW + pad), y: pad + ry * (cellH + pad), w: cellW, h: cellH });
-  }
-  return out;
+// 3x2 + bottom strip (Recepção). Returns rects keyed by sector name.
+function sectorRects(sectors: SectorName[]): Array<{ x: number; y: number; w: number; h: number; name: SectorName }> {
+  const pad = 22;
+  const recH = 70;
+  const usableH = INTERIOR_H - pad * 3 - 60 - recH; // 60 for "saída" strip
+  const colW = (INTERIOR_W - pad * 4) / 3;
+  const rowH = (usableH - pad) / 2;
+  const pos = (col: number, row: number) => ({
+    x: pad + col * (colW + pad),
+    y: pad + row * (rowH + pad),
+    w: colW,
+    h: rowH,
+  });
+  const slots: Record<SectorName, { x: number; y: number; w: number; h: number }> = {
+    "Marketing":       pos(0, 0),
+    "Comercial":       pos(1, 0),
+    "Sala de Reunião": pos(2, 0),
+    "Produção":        pos(0, 1),
+    "Financeiro":      pos(1, 1),
+    "Operação":        pos(2, 1),
+    "Recepção":        { x: pad, y: pad * 2 + rowH * 2, w: INTERIOR_W - pad * 2, h: recH },
+  };
+  return sectors.map((name) => ({ ...slots[name], name }));
+}
+
+// ============ COMPANY AMBIENCE THEME ============
+// Subtle per-company personality without changing data — pattern angle & accent.
+function themeOf(name: string) {
+  const h = hashStr(name);
+  const angle = (h % 8) * 22; // 0..154°
+  const tile = 14 + (h % 12);
+  const accent = h % 3; // emoji-like accent decoration
+  return { angle, tile, accent };
 }
 
 // ============ ROUTE COMPONENT ============
@@ -167,34 +215,61 @@ function CityPage() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [remote, setRemote] = useState<PresencePayload[]>([]);
   const [proximityUser, setProximityUser] = useState<PresencePayload | null>(null);
+  const [selfSector, setSelfSector] = useState<SectorName | null>(null);
+
+  // Chat state
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatText, setChatText] = useState("");
+  const [myMsg, setMyMsg] = useState<ChatMsg | null>(null);
+  const [chatTick, setChatTick] = useState(0); // forces re-render to expire bubbles
 
   // ===== Refresh aggregated company data =====
   const refresh = useCallback(async () => {
     if (!activeWorkspaceId) return;
     const [co, tasks, sessions, archive] = await Promise.all([
       supabase.from("stock_companies").select("id,name,color,slug").eq("workspace_id", activeWorkspaceId).order("position"),
-      supabase.from("checklist_tasks").select("id,title,company,status,created_at").eq("workspace_id", activeWorkspaceId).order("created_at", { ascending: false }),
-      supabase.from("ponto_sessions").select("company,productive_ms,user_name,owner_email").eq("workspace_id", activeWorkspaceId),
+      supabase.from("checklist_tasks").select("id,title,company,status,created_at,done_at").eq("workspace_id", activeWorkspaceId).order("created_at", { ascending: false }).limit(400),
+      supabase.from("ponto_sessions").select("company,productive_ms,user_name,owner_email,started_at,ended_at").eq("workspace_id", activeWorkspaceId).order("started_at", { ascending: false }).limit(200),
       supabase.from("kanban_cards_archive").select("company").eq("workspace_id", activeWorkspaceId),
     ]);
     const cs = (co.data ?? []) as Company[];
     setCompanies(cs);
     const agg: Record<string, CompanyStats> = {};
-    for (const c of cs) agg[c.name] = { activeTasks: 0, productiveMs: 0, projects: 0, collaborators: [], recentTasks: [] };
-    for (const t of (tasks.data ?? []) as Array<{ id: string; title: string; company: string; status: string }>) {
+    for (const c of cs) agg[c.name] = {
+      activeTasks: 0, pendingTasks: 0, productiveMs: 0, projects: 0,
+      collaborators: [], recentTasks: [], recentActivities: [],
+    };
+    for (const t of (tasks.data ?? []) as Array<{ id: string; title: string; company: string; status: string; created_at: string; done_at: string | null }>) {
       const a = agg[t.company]; if (!a) continue;
-      if (t.status !== "done") a.activeTasks++;
-      if (a.recentTasks.length < 5) a.recentTasks.push({ id: t.id, title: t.title, status: t.status });
+      if (t.status !== "done") { a.activeTasks++; if (t.status === "pending") a.pendingTasks++; }
+      if (a.recentTasks.length < 6) a.recentTasks.push({ id: t.id, title: t.title, status: t.status });
+      a.recentActivities.push({
+        id: `t-${t.id}`,
+        kind: "task",
+        text: t.status === "done" ? `Tarefa concluída: ${t.title}` : `Nova tarefa: ${t.title}`,
+        ts: new Date(t.done_at || t.created_at).getTime(),
+      });
     }
-    for (const s of (sessions.data ?? []) as Array<{ company: string | null; productive_ms: number; user_name: string | null; owner_email: string }>) {
+    for (const s of (sessions.data ?? []) as Array<{ company: string | null; productive_ms: number; user_name: string | null; owner_email: string; started_at: string; ended_at: string | null }>) {
       if (!s.company || !agg[s.company]) continue;
       agg[s.company].productiveMs += Number(s.productive_ms || 0);
       const who = s.user_name || s.owner_email;
       if (who && !agg[s.company].collaborators.includes(who)) agg[s.company].collaborators.push(who);
+      agg[s.company].recentActivities.push({
+        id: `s-${s.started_at}-${s.owner_email}`,
+        kind: "session",
+        text: `${who} ${s.ended_at ? "fechou ponto" : "iniciou ponto"}`,
+        ts: new Date(s.ended_at || s.started_at).getTime(),
+      });
     }
     for (const k of (archive.data ?? []) as Array<{ company: string }>) {
       if (!agg[k.company]) continue;
       agg[k.company].projects++;
+    }
+    // sort activities & cap
+    for (const k of Object.keys(agg)) {
+      agg[k].recentActivities.sort((a, b) => b.ts - a.ts);
+      agg[k].recentActivities = agg[k].recentActivities.slice(0, 8);
     }
     setStats(agg);
     setLoading(false);
@@ -249,10 +324,24 @@ function CityPage() {
 
   const [nearestUI, setNearestUI] = useState<{ name: string; color: string } | null>(null);
 
+  // chat bubble expiration tick
+  useEffect(() => {
+    const t = setInterval(() => setChatTick((v) => v + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // expire myMsg locally so I broadcast a cleared msg
+  useEffect(() => {
+    if (!myMsg) return;
+    const t = setTimeout(() => setMyMsg(null), CHAT_TTL + 50);
+    return () => clearTimeout(t);
+  }, [myMsg]);
+
   // ===== keyboard =====
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === "INPUT" || (e.target as HTMLElement)?.tagName === "TEXTAREA") return;
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       const k = e.key.toLowerCase();
       if (k === "w" || k === "arrowup") gs.current.keys.up = true;
       else if (k === "s" || k === "arrowdown") gs.current.keys.down = true;
@@ -261,8 +350,8 @@ function CityPage() {
       else if (k === "e") {
         const n = gs.current.nearest;
         if (n && !interiorRef.current) enterBuilding(n.c);
-      } else if (k === "escape" && interiorRef.current) exitBuilding();
-      // any key cancels click-to-move
+      } else if (k === "t") { e.preventDefault(); setChatOpen((v) => !v); }
+      else if (k === "escape") { if (chatOpen) setChatOpen(false); else if (interiorRef.current) exitBuilding(); }
       if (["w","a","s","d","arrowup","arrowdown","arrowleft","arrowright"].includes(k)) {
         gs.current.target = null;
         gs.current.interiorTarget = null;
@@ -278,11 +367,13 @@ function CityPage() {
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
-  }, []);
+  }, [chatOpen]);
 
   // ===== Realtime presence =====
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const lastTrackRef = useRef(0);
+  const myMsgRef = useRef<ChatMsg | null>(null);
+  myMsgRef.current = myMsg;
 
   useEffect(() => {
     if (!activeWorkspaceId || !user) return;
@@ -306,18 +397,10 @@ function CityPage() {
     ch.subscribe(async (status) => {
       if (status === "SUBSCRIBED") {
         await ch.track({
-          id: user.id,
-          name: user.name,
-          role: user.role || "Membro",
-          email: user.email,
-          x: gs.current.avatar.x,
-          y: gs.current.avatar.y,
-          ix: gs.current.interior.x,
-          iy: gs.current.interior.y,
-          company: null,
-          sector: null,
-          color: myColor,
-          ts: Date.now(),
+          id: user.id, name: user.name, role: user.role || "Membro", email: user.email,
+          x: gs.current.avatar.x, y: gs.current.avatar.y,
+          ix: gs.current.interior.x, iy: gs.current.interior.y,
+          company: null, sector: null, color: myColor, msg: null, ts: Date.now(),
         } satisfies PresencePayload);
       }
     });
@@ -325,39 +408,37 @@ function CityPage() {
     return () => { ch.unsubscribe(); channelRef.current = null; };
   }, [activeWorkspaceId, user]);
 
-  const trackPresence = useCallback(() => {
+  const computeSelfSector = useCallback((): SectorName | null => {
+    const cur = interiorRef.current;
+    if (!cur) return null;
+    const rects = sectorRects([...STANDARD_SECTORS]);
+    const ix = gs.current.interior.x;
+    const iy = gs.current.interior.y;
+    for (const r of rects) {
+      if (ix >= r.x && ix <= r.x + r.w && iy >= r.y && iy <= r.y + r.h) return r.name;
+    }
+    return null;
+  }, []);
+
+  const trackPresence = useCallback((force = false) => {
     const ch = channelRef.current;
     if (!ch || !user) return;
     const now = Date.now();
-    if (now - lastTrackRef.current < 300) return;
+    if (!force && now - lastTrackRef.current < 300) return;
     lastTrackRef.current = now;
     const cur = interiorRef.current;
-    let sector: string | null = null;
-    if (cur) {
-      const list = sectorsOf(cur.name);
-      const rects = sectorRects(list.length);
-      const ix = gs.current.interior.x;
-      const iy = gs.current.interior.y;
-      for (let i = 0; i < rects.length; i++) {
-        const r = rects[i];
-        if (ix >= r.x && ix <= r.x + r.w && iy >= r.y && iy <= r.y + r.h) { sector = list[i]; break; }
-      }
-    }
+    const sector = computeSelfSector();
+    const msg = myMsgRef.current && now - myMsgRef.current.ts < CHAT_TTL ? myMsgRef.current : null;
     ch.track({
-      id: user.id,
-      name: user.name,
-      role: user.role || "Membro",
-      email: user.email,
-      x: gs.current.avatar.x,
-      y: gs.current.avatar.y,
-      ix: gs.current.interior.x,
-      iy: gs.current.interior.y,
-      company: cur?.name ?? null,
-      sector,
-      color: colorForUser(user.id),
-      ts: now,
+      id: user.id, name: user.name, role: user.role || "Membro", email: user.email,
+      x: gs.current.avatar.x, y: gs.current.avatar.y,
+      ix: gs.current.interior.x, iy: gs.current.interior.y,
+      company: cur?.name ?? null, sector, color: colorForUser(user.id), msg, ts: now,
     } satisfies PresencePayload);
-  }, [user]);
+  }, [user, computeSelfSector]);
+
+  // re-track immediately when myMsg changes (send/clear)
+  useEffect(() => { trackPresence(true); }, [myMsg, trackPresence]);
 
   // ===== animation loop =====
   useEffect(() => {
@@ -370,7 +451,6 @@ function CityPage() {
       const s = gs.current;
       const inInterior = !!interiorRef.current;
 
-      // input vector
       let vx = 0, vy = 0;
       if (s.keys.up) vy -= 1;
       if (s.keys.down) vy += 1;
@@ -378,18 +458,14 @@ function CityPage() {
       if (s.keys.right) vx += 1;
       if (s.joy.active) { vx += s.joy.dx; vy += s.joy.dy; }
 
-      // click-to-move steering
       const tgt = inInterior ? s.interiorTarget : s.target;
       if (tgt && vx === 0 && vy === 0) {
         const pos = inInterior ? s.interior : s.avatar;
         const dx = tgt.x - pos.x;
         const dy = tgt.y - pos.y;
         const d = Math.hypot(dx, dy);
-        if (d < 4) {
-          if (inInterior) s.interiorTarget = null; else s.target = null;
-        } else {
-          vx = dx / d; vy = dy / d;
-        }
+        if (d < 4) { if (inInterior) s.interiorTarget = null; else s.target = null; }
+        else { vx = dx / d; vy = dy / d; }
       }
       const mag = Math.hypot(vx, vy);
       if (mag > 1) { vx /= mag; vy /= mag; }
@@ -415,7 +491,6 @@ function CityPage() {
           s.manualPan = false;
         }
 
-        // nearest building
         let best: typeof s.nearest = null;
         for (const b of buildings) {
           const d = Math.hypot(b.x - s.avatar.x, b.y - s.avatar.y);
@@ -435,7 +510,6 @@ function CityPage() {
         }
       }
 
-      // throttled UI updates
       const cur = s.nearest?.c.name ?? null;
       const prev = avatarOutRef.current?.dataset.near ?? null;
       if (cur !== prev) {
@@ -443,7 +517,6 @@ function CityPage() {
         setNearestUI(s.nearest ? { name: s.nearest.c.name, color: s.nearest.c.color } : null);
       }
 
-      // presence broadcast
       if (mag > 0 || s.target || s.interiorTarget) trackPresence();
 
       raf = requestAnimationFrame(loop);
@@ -452,27 +525,23 @@ function CityPage() {
     return () => cancelAnimationFrame(raf);
   }, [buildings, trackPresence]);
 
-  // periodic presence heartbeat even when idle
-  useEffect(() => {
-    const t = setInterval(trackPresence, 4000);
-    return () => clearInterval(t);
-  }, [trackPresence]);
-
-  // recompute proximity (nearest remote user) every 300ms
+  // heartbeat & self-sector + proximity polling
   useEffect(() => {
     const t = setInterval(() => {
+      trackPresence();
+      setSelfSector(computeSelfSector());
       const s = gs.current;
       const inInterior = !!interiorRef.current;
       const curCo = interiorRef.current?.name ?? null;
       let best: PresencePayload | null = null;
-      let bestD = inInterior ? 80 : 90;
+      let bestD = inInterior ? PROX_RADIUS_IN : PROX_RADIUS_OUT;
       for (const r of remote) {
         if (inInterior) {
           if (r.company !== curCo) continue;
           const d = Math.hypot(r.ix - s.interior.x, r.iy - s.interior.y);
           if (d < bestD) { bestD = d; best = r; }
         } else {
-          if (r.company) continue; // remote is indoors
+          if (r.company) continue;
           const d = Math.hypot(r.x - s.avatar.x, r.y - s.avatar.y);
           if (d < bestD) { bestD = d; best = r; }
         }
@@ -480,7 +549,7 @@ function CityPage() {
       setProximityUser((prev) => (prev?.id === best?.id ? prev : best));
     }, 300);
     return () => clearInterval(t);
-  }, [remote]);
+  }, [remote, trackPresence, computeSelfSector]);
 
   // initial camera centering
   useEffect(() => {
@@ -513,7 +582,6 @@ function CityPage() {
     const wasDrag = dragRef.current?.moved;
     dragRef.current = null;
     if (wasDrag) return;
-    // click-to-move (outdoor)
     const vp = viewportRef.current?.getBoundingClientRect();
     if (!vp) return;
     const wx = (e.clientX - vp.left - gs.current.cam.x) / gs.current.cam.scale;
@@ -526,7 +594,7 @@ function CityPage() {
     gs.current.cam.scale = Math.min(1.8, Math.max(0.45, gs.current.cam.scale + delta));
   };
 
-  // ===== joystick (touch) =====
+  // ===== joystick =====
   const joyRef = useRef<HTMLDivElement | null>(null);
   const joyKnobRef = useRef<HTMLDivElement | null>(null);
   const onJoyDown = (e: React.PointerEvent) => {
@@ -557,16 +625,15 @@ function CityPage() {
     if (joyKnobRef.current) joyKnobRef.current.style.transform = "translate(0,0)";
   };
 
-  // ===== Enter / exit buildings =====
   function enterBuilding(c: Company) {
     gs.current.interior = { x: INTERIOR_W / 2, y: INTERIOR_H - 60 };
     gs.current.interiorTarget = null;
     setInterior(c);
-    setTimeout(trackPresence, 50);
+    setTimeout(() => trackPresence(true), 50);
   }
   function exitBuilding() {
     setInterior(null);
-    setTimeout(trackPresence, 50);
+    setTimeout(() => trackPresence(true), 50);
   }
 
   const handleBuildingClick = (c: Company) => {
@@ -574,24 +641,47 @@ function CityPage() {
     setSelected(c);
   };
 
+  const sendChat = () => {
+    const text = chatText.trim().slice(0, 140);
+    if (!text) return;
+    setMyMsg({ text, ts: Date.now() });
+    setChatText("");
+  };
+
   const userInitial = (user?.name || user?.email || "?").trim().charAt(0).toUpperCase();
   const myColor = user ? colorForUser(user.id) : "oklch(0.72 0.18 250)";
 
-  // who's online list
   const onlineList = useMemo(() => {
     const list: Array<{ id: string; name: string; role: string; company: string | null; sector: string | null; color: string; self?: boolean }> = [];
-    if (user) list.push({ id: user.id, name: user.name + " (você)", role: user.role || "Membro", company: interior?.name ?? null, sector: null, color: myColor, self: true });
+    if (user) list.push({ id: user.id, name: user.name + " (você)", role: user.role || "Membro", company: interior?.name ?? null, sector: selfSector, color: myColor, self: true });
     for (const r of remote) list.push({ id: r.id, name: r.name, role: r.role, company: r.company, sector: r.sector, color: r.color });
     return list;
-  }, [remote, user, interior, myColor]);
+  }, [remote, user, interior, myColor, selfSector]);
 
-  // remote avatars relevant to current scene
   const remoteOutdoor = remote.filter((r) => !r.company);
   const remoteIndoor = remote.filter((r) => interior && r.company === interior.name);
 
+  // proximity chat: only show bubbles from users near me
+  const visibleBubbles = useMemo(() => {
+    const now = Date.now();
+    const s = gs.current;
+    const inInterior = !!interior;
+    return remote.filter((r) => {
+      if (!r.msg || now - r.msg.ts > CHAT_TTL) return false;
+      if (inInterior) {
+        if (r.company !== interior?.name) return false;
+        return Math.hypot(r.ix - s.interior.x, r.iy - s.interior.y) < 280;
+      }
+      if (r.company) return false;
+      return Math.hypot(r.x - s.avatar.x, r.y - s.avatar.y) < 260;
+    });
+    // chatTick re-renders every 1s to expire bubbles
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remote, interior, chatTick]);
+
   return (
     <div className="relative h-[calc(100dvh-120px)] w-full overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-[oklch(0.14_0.02_260)] via-[oklch(0.10_0.02_240)] to-[oklch(0.07_0.02_220)]">
-      {/* ===== Header overlay ===== */}
+      {/* Header */}
       <div className="pointer-events-none absolute left-0 right-0 top-0 z-20 flex items-center justify-between p-3">
         <div className="pointer-events-auto rounded-xl border border-white/10 bg-black/50 px-3 py-2 backdrop-blur-md">
           <div className="flex items-center gap-2 text-sm font-semibold text-white">
@@ -606,6 +696,9 @@ function CityPage() {
           <Button size="sm" variant="ghost" className="h-7 text-white/70 hover:text-white" onClick={() => { gs.current.cam.scale = Math.max(0.45, gs.current.cam.scale - 0.15); }}>−</Button>
           <span className="px-1 text-[10px] text-white/50 tabular-nums">zoom</span>
           <Button size="sm" variant="ghost" className="h-7 text-white/70 hover:text-white" onClick={() => { gs.current.cam.scale = Math.min(1.8, gs.current.cam.scale + 0.15); }}>+</Button>
+          <Button size="sm" variant="ghost" className="h-7 text-white/70 hover:text-white" onClick={() => setChatOpen((v) => !v)} title="Chat (T)">
+            <MessageSquare className="h-3.5 w-3.5" />
+          </Button>
           <Button size="sm" variant="ghost" className="h-7 text-white/70 hover:text-white" onClick={() => setHelpOpen((v) => !v)}>
             <Keyboard className="h-3.5 w-3.5" />
           </Button>
@@ -619,12 +712,13 @@ function CityPage() {
             <div><kbd className="rounded bg-white/10 px-1.5">W A S D</kbd> ou setas — andar</div>
             <div><span className="rounded bg-white/10 px-1.5">Clique</span> no mapa — mover até o ponto</div>
             <div><kbd className="rounded bg-white/10 px-1.5">E</kbd> — entrar no prédio próximo</div>
-            <div><kbd className="rounded bg-white/10 px-1.5">Esc</kbd> — sair do prédio</div>
+            <div><kbd className="rounded bg-white/10 px-1.5">T</kbd> — abrir chat de proximidade</div>
+            <div><kbd className="rounded bg-white/10 px-1.5">Esc</kbd> — sair / fechar</div>
           </div>
         </div>
       )}
 
-      {/* ===== Online panel ===== */}
+      {/* Online panel */}
       <div className="pointer-events-none absolute left-3 top-20 z-20 hidden md:block">
         <div className="pointer-events-auto w-56 rounded-xl border border-white/10 bg-black/50 p-2 backdrop-blur-md">
           <div className="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/70">
@@ -634,8 +728,7 @@ function CityPage() {
             {onlineList.map((u) => (
               <div key={u.id} className={cn("flex items-center gap-2 rounded-md px-1.5 py-1 text-[11px]", u.self ? "bg-white/10" : "hover:bg-white/5")}>
                 <div className="relative">
-                  <div className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white"
-                    style={{ background: u.color }}>{u.name.charAt(0).toUpperCase()}</div>
+                  <div className="flex h-5 w-5 items-center justify-center rounded-full text-[9px] font-bold text-white" style={{ background: u.color }}>{u.name.charAt(0).toUpperCase()}</div>
                   <Circle className="absolute -bottom-0.5 -right-0.5 h-2 w-2 fill-emerald-400 text-emerald-400" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -650,7 +743,7 @@ function CityPage() {
         </div>
       </div>
 
-      {/* ===== Viewport ===== */}
+      {/* Viewport */}
       <div
         ref={viewportRef}
         className="absolute inset-0 cursor-grab touch-none active:cursor-grabbing"
@@ -660,40 +753,32 @@ function CityPage() {
         onPointerCancel={() => { dragRef.current = null; }}
         onWheel={onWheel}
       >
-        <div
-          ref={worldRef}
-          className="absolute left-0 top-0 will-change-transform"
-          style={{ width: WORLD_W, height: WORLD_H, transformOrigin: "0 0" }}
-        >
+        <div ref={worldRef} className="absolute left-0 top-0 will-change-transform" style={{ width: WORLD_W, height: WORLD_H, transformOrigin: "0 0" }}>
           <Terrain />
 
           {DISTRICTS.map((d) => <DistrictZone key={d.id} d={d} />)}
 
-          {buildings
-            .slice()
-            .sort((a, b) => a.y - b.y)
-            .map(({ c, x, y, h }) => (
-              <Building key={c.id} company={c} x={x} y={y} h={h} stats={stats[c.name]} onClick={() => handleBuildingClick(c)} />
-            ))}
+          {buildings.slice().sort((a, b) => a.y - b.y).map(({ c, x, y, h }) => (
+            <Building key={c.id} company={c} x={x} y={y} h={h} stats={stats[c.name]} onClick={() => handleBuildingClick(c)} />
+          ))}
 
-          {/* Click-to-move target marker */}
           <ClickMarker getTarget={() => gs.current.target} />
 
-          {/* Remote avatars (outdoor) */}
+          {/* Remote bubbles outdoor */}
+          {visibleBubbles.filter((r) => !r.company).map((r) => (
+            <SpeechBubbleAt key={`b-${r.id}`} x={r.x} y={r.y - 36} text={r.msg!.text} color={r.color} />
+          ))}
+
+          {/* Remote avatars outdoor */}
           {remoteOutdoor.map((r) => (
             <RemoteAvatar key={r.id} payload={r} />
           ))}
 
           {/* My avatar */}
-          <div
-            ref={avatarOutRef}
-            className="pointer-events-none absolute left-0 top-0 z-30 h-8 w-8 will-change-transform"
-            style={{ transform: `translate(${gs.current.avatar.x - 16}px, ${gs.current.avatar.y - 16}px)` }}
-          >
-            <AvatarChip name={user?.name ?? "Você"} initial={userInitial} color={myColor} self />
+          <div ref={avatarOutRef} className="pointer-events-none absolute left-0 top-0 z-30 h-8 w-8 will-change-transform" style={{ transform: `translate(${gs.current.avatar.x - 16}px, ${gs.current.avatar.y - 16}px)` }}>
+            <AvatarChip name={user?.name ?? "Você"} initial={userInitial} color={myColor} self bubble={!interior && myMsg && Date.now() - myMsg.ts < CHAT_TTL ? myMsg.text : null} />
           </div>
 
-          {/* Enter prompt */}
           <div ref={promptRef} className="pointer-events-none absolute left-0 top-0 z-30 hidden">
             <div className="rounded-md border border-white/20 bg-black/80 px-2 py-1 text-[11px] text-white shadow-lg backdrop-blur">
               <span className="font-semibold" style={{ color: nearestUI?.color }}>{nearestUI?.name}</span>
@@ -703,16 +788,9 @@ function CityPage() {
         </div>
       </div>
 
-      {/* ===== Mobile joystick ===== */}
+      {/* Joystick */}
       <div data-joystick className="absolute bottom-4 left-4 z-20 select-none touch-none md:hidden">
-        <div
-          ref={joyRef}
-          onPointerDown={onJoyDown}
-          onPointerMove={onJoyMove}
-          onPointerUp={onJoyUp}
-          onPointerCancel={onJoyUp}
-          className="relative h-28 w-28 rounded-full border border-white/20 bg-black/40 backdrop-blur-md"
-        >
+        <div ref={joyRef} onPointerDown={onJoyDown} onPointerMove={onJoyMove} onPointerUp={onJoyUp} onPointerCancel={onJoyUp} className="relative h-28 w-28 rounded-full border border-white/20 bg-black/40 backdrop-blur-md">
           <div ref={joyKnobRef} className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/80 shadow-lg" />
         </div>
       </div>
@@ -731,7 +809,7 @@ function CityPage() {
 
       {/* Proximity card */}
       {proximityUser && (
-        <div className="absolute bottom-6 left-1/2 z-30 -translate-x-1/2 rounded-xl border border-white/20 bg-black/80 px-4 py-2 text-xs text-white shadow-2xl backdrop-blur-md">
+        <div className="pointer-events-none absolute bottom-20 left-1/2 z-30 -translate-x-1/2 rounded-xl border border-white/20 bg-black/80 px-4 py-2 text-xs text-white shadow-2xl backdrop-blur-md">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: proximityUser.color }}>
               {proximityUser.name.charAt(0).toUpperCase()}
@@ -743,7 +821,7 @@ function CityPage() {
                 {proximityUser.company && <> · em <span style={{ color: "oklch(0.85 0.10 200)" }}>{proximityUser.company}</span>{proximityUser.sector ? ` · ${proximityUser.sector}` : ""}</>}
               </div>
               <div className="mt-1 flex gap-1.5 text-[9px] uppercase tracking-wider text-white/40">
-                <span className="rounded bg-white/5 px-1.5 py-0.5">chat (em breve)</span>
+                <span className="rounded bg-emerald-400/10 px-1.5 py-0.5 text-emerald-300">chat ativo · T</span>
                 <span className="rounded bg-white/5 px-1.5 py-0.5">voz (em breve)</span>
                 <span className="rounded bg-white/5 px-1.5 py-0.5">reunião (em breve)</span>
               </div>
@@ -752,7 +830,31 @@ function CityPage() {
         </div>
       )}
 
-      {/* ===== Interior overlay ===== */}
+      {/* Chat input — proximity local */}
+      {chatOpen && (
+        <div className="absolute bottom-6 left-1/2 z-40 w-[min(440px,90vw)] -translate-x-1/2 rounded-2xl border border-white/15 bg-black/80 p-2 shadow-2xl backdrop-blur-xl">
+          <div className="mb-1 flex items-center justify-between px-1 text-[10px] uppercase tracking-wider text-white/50">
+            <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" /> Chat local · alcança quem está por perto</span>
+            <button onClick={() => setChatOpen(false)} className="text-white/40 hover:text-white"><X className="h-3 w-3" /></button>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              value={chatText}
+              onChange={(e) => setChatText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); sendChat(); } if (e.key === "Escape") setChatOpen(false); }}
+              maxLength={140}
+              placeholder="Diga algo… (Enter envia)"
+              className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+            />
+            <Button size="sm" onClick={sendChat} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Send className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Interior overlay */}
       {interior && (
         <BuildingInterior
           company={interior}
@@ -761,14 +863,17 @@ function CityPage() {
           avatarRef={avatarInRef}
           avatarInitial={userInitial}
           avatarColor={myColor}
+          myMsg={myMsg && Date.now() - myMsg.ts < CHAT_TTL ? myMsg : null}
           remote={remoteIndoor}
+          visibleBubbles={visibleBubbles.filter((r) => r.company === interior.name)}
           onClickFloor={(x, y) => { gs.current.interiorTarget = { x, y }; }}
+          selfSector={selfSector}
         />
       )}
 
-      {/* ===== Detail Sheet ===== */}
+      {/* Detail Sheet */}
       <Sheet open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <SheetContent className="w-[380px] border-l border-white/10 bg-[oklch(0.12_0.02_260)] text-white sm:max-w-[380px]">
+        <SheetContent className="w-[420px] border-l border-white/10 bg-[oklch(0.12_0.02_260)] text-white sm:max-w-[420px]">
           {selected && (
             <>
               <SheetHeader>
@@ -786,20 +891,59 @@ function CityPage() {
               <div className="mt-6 grid grid-cols-2 gap-3">
                 <Stat icon={ListChecks} label="Tarefas ativas" value={stats[selected.name]?.activeTasks ?? 0} color={selected.color} />
                 <Stat icon={Activity} label="Produtividade" value={formatHours(stats[selected.name]?.productiveMs ?? 0)} color={selected.color} />
-                <Stat icon={Layers} label="Projetos" value={stats[selected.name]?.projects ?? 0} color={selected.color} />
+                <Stat icon={Layers} label="Projetos ativos" value={stats[selected.name]?.projects ?? 0} color={selected.color} />
                 <Stat icon={Users2} label="Colaboradores" value={stats[selected.name]?.collaborators.length ?? 0} color={selected.color} />
               </div>
 
-              <div className="mt-4">
-                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">Setores</div>
-                <div className="flex flex-wrap gap-1.5">
-                  {sectorsOf(selected.name).map((s) => (
-                    <span key={s} className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70">{s}</span>
+              {/* Tarefas pendentes */}
+              <div className="mt-5">
+                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">Tarefas pendentes</div>
+                <div className="space-y-1 rounded-lg border border-white/5 bg-white/[0.02] p-2">
+                  {(stats[selected.name]?.recentTasks ?? []).filter((t) => t.status !== "done").slice(0, 5).map((t) => (
+                    <div key={t.id} className="flex items-center gap-2 text-xs">
+                      <Circle className="h-2 w-2 fill-current" style={{ color: selected.color }} />
+                      <span className="truncate text-white/80">{t.title}</span>
+                      <span className="ml-auto text-[9px] uppercase tracking-wider text-white/30">{t.status}</span>
+                    </div>
                   ))}
+                  {!(stats[selected.name]?.recentTasks ?? []).some((t) => t.status !== "done") && (
+                    <div className="text-center text-[11px] text-white/30">Nenhuma tarefa pendente</div>
+                  )}
                 </div>
               </div>
 
-              <Button className="mt-4 w-full" style={{ background: selected.color, color: "white" }} onClick={() => { enterBuilding(selected); setSelected(null); }}>
+              {/* Últimas atividades */}
+              <div className="mt-4">
+                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">Últimas atividades</div>
+                <div className="space-y-1 rounded-lg border border-white/5 bg-white/[0.02] p-2">
+                  {(stats[selected.name]?.recentActivities ?? []).slice(0, 6).map((a) => (
+                    <div key={a.id} className="flex items-start gap-2 text-[11px]">
+                      <Clock className="mt-0.5 h-3 w-3 shrink-0 text-white/40" />
+                      <span className="flex-1 text-white/70">{a.text}</span>
+                      <span className="shrink-0 text-[9px] text-white/30">{timeAgo(a.ts)}</span>
+                    </div>
+                  ))}
+                  {(stats[selected.name]?.recentActivities ?? []).length === 0 && (
+                    <div className="text-center text-[11px] text-white/30">Sem atividades recentes</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">Estações de trabalho</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {sectorsOf(selected.name).map((s) => {
+                    const Icon = SECTOR_ICON[s];
+                    return (
+                      <span key={s} className="flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-white/70">
+                        <Icon className="h-3 w-3" /> {s}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <Button className="mt-5 w-full" style={{ background: selected.color, color: "white" }} onClick={() => { enterBuilding(selected); setSelected(null); }}>
                 <DoorOpen className="mr-2 h-4 w-4" /> Entrar no prédio
               </Button>
 
@@ -815,9 +959,16 @@ function CityPage() {
 }
 
 // ============ Avatar chip ============
-function AvatarChip({ name, initial, color, self }: { name: string; initial: string; color: string; self?: boolean }) {
+function AvatarChip({ name, initial, color, self, bubble }: { name: string; initial: string; color: string; self?: boolean; bubble?: string | null }) {
   return (
     <div className="relative">
+      {bubble && (
+        <div className="pointer-events-none absolute left-1/2 -top-12 z-40 max-w-[200px] -translate-x-1/2 whitespace-pre-wrap break-words rounded-2xl border bg-white px-2.5 py-1.5 text-[11px] font-medium text-black shadow-lg"
+          style={{ borderColor: color }}>
+          {bubble}
+          <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 -translate-y-1 rotate-45 border-b border-r bg-white" style={{ borderColor: color }} />
+        </div>
+      )}
       <div className="absolute -bottom-1 left-1/2 h-2 w-7 -translate-x-1/2 rounded-full bg-black/50 blur-sm" />
       <div
         className={cn("relative flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-bold text-white shadow-lg", self ? "ring-2 ring-white/70" : "ring-2 ring-white/30")}
@@ -832,19 +983,26 @@ function AvatarChip({ name, initial, color, self }: { name: string; initial: str
   );
 }
 
-// ============ Remote outdoor avatar — uses raw style updates via key prop ============
 function RemoteAvatar({ payload }: { payload: PresencePayload }) {
+  const bubble = payload.msg && Date.now() - payload.msg.ts < CHAT_TTL ? payload.msg.text : null;
   return (
-    <div
-      className="pointer-events-none absolute left-0 top-0 z-20 h-8 w-8 transition-transform duration-300 ease-linear will-change-transform"
-      style={{ transform: `translate(${payload.x - 16}px, ${payload.y - 16}px)` }}
-    >
-      <AvatarChip name={payload.name} initial={payload.name.charAt(0).toUpperCase()} color={payload.color} />
+    <div className="pointer-events-none absolute left-0 top-0 z-20 h-8 w-8 transition-transform duration-300 ease-linear will-change-transform" style={{ transform: `translate(${payload.x - 16}px, ${payload.y - 16}px)` }}>
+      <AvatarChip name={payload.name} initial={payload.name.charAt(0).toUpperCase()} color={payload.color} bubble={bubble} />
     </div>
   );
 }
 
-// ============ Click target marker ============
+function SpeechBubbleAt({ x, y, text, color }: { x: number; y: number; text: string; color: string }) {
+  // standalone bubble (used for outdoor world coords)
+  return (
+    <div className="pointer-events-none absolute left-0 top-0 z-30 max-w-[220px] -translate-x-1/2 rounded-2xl border bg-white px-2.5 py-1.5 text-[11px] font-medium text-black shadow-xl"
+      style={{ borderColor: color, transform: `translate(${x}px, ${y}px) translate(-50%, -100%)` }}
+    >
+      {text}
+    </div>
+  );
+}
+
 function ClickMarker({ getTarget }: { getTarget: () => { x: number; y: number } | null }) {
   const ref = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -852,12 +1010,8 @@ function ClickMarker({ getTarget }: { getTarget: () => { x: number; y: number } 
     const tick = () => {
       const t = getTarget();
       if (ref.current) {
-        if (t) {
-          ref.current.style.display = "block";
-          ref.current.style.transform = `translate(${t.x - 14}px, ${t.y - 14}px)`;
-        } else {
-          ref.current.style.display = "none";
-        }
+        if (t) { ref.current.style.display = "block"; ref.current.style.transform = `translate(${t.x - 14}px, ${t.y - 14}px)`; }
+        else { ref.current.style.display = "none"; }
       }
       raf = requestAnimationFrame(tick);
     };
@@ -894,8 +1048,7 @@ function Terrain() {
           <stop offset="100%" stopColor="oklch(0.28 0.06 145)" />
         </linearGradient>
         <pattern id="iso-grid-light" width={TILE_W} height={TILE_H} patternUnits="userSpaceOnUse">
-          <path d={`M 0 ${TILE_H / 2} L ${TILE_W / 2} 0 L ${TILE_W} ${TILE_H / 2} L ${TILE_W / 2} ${TILE_H} Z`}
-            fill="none" stroke="oklch(0.4 0.02 130 / 0.18)" strokeWidth="1" />
+          <path d={`M 0 ${TILE_H / 2} L ${TILE_W / 2} 0 L ${TILE_W} ${TILE_H / 2} L ${TILE_W / 2} ${TILE_H} Z`} fill="none" stroke="oklch(0.4 0.02 130 / 0.18)" strokeWidth="1" />
         </pattern>
       </defs>
 
@@ -911,8 +1064,7 @@ function Terrain() {
                 L 0 ${WORLD_H}
                 L 0 ${WORLD_H * 0.66}
                 Q ${WORLD_W * 0.10} ${WORLD_H * 0.62}, ${WORLD_W * 0.18} ${WORLD_H * 0.5}
-                Q ${WORLD_W * 0.13} ${WORLD_H * 0.34}, 0 ${WORLD_H * 0.32} Z`}
-        fill="url(#ground-grad)" />
+                Q ${WORLD_W * 0.13} ${WORLD_H * 0.34}, 0 ${WORLD_H * 0.32} Z`} fill="url(#ground-grad)" />
       <rect width={WORLD_W} height={WORLD_H} fill="url(#iso-grid-light)" opacity={0.4} />
 
       <path d={`M ${WORLD_W * 0.30} ${WORLD_H - 8} Q ${WORLD_W * 0.40} ${WORLD_H - 80}, ${WORLD_W * 0.52} ${WORLD_H * 0.78}`} stroke="url(#sand-grad)" strokeWidth="70" strokeLinecap="round" fill="none" />
@@ -976,7 +1128,6 @@ function Terrain() {
   );
 }
 
-// ============ DISTRICT ZONE ============
 function DistrictZone({ d }: { d: District }) {
   const Icon = d.icon;
   return (
@@ -1001,7 +1152,6 @@ function Stat({ icon: Icon, label, value, color }: { icon: typeof Building2; lab
   );
 }
 
-// ============ BUILDING ============
 function Building({ company, x, y, h, stats, onClick }: { company: Company; x: number; y: number; h: number; stats?: CompanyStats; onClick: () => void }) {
   const color = company.color || "oklch(0.72 0.16 220)";
   const w = TILE_W * 0.78;
@@ -1034,9 +1184,10 @@ function Building({ company, x, y, h, stats, onClick }: { company: Company; x: n
   );
 }
 
-// ============ INTERIOR (top-down) ============
+// ============ INTERIOR ============
 function BuildingInterior({
-  company, stats, onExit, avatarRef, avatarInitial, avatarColor, remote, onClickFloor,
+  company, stats, onExit, avatarRef, avatarInitial, avatarColor, myMsg,
+  remote, visibleBubbles, onClickFloor, selfSector,
 }: {
   company: Company;
   stats?: CompanyStats;
@@ -1044,12 +1195,22 @@ function BuildingInterior({
   avatarRef: React.RefObject<HTMLDivElement | null>;
   avatarInitial: string;
   avatarColor: string;
+  myMsg: ChatMsg | null;
   remote: PresencePayload[];
+  visibleBubbles: PresencePayload[];
   onClickFloor: (x: number, y: number) => void;
+  selfSector: SectorName | null;
 }) {
   const color = company.color || "oklch(0.72 0.16 220)";
   const sectors = sectorsOf(company.name);
-  const rects = sectorRects(sectors.length);
+  const rects = sectorRects(sectors);
+  const theme = themeOf(company.name);
+
+  // Occupancy by sector (remote + self)
+  const occupancy: Record<string, number> = {};
+  for (const s of STANDARD_SECTORS) occupancy[s] = 0;
+  for (const r of remote) if (r.sector) occupancy[r.sector] = (occupancy[r.sector] ?? 0) + 1;
+  if (selfSector) occupancy[selfSector] = (occupancy[selfSector] ?? 0) + 1;
 
   const floorRef = useRef<HTMLDivElement | null>(null);
   const handleFloorClick = (e: React.MouseEvent) => {
@@ -1059,6 +1220,10 @@ function BuildingInterior({
     const y = ((e.clientY - r.top) / r.height) * INTERIOR_H;
     onClickFloor(x, y);
   };
+
+  // Workstation info panel content
+  const stationTasks = (stats?.recentTasks ?? []).slice(0, 4);
+  const stationActivities = (stats?.recentActivities ?? []).slice(0, 4);
 
   return (
     <div
@@ -1088,38 +1253,75 @@ function BuildingInterior({
           style={{
             width: "min(100%, 1040px)",
             aspectRatio: `${INTERIOR_W} / ${INTERIOR_H}`,
-            background: `repeating-linear-gradient(45deg, color-mix(in oklab, ${color} 6%, oklch(0.12 0.02 260)) 0 14px, color-mix(in oklab, ${color} 9%, oklch(0.10 0.02 260)) 14px 28px)`,
+            background: `repeating-linear-gradient(${theme.angle}deg, color-mix(in oklab, ${color} 7%, oklch(0.12 0.02 260)) 0 ${theme.tile}px, color-mix(in oklab, ${color} 11%, oklch(0.10 0.02 260)) ${theme.tile}px ${theme.tile * 2}px)`,
             borderColor: `color-mix(in oklab, ${color} 60%, transparent)`,
             boxShadow: `0 0 80px color-mix(in oklab, ${color} 25%, transparent) inset`,
           }}
         >
-          {/* Scaling wrapper using viewBox-like fixed coords */}
           <div className="absolute inset-0" style={{ width: "100%", height: "100%" }}>
             <svg viewBox={`0 0 ${INTERIOR_W} ${INTERIOR_H}`} className="absolute inset-0 h-full w-full">
-              {/* corridor between sectors */}
-              <rect x="0" y={INTERIOR_H / 2 - 18} width={INTERIOR_W} height="36" fill="oklch(0.18 0.02 260 / 0.7)" />
-              <rect x={INTERIOR_W / 2 - 18} y="0" width="36" height={INTERIOR_H} fill="oklch(0.18 0.02 260 / 0.5)" />
+              {/* corridors */}
+              <rect x="0" y={INTERIOR_H / 2 - 18} width={INTERIOR_W} height="36" fill="oklch(0.18 0.02 260 / 0.55)" />
+              <rect x={INTERIOR_W / 2 - 18} y="0" width="36" height={INTERIOR_H} fill="oklch(0.18 0.02 260 / 0.4)" />
 
-              {/* sector rooms */}
-              {rects.map((r, i) => {
-                const isReception = sectors[i].toLowerCase().startsWith("recep");
+              {rects.map((r) => {
+                const isReception = r.name === "Recepção";
+                const isMeeting = r.name === "Sala de Reunião";
                 return (
-                  <g key={i}>
+                  <g key={r.name}>
                     <rect x={r.x} y={r.y} width={r.w} height={r.h} rx="14"
-                      fill={`color-mix(in oklab, ${color} ${isReception ? 18 : 10}%, oklch(0.10 0.02 260))`}
-                      stroke={`color-mix(in oklab, ${color} 55%, transparent)`} strokeWidth="2" />
-                    {/* Desk / table decoration */}
-                    <rect x={r.x + r.w * 0.18} y={r.y + r.h * 0.55} width={r.w * 0.64} height={r.h * 0.15} rx="6"
-                      fill={`color-mix(in oklab, ${color} 30%, black)`} opacity={0.7} />
-                    {/* Chairs */}
-                    <circle cx={r.x + r.w * 0.28} cy={r.y + r.h * 0.78} r="6" fill="oklch(0.25 0.02 260)" />
-                    <circle cx={r.x + r.w * 0.5} cy={r.y + r.h * 0.82} r="6" fill="oklch(0.25 0.02 260)" />
-                    <circle cx={r.x + r.w * 0.72} cy={r.y + r.h * 0.78} r="6" fill="oklch(0.25 0.02 260)" />
-                    {/* Plant */}
-                    <circle cx={r.x + 18} cy={r.y + r.h - 18} r="8" fill="oklch(0.45 0.12 150)" />
-                    <rect x={r.x + 14} y={r.y + r.h - 12} width="8" height="6" fill="oklch(0.30 0.04 60)" />
+                      fill={`color-mix(in oklab, ${color} ${isMeeting ? 22 : isReception ? 18 : 10}%, oklch(0.10 0.02 260))`}
+                      stroke={`color-mix(in oklab, ${color} ${selfSector === r.name ? 90 : 55}%, transparent)`}
+                      strokeWidth={selfSector === r.name ? 3 : 2}
+                    />
+                    {/* Decoration per sector */}
+                    {isMeeting ? (
+                      <>
+                        {/* Big round meeting table */}
+                        <ellipse cx={r.x + r.w / 2} cy={r.y + r.h * 0.58} rx={r.w * 0.28} ry={r.h * 0.18} fill={`color-mix(in oklab, ${color} 45%, black)`} opacity={0.85} />
+                        <ellipse cx={r.x + r.w / 2} cy={r.y + r.h * 0.58} rx={r.w * 0.28} ry={r.h * 0.18} fill="none" stroke={color} strokeWidth="1.5" opacity={0.7} />
+                        {/* Chairs around table */}
+                        {[0, 60, 120, 180, 240, 300].map((deg) => {
+                          const rad = (deg * Math.PI) / 180;
+                          const cx2 = r.x + r.w / 2 + Math.cos(rad) * r.w * 0.34;
+                          const cy2 = r.y + r.h * 0.58 + Math.sin(rad) * r.h * 0.26;
+                          return <circle key={deg} cx={cx2} cy={cy2} r="6" fill="oklch(0.30 0.02 260)" stroke={color} strokeWidth="0.5" opacity={0.8} />;
+                        })}
+                        {/* Screen */}
+                        <rect x={r.x + r.w * 0.35} y={r.y + r.h * 0.30} width={r.w * 0.30} height={r.h * 0.06} rx="2" fill="oklch(0.20 0.02 260)" stroke={color} strokeWidth="1" />
+                      </>
+                    ) : isReception ? (
+                      <>
+                        {/* Reception desk strip */}
+                        <rect x={r.x + r.w * 0.30} y={r.y + r.h * 0.30} width={r.w * 0.40} height={r.h * 0.30} rx="6" fill={`color-mix(in oklab, ${color} 35%, black)`} opacity={0.8} />
+                        {/* Plants */}
+                        <circle cx={r.x + 22} cy={r.y + r.h - 18} r="8" fill="oklch(0.45 0.12 150)" />
+                        <circle cx={r.x + r.w - 22} cy={r.y + r.h - 18} r="8" fill="oklch(0.45 0.12 150)" />
+                      </>
+                    ) : (
+                      <>
+                        {/* Workstation: 3 desks with chairs and "occupied" dots */}
+                        {[0, 1, 2].map((i) => {
+                          const dx = r.x + r.w * (0.20 + i * 0.28);
+                          const dy = r.y + r.h * 0.58;
+                          const dw = r.w * 0.22;
+                          const dh = r.h * 0.16;
+                          const seated = i < occupancy[r.name];
+                          return (
+                            <g key={i}>
+                              <rect x={dx} y={dy} width={dw} height={dh} rx="4" fill={`color-mix(in oklab, ${color} 30%, black)`} opacity={0.75} />
+                              {/* Monitor */}
+                              <rect x={dx + dw * 0.35} y={dy - dh * 0.45} width={dw * 0.30} height={dh * 0.40} rx="1.5" fill="oklch(0.22 0.02 260)" stroke={seated ? "oklch(0.85 0.18 145)" : color} strokeWidth={seated ? 1.2 : 0.6} />
+                              {/* Chair */}
+                              <circle cx={dx + dw / 2} cy={dy + dh + 10} r="6" fill={seated ? color : "oklch(0.25 0.02 260)"} stroke={seated ? "oklch(0.95 0.05 145)" : "transparent"} strokeWidth="1" />
+                            </g>
+                          );
+                        })}
+                        <circle cx={r.x + 18} cy={r.y + r.h - 18} r="6" fill="oklch(0.45 0.12 150)" />
+                      </>
+                    )}
                     {/* Label */}
-                    <text x={r.x + 14} y={r.y + 22} fill={color} fontSize="13" fontWeight={700} letterSpacing="2">{sectors[i].toUpperCase()}</text>
+                    <text x={r.x + 14} y={r.y + 22} fill={color} fontSize="13" fontWeight={700} letterSpacing="2">{r.name.toUpperCase()}</text>
                   </g>
                 );
               })}
@@ -1128,6 +1330,36 @@ function BuildingInterior({
               <rect x={INTERIOR_W / 2 - 70} y={INTERIOR_H - 50} width="140" height="14" rx="4" fill={color} opacity={0.7} />
               <text x={INTERIOR_W / 2} y={INTERIOR_H - 16} textAnchor="middle" fill="white" fontSize="10" fontWeight={700} letterSpacing="3" opacity={0.6}>SAÍDA</text>
             </svg>
+
+            {/* Sector occupancy badges (HTML overlay aligned to % coords) */}
+            {rects.map((r) => {
+              const Icon = SECTOR_ICON[r.name];
+              const occ = occupancy[r.name];
+              const here = selfSector === r.name;
+              return (
+                <div
+                  key={`badge-${r.name}`}
+                  className="pointer-events-none absolute"
+                  style={{ left: `${((r.x + r.w - 6) / INTERIOR_W) * 100}%`, top: `${((r.y + 6) / INTERIOR_H) * 100}%`, transform: "translate(-100%, 0)" }}
+                >
+                  <div className={cn("flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold backdrop-blur",
+                    here ? "border-emerald-400/60 bg-emerald-400/20 text-emerald-200" : "border-white/15 bg-black/50 text-white/70")}>
+                    <Icon className="h-2.5 w-2.5" />
+                    <span>{occ}</span>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Remote bubbles indoor */}
+            {visibleBubbles.map((r) => (
+              <div key={`ib-${r.id}`} className="pointer-events-none absolute"
+                style={{ left: `${(r.ix / INTERIOR_W) * 100}%`, top: `${(r.iy / INTERIOR_H) * 100}%`, transform: "translate(-50%, -120%)" }}>
+                <div className="max-w-[180px] rounded-2xl border bg-white px-2 py-1 text-[10px] font-medium text-black shadow-lg" style={{ borderColor: r.color }}>
+                  {r.msg!.text}
+                </div>
+              </div>
+            ))}
 
             {/* Remote avatars inside */}
             {remote.map((r) => (
@@ -1146,28 +1378,94 @@ function BuildingInterior({
               className="pointer-events-none absolute left-0 top-0 h-8 w-8 will-change-transform"
               style={{ transform: `translate(calc(${(INTERIOR_W / 2 / INTERIOR_W) * 100}% - 16px), calc(${((INTERIOR_H - 60) / INTERIOR_H) * 100}% - 16px))` }}
             >
-              <AvatarChip name="Você" initial={avatarInitial} color={avatarColor} self />
+              <AvatarChip name="Você" initial={avatarInitial} color={avatarColor} self bubble={myMsg?.text ?? null} />
             </div>
           </div>
         </div>
       </div>
 
       <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] text-white/60 backdrop-blur">
-        <kbd className="rounded bg-white/10 px-1.5">W A S D</kbd> andar · <span className="rounded bg-white/10 px-1.5">clique</span> mover · <kbd className="rounded bg-white/10 px-1.5">Esc</kbd> sair
+        <kbd className="rounded bg-white/10 px-1.5">W A S D</kbd> andar · <span className="rounded bg-white/10 px-1.5">clique</span> mover · <kbd className="rounded bg-white/10 px-1.5">T</kbd> chat · <kbd className="rounded bg-white/10 px-1.5">Esc</kbd> sair
       </div>
 
-      {/* Stats strip */}
-      <div className="pointer-events-none absolute right-3 top-20 hidden w-56 rounded-xl border border-white/10 bg-black/60 p-3 backdrop-blur-md md:block">
-        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/40">Operação</div>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div><div className="text-white/50 text-[10px]">Tarefas</div><div className="font-semibold tabular-nums text-white">{stats?.activeTasks ?? 0}</div></div>
-          <div><div className="text-white/50 text-[10px]">Projetos</div><div className="font-semibold tabular-nums text-white">{stats?.projects ?? 0}</div></div>
-          <div><div className="text-white/50 text-[10px]">Tempo</div><div className="font-semibold tabular-nums text-white">{formatHours(stats?.productiveMs ?? 0)}</div></div>
-          <div><div className="text-white/50 text-[10px]">Colab.</div><div className="font-semibold tabular-nums text-white">{stats?.collaborators.length ?? 0}</div></div>
+      {/* Workstation info panel (right) */}
+      <div className="absolute right-3 top-20 hidden w-64 space-y-2 md:block">
+        <div className="rounded-xl border border-white/10 bg-black/60 p-3 backdrop-blur-md">
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/40">Operação · {company.name}</div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <Mini label="Tarefas" value={stats?.activeTasks ?? 0} />
+            <Mini label="Projetos" value={stats?.projects ?? 0} />
+            <Mini label="Tempo" value={formatHours(stats?.productiveMs ?? 0)} />
+            <Mini label="Colab." value={stats?.collaborators.length ?? 0} />
+          </div>
+        </div>
+
+        {/* Nearest station info */}
+        <div className="rounded-xl border bg-black/70 p-3 backdrop-blur-md transition-all"
+          style={{ borderColor: selfSector ? `color-mix(in oklab, ${color} 55%, transparent)` : "rgba(255,255,255,0.10)" }}>
+          {selfSector ? (() => {
+            const Icon = SECTOR_ICON[selfSector];
+            return (
+              <>
+                <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color }}>
+                  <Icon className="h-3 w-3" /> Estação · {selfSector}
+                </div>
+                <div className="mb-2 text-[10px] text-white/50">{SECTOR_HINT[selfSector]}</div>
+                {selfSector === "Sala de Reunião" ? (
+                  <div className="space-y-1.5 text-[11px] text-white/70">
+                    <div className="flex items-center gap-1.5"><Users2 className="h-3 w-3" /> {occupancy[selfSector]} pessoa(s) na sala</div>
+                    <div className="rounded-md bg-white/5 p-2 text-[10px] text-white/50">
+                      Pronto para alinhamentos. Chamadas de voz e reunião em breve.
+                    </div>
+                  </div>
+                ) : selfSector === "Recepção" ? (
+                  <div className="space-y-1.5 text-[11px] text-white/70">
+                    <div>Bem-vindo(a) à <span className="font-semibold text-white">{company.name}</span>.</div>
+                    <div className="text-[10px] text-white/50">{districtOf(company.name)?.name}</div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/40">Tarefas</div>
+                    <div className="space-y-1">
+                      {stationTasks.length === 0 && <div className="text-[11px] text-white/40">Sem tarefas registradas</div>}
+                      {stationTasks.map((t) => (
+                        <div key={t.id} className="flex items-center gap-1.5 text-[11px]">
+                          <Circle className="h-2 w-2 fill-current" style={{ color }} />
+                          <span className="flex-1 truncate text-white/80">{t.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-2 mb-1 text-[10px] font-semibold uppercase tracking-wider text-white/40">Atividades</div>
+                    <div className="space-y-1">
+                      {stationActivities.slice(0, 3).map((a) => (
+                        <div key={a.id} className="flex items-start gap-1.5 text-[10px]">
+                          <Sparkles className="mt-0.5 h-2.5 w-2.5 text-white/40" />
+                          <span className="flex-1 text-white/60">{a.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            );
+          })() : (
+            <div className="text-[11px] text-white/40">
+              Aproxime-se de uma estação para ver tarefas e projetos relacionados.
+            </div>
+          )}
         </div>
       </div>
 
       <DecorativeIcons district={districtOf(company.name)?.id} />
+    </div>
+  );
+}
+
+function Mini({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div>
+      <div className="text-[10px] text-white/50">{label}</div>
+      <div className="font-semibold tabular-nums text-white">{value}</div>
     </div>
   );
 }
