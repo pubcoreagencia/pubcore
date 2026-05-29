@@ -118,7 +118,7 @@ export interface DailyTask {
   id: string;
   text: string;
   category: string;
-  company: Company;
+  company: string;
   assignee: string;
   dueTime: string; // HH:MM
   priority: Priority;
@@ -209,7 +209,7 @@ export interface TimelineEntry {
   id: string;
   time: string;
   user: string;
-  company: Company;
+  company: string;
   action: string;
   status: "completed" | "late" | "pending";
 }
@@ -233,7 +233,7 @@ export interface CalendarEvent {
   type: "Reunião" | "Campanha" | "Entrega" | "Produção";
   day: number; // dia do mês atual
   time: string;
-  company: Company;
+  company: string;
 }
 
 export const EVENTS: CalendarEvent[] = [
