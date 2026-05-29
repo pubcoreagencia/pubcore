@@ -1,76 +1,77 @@
-# Refator do Bater Ponto — Subpontos por empresa
+# PUB City — Mapa Búzios + Distritos + Interiores
 
-## Visão geral
+## Escopo
+Evoluir `src/routes/app.city.tsx` mantendo o visual isométrico atual. Sem novas tabelas, sem mudar regras existentes. Tudo client-side em cima dos dados já carregados (`stock_companies`, `checklist_tasks`, `ponto_sessions`, `kanban_cards_archive`).
 
-Hoje existe **uma única sessão de ponto** por usuário/dia (`ponto_sessions`). O sistema vai virar **uma sessão por empresa por dia**, cada uma com seu próprio timer, podendo haver várias sessões abertas/encerradas no mesmo dia, mas **apenas uma “ativa” (working) por vez**. O histórico continua mostrando **uma linha por dia**, expansível para revelar o detalhe por empresa.
+## Mapa inspirado em Búzios
 
-Empresas (workspaces operacionais internos da holding): **PUB 3D, PUB IA, PUB RECORDS, PUB FILMS** (mesma lista já usada no resto do app via `COMPANIES`).
+Layout em uma única SVG-world ~3000×2200 navegável por pan/zoom (já existe) + agora também por avatar (teclado/toque).
 
-## Mudanças de dados (Supabase)
+Elementos do terreno (todos desenhados em SVG, sem assets externos):
+- **Praias** em arco no leste/sul: Geribá, Ferradura, João Fernandes — areia (`oklch(0.88 0.06 85)`) + mar gradiente (`oklch(0.55 0.10 220)` → `oklch(0.35 0.12 240)`) com ondas animadas sutis.
+- **Marina** no oeste com píer e silhuetas de barcos (Marina Porto Búzios).
+- **Morros** ao norte como polígonos isométricos verde-escuro com curvas de nível.
+- **Rua das Pedras** = avenida principal diagonal cortando o centro, ladeada por prédios comerciais/gastronômicos.
+- **Orla Bardot** = calçadão curvo entre a marina e o centro.
+- **Praça Santos Dumont** no coração, hub central de onde partem as ruas dos distritos.
+- Ruas em grid isométrico conectando todos os distritos (faixas mais claras sobre o chão).
 
-Migration única:
-- Adicionar `company text` em `ponto_sessions` (nullable para retrocompat; novos registros sempre populam).
-- Índice: `(workspace_id, user_id, started_at)` e `(workspace_id, user_id, company, started_at)`.
-- `ponto_session_tasks` já tem `company` — manter; passar a vincular usando o subponto ativo daquela empresa.
+## Distritos (7) — cada um agrupa empresas relacionadas
 
-Sem mudanças em RLS (já é por workspace).
+| Distrito | Empresas | Localização |
+|---|---|---|
+| Administrativo | PUB CORE, PUB | Centro (Praça Santos Dumont) |
+| Tecnológico | PUB IA, PUB 3D, PUB ADSENSE | Norte (morros — "Vale do Silício de Búzios") |
+| Financeiro | PUB CRYPTO, PUB IMÓVEIS | Centro-oeste |
+| Entretenimento | PUB RECORDS, PUB FILMS, PUB CASSINO, PUB LANÇAMENTOS | Rua das Pedras (sul) |
+| Gastronômico | PUB FOOD | Orla Bardot |
+| Industrial | PUB BRICKS, PUB TÊXTIL | Oeste (próximo à marina, zona industrial) |
+| Comercial | PUB ECOM, PUB FISHING | Marina/Píer |
 
-## Mudanças no estado / lógica (`src/lib/ponto.tsx`)
+Distrito = retângulo isométrico tingido com a cor predominante do grupo + label flutuante. Empresas posicionadas dentro com offset determinístico (hash do nome) para visual orgânico, não grade.
 
-Reescrita do `PontoProvider` para suportar múltiplas sessões simultâneas:
-- Estado passa a ser `sessions: Record<company, PontoSession>` em vez de uma única.
-- Apenas **uma empresa pode estar `working`** ao mesmo tempo. `startCompany(company)` pausa automaticamente a anterior (ou encerra, conforme regra — vou usar **pausar** para preservar tempo do dia).
-- `endCompany(company)` encerra apenas a sessão daquela empresa.
-- Persistência local (`localStorage` + `BroadcastChannel`) atualizada para o novo shape, com migração silenciosa do shape antigo.
-- `getActivePontoSession()` passa a retornar `{ sessionId, company, ownerEmail, userName }` da empresa ativa — usado pelo checklist para vincular tarefas concluídas ao subponto correto.
-- `compute` e `fmtTime` ficam iguais; passam a operar por sessão.
+## Avatar caminhável
 
-## Auto‑tracker (`PontoAutoTracker.tsx`)
+- Avatar = circle SVG com inicial do usuário (cor primária do tema).
+- Controles: **WASD/setas** no desktop, **joystick virtual** no canto inferior esquerdo no mobile/touch.
+- Velocidade ~140 px/s em coords de mundo. Movimento livre (sem colisão por enquanto — fora de escopo manter simples).
+- Câmera segue avatar suavemente (lerp). Pan/zoom manual continua disponível e desacopla a câmera enquanto o usuário arrasta.
+- Quando o avatar fica a <60px de um prédio, mostra prompt "Pressione E / Toque para entrar".
 
-Hoje **auto‑inicia** uma sessão no login. Isso quebra o modelo novo (usuário tem que escolher a empresa).
-- Remover o auto‑start; manter apenas o **encerramento por inatividade** (30 min) — agora aplicado à empresa ativa.
-- Manter heartbeat de `updated_at`.
-- Manter adoção de sessões em andamento ao logar (consulta passa a buscar **todas** as sessões `working/paused` do dia e adota cada uma na sua empresa).
+## Entrar/Sair de prédios (sem reload)
 
-## Notificações nativas
+- Estado local `interior: Company | null`. Quando definido, renderiza overlay com transição (fade + zoom) sobre o mapa — sem mudar de rota.
+- **Interior** = nova vista 2D top-down do andar da empresa:
+  - Paredes coloridas com a cor da empresa
+  - **Setores operacionais** (cards/zonas) gerados dinamicamente a partir dos dados existentes:
+    - Mesa de Tarefas → contagem de `checklist_tasks` ativas, lista os 5 mais recentes
+    - Sala do Ponto → produtividade agregada e colaboradores ativos (`ponto_sessions`)
+    - Sala de Projetos → `kanban_cards_archive` por empresa
+    - Recepção → nome/slug/cor da empresa
+  - Avatar continua andando dentro do interior (mesmo controles).
+  - Botão "Sair" + tecla Esc voltam ao mapa preservando posição anterior do avatar.
+- Painel lateral (Sheet) atual de detalhe continua disponível ao clicar de longe em um prédio, complementar ao interior.
 
-- Pedir `Notification.requestPermission()` na primeira vez que o usuário inicia um expediente (não no login, para não ser intrusivo). Fallback visual com toast se negado.
-- Disparar notificação **uma vez** quando `productiveMs` daquela empresa cruzar **1h30min** no dia (90 * 60 * 1000). Marcador `notified90_<company>_<yyyy-mm-dd>` no localStorage para não repetir.
-- Notificação: título `PUB CORE`, body `"{COMPANY} excedeu 1h30min de expediente hoje."`. Não pausa nem reseta o timer.
+## Mudanças técnicas
 
-## UI
+**Apenas `src/routes/app.city.tsx`** (arquivo único, ~700 linhas finais):
+1. Adicionar `useAvatar()` interno: estado `{x,y, dir}`, loop `requestAnimationFrame`, listeners de teclado, joystick touch.
+2. Adicionar `useCamera()`: lerp para seguir avatar quando avatar está em movimento; modo manual quando usuário arrasta.
+3. Função `layoutDistricts(companies)` — agrupa por mapa de empresa→distrito, calcula bbox de cada distrito, posiciona prédios dentro.
+4. Componente `<Terrain />` — desenha praias, mar, morros, ruas, praça, marina como SVG em camadas.
+5. Componente `<DistrictZone />` — retângulo iso tingido + label.
+6. Componente `<Avatar />` — círculo + sombra + nome.
+7. Componente `<BuildingInterior company />` — overlay com setores; reusa as queries já feitas em `refresh()`.
+8. Tecla **E** / botão flutuante entra no prédio mais próximo.
 
-### Centro Operacional (`app.checklists.tsx`)
-Adicionar um bloco **“Expedientes por empresa”** acima do kanban/checklist com 4 cards (um por empresa):
-- Nome da empresa + cor
-- Timer ao vivo (tempo total do dia somando todas as sessões daquela empresa)
-- Status: `Iniciar` / `Pausar` / `Encerrar`
-- Indicador visual sutil de “ativa agora” + barra de progresso até 1h30 (apenas referência, não bloqueia)
+## Performance
+- SVG único com `<g>` por camada, sem re-render por frame: a câmera muda só `transform` do container (estilo já em uso).
+- Avatar/joystick em divs absolutos sobrepostos, transform via CSS vars, sem React state por frame (usar ref + rAF).
 
-### `PontoHeader.tsx`
-Mostrar a empresa ativa + timer dela. Se nenhuma ativa, esconde como hoje.
+## Fora de escopo (Fase futura)
+- Multiplayer realtime, colisão, pathfinding, NPCs, gamificação, XP, áudio ambiente, salvar posição do avatar no banco.
 
-### Histórico
-A view de histórico continua **uma linha por dia** com soma total, mas cada linha vira expansível, listando por empresa: tempo, tarefas vinculadas. Reutilizar a query já existente, agrupando client‑side por `company` + `date(started_at)`.
+## Arquivos alterados
+- `src/routes/app.city.tsx` (reescrita expandida)
 
-## Integração com o Checklist
-
-`checklist-store.tsx` já registra `ponto_session_tasks` ao concluir uma tarefa. Passa a usar `getActivePontoSession()` novo (com `company`) e grava `company` = empresa do subponto ativo (não a da tarefa). Se não houver subponto ativo, mantém comportamento atual (não vincula).
-
-## Arquivos afetados
-
-- `supabase` migration: `ponto_sessions.company` + índices
-- `src/lib/ponto.tsx` — reescrita do provider
-- `src/components/PontoAutoTracker.tsx` — remover auto‑start, adaptar idle/adoption
-- `src/components/PontoHeader.tsx` — exibir empresa ativa
-- `src/routes/app.checklists.tsx` — novo bloco de cards por empresa
-- `src/lib/checklist-store.tsx` — usar company do subponto ativo
-- Onde houver histórico de ponto: ajustar agrupamento + expansão
-
-## Fora de escopo
-
-- Não mexer no funcionamento do Kanban/Checklist em si.
-- Não criar “workspaces” Supabase separados por empresa — `company` continua sendo um campo dentro do workspace do usuário.
-- Sem mudanças de RLS.
-
-Aprova pra eu seguir?
+Nenhum outro arquivo é tocado. Sem migrações. Sem novas dependências.
