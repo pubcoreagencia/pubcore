@@ -970,7 +970,7 @@ function PontoTab() {
 
                 {s?.startedAt && (
                   <div className="text-[10px] text-muted-foreground font-mono">
-                    Início {fmtClock(s.startedAt)} · pausa {fmtTime(m.livePauseMs)} · prod {fmtTime(m.productiveMs)}
+                    Início {new Date(s.startedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · pausa {fmtTime(m.livePauseMs)} · prod {fmtTime(m.productiveMs)}
                   </div>
                 )}
               </div>
@@ -989,79 +989,31 @@ function PontoTab() {
         {grouped.length === 0 ? (
           <div className="text-sm text-muted-foreground py-8 text-center">Nenhum expediente encerrado ainda.</div>
         ) : (
-          <ul className="space-y-2">
-            {grouped.map((d) => (
-              <DayHistoryRow key={d.day} day={d} tasksBySession={tasksBySession} fmtClock={fmtClock} fmtDateLabel={fmtDateLabel} />
-            ))}
+          <ul className="divide-y divide-border/60 rounded-lg border border-border/60 bg-surface/30 overflow-hidden">
+            {grouped.map((d) => {
+              const productivity = d.total > 0 ? Math.round((d.productive / d.total) * 100) : 0;
+              return (
+                <li key={d.day} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm hover:bg-surface/50 transition">
+                  <div className="min-w-[200px]">
+                    <div className="text-xs text-muted-foreground capitalize">{fmtDateLabel(d.day)}</div>
+                  </div>
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <Timer className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-mono text-sm font-semibold tabular-nums">{fmtTime(d.total)}</span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">trabalhado</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-success" />
+                    <span className="font-mono text-xs tabular-nums">{productivity}%</span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">prod</span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
     </div>
-  );
-}
-
-function DayHistoryRow({
-  day, tasksBySession, fmtClock, fmtDateLabel,
-}: {
-  day: { day: string; total: number; byCompany: Map<Company, { total: number; productive: number; sessions: DaySessionRow[] }> };
-  tasksBySession: Record<string, { id: string; title: string; company: Company; completed_at: string }[]>;
-  fmtClock: (ts: number | string | null) => string;
-  fmtDateLabel: (day: string) => string;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <li className="rounded-lg border border-border bg-surface/30 overflow-hidden">
-      <button onClick={() => setOpen((v) => !v)} className="w-full flex flex-wrap items-center gap-3 px-4 py-3 text-sm hover:bg-surface/60 transition">
-        <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-90" : ""}`} />
-        <div className="min-w-[140px] text-left">
-          <div className="text-xs text-muted-foreground capitalize">{fmtDateLabel(day.day)}</div>
-          <div className="font-mono text-xs">Total: {fmtTime(day.total)}</div>
-        </div>
-        <div className="flex flex-wrap items-center gap-1 ml-auto">
-          {Array.from(day.byCompany.keys()).map((c) => <CompanyTag key={c} company={c} />)}
-        </div>
-      </button>
-      {open && (
-        <div className="border-t border-border bg-card/40 px-4 py-3 space-y-3">
-          {Array.from(day.byCompany.entries()).map(([c, info]) => {
-            const tasks = info.sessions.flatMap((s) => tasksBySession[s.id] ?? []);
-            return (
-              <div key={c} className="rounded-md border border-border bg-surface/50 p-3">
-                <div className="flex flex-wrap items-center gap-3 text-sm">
-                  <CompanyTag company={c} />
-                  <span className="font-mono text-xs"><Timer className="inline h-3 w-3 mr-1" />{fmtTime(info.total)}</span>
-                  <span className="text-xs text-muted-foreground">prod {fmtTime(info.productive)}</span>
-                  <span className="ml-auto text-xs text-muted-foreground">{info.sessions.length} subponto{info.sessions.length > 1 ? "s" : ""}</span>
-                </div>
-                <div className="mt-2 text-[11px] text-muted-foreground space-y-0.5">
-                  {info.sessions.map((s) => (
-                    <div key={s.id} className="font-mono">
-                      {fmtClock(s.started_at)} → {fmtClock(s.ended_at)} ({fmtTime(s.total_ms ?? 0)})
-                    </div>
-                  ))}
-                </div>
-                {tasks.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-border/60">
-                    <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">Tarefas concluídas</div>
-                    <ul className="space-y-0.5">
-                      {tasks.map((t) => (
-                        <li key={t.id} className="flex items-center gap-2 text-xs">
-                          <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
-                          <span className="font-mono text-[10px] text-muted-foreground tabular-nums w-10 shrink-0">
-                            {new Date(t.completed_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                          </span>
-                          <span className="truncate">{t.title}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </li>
   );
 }
 
