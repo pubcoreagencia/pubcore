@@ -9,7 +9,10 @@ export type NavGroup = { label: string; items: NavItem[] };
 export const navGroups: NavGroup[] = [
   {
     label: "Operação",
-    items: [{ to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true }],
+    items: [
+      { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
+      { to: "/app/city", label: "PUB City", icon: MapPin },
+    ],
   },
   {
     label: "Workflow",
