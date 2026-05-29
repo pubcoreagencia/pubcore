@@ -49,7 +49,8 @@ interface Product {
   stock: number; category: string | null; notes: string | null;
 }
 
-const COMPANIES = ["Pub 3D", "Pub IA", "Pub RECORDS", "Pub Films", "Bricks", "Têxtil"];
+import { COMPANIES as HOLDING_COMPANIES } from "@/lib/mock-data";
+const COMPANIES = [...HOLDING_COMPANIES];
 const BRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
 
