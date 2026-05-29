@@ -26,7 +26,7 @@ export type SessionsMap = Partial<Record<Company, PontoSession>>;
 const STORAGE_KEY = "pubcore_ponto_sessions_v3";
 const LEGACY_KEY = "pubcore_ponto_session_v2";
 const CHANNEL_NAME = "pubcore_ponto_sync_v3";
-const HOUR_LIMIT_MS = 90 * 60 * 1000; // 1h30min
+const HOUR_LIMIT_MS = 30 * 60 * 1000; // 30min
 
 const emptySession = (company?: Company): PontoSession => ({
   status: "off",
@@ -179,7 +179,7 @@ function fireBrowserNotification(company: Company) {
   if (Notification.permission !== "granted") return false;
   try {
     new Notification("PUB CORE", {
-      body: `${company} excedeu 1h30min de expediente hoje.`,
+      body: `${company} excedeu 30min de expediente hoje.`,
       tag: `pubcore-ponto-${company}-${todayKey()}`,
       icon: "/favicon.ico",
     });
@@ -314,7 +314,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     return (dailyEndedTotal[company] ?? 0) + (isLive ? live : 0);
   }, [sessions, dailyEndedTotal]);
 
-  // Notificação nativa quando uma empresa cruza 1h30 produtivos no dia
+  // Notificação nativa quando uma empresa cruza 30min produtivos no dia
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
     for (const c of COMPANIES) {
