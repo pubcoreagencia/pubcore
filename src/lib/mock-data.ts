@@ -62,7 +62,7 @@ export interface KanbanCard {
   title: string;
   priority: Priority;
   assignee: string;
-  company: Company;
+  company: string;
   column: KanbanColumn;
   checklist: ChecklistItem[];
 }
