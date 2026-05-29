@@ -1,23 +1,44 @@
 export type Role = "Executivo" | "Marketing" | "Logística/Comercial";
 
 export const COMPANIES = [
-  "Pub 3D",
-  "Pub IA",
-  "Pub RECORDS",
-  "Pub Films",
-  "Bricks",
-  "Têxtil",
+  "PUB CORE",
+  "PUB IA",
+  "PUB 3D",
+  "PUB RECORDS",
+  "PUB FILMS",
+  "PUB IMÓVEIS",
+  "PUB CASSINO",
+  "PUB FISHING",
+  "PUB FOOD",
+  "PUB ECOM",
+  "PUB LANÇAMENTOS",
+  "PUB ADSENSE",
+  "PUB CRYPTO",
+  "PUB BRICKS",
+  "PUB TÊXTIL",
 ] as const;
 export type Company = (typeof COMPANIES)[number];
 
-export const COMPANY_COLORS: Record<Company, string> = {
-  "Pub 3D": "oklch(0.7 0.18 280)",
-  "Pub IA": "oklch(0.75 0.16 195)",
-  "Pub RECORDS": "oklch(0.72 0.18 25)",
-  "Pub Films": "oklch(0.78 0.16 65)",
-  "Bricks": "oklch(0.7 0.14 145)",
-  "Têxtil": "oklch(0.74 0.16 340)",
+export const COMPANY_COLORS: Record<string, string> = {
+  "PUB CORE": "oklch(0.75 0.15 250)",
+  "PUB IA": "oklch(0.72 0.20 290)",
+  "PUB 3D": "oklch(0.72 0.18 240)",
+  "PUB RECORDS": "oklch(0.74 0.18 30)",
+  "PUB FILMS": "oklch(0.72 0.16 200)",
+  "PUB IMÓVEIS": "oklch(0.74 0.15 130)",
+  "PUB CASSINO": "oklch(0.74 0.18 10)",
+  "PUB FISHING": "oklch(0.72 0.16 220)",
+  "PUB FOOD": "oklch(0.78 0.17 80)",
+  "PUB ECOM": "oklch(0.74 0.16 160)",
+  "PUB LANÇAMENTOS": "oklch(0.74 0.18 320)",
+  "PUB ADSENSE": "oklch(0.78 0.16 100)",
+  "PUB CRYPTO": "oklch(0.78 0.15 75)",
+  "PUB BRICKS": "oklch(0.74 0.16 60)",
+  "PUB TÊXTIL": "oklch(0.72 0.18 340)",
 };
+
+export const DEFAULT_COMPANY_COLOR = "oklch(0.72 0.10 260)";
+
 
 export type Priority = "Baixa" | "Média" | "Alta" | "Crítica";
 export type KanbanColumn = "Backlog" | "Hoje" | "Em andamento" | "Revisão" | "Concluído";
