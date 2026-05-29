@@ -847,48 +847,23 @@ function PontoTab() {
     return () => { cancelled = true; offEvt(); supabase.removeChannel(ch); };
   }, [user?.id, user?.email, activeWorkspaceId]);
 
+  // Resumo consolidado por dia (sem expor subpontos por empresa no histórico)
   const grouped = useMemo(() => {
-    const byDay = new Map<string, { day: string; total: number; byCompany: Map<Company, { total: number; productive: number; sessions: DaySessionRow[] }> }>();
+    const byDay = new Map<string, { day: string; total: number; productive: number; sessionsCount: number }>();
     for (const s of history) {
       const day = new Date(s.started_at).toISOString().slice(0, 10);
-      const c = (s.company as Company | null) ?? null;
-      if (!c || !COMPANIES.includes(c)) continue;
-      const entry = byDay.get(day) ?? { day, total: 0, byCompany: new Map() };
+      const entry = byDay.get(day) ?? { day, total: 0, productive: 0, sessionsCount: 0 };
       entry.total += s.total_ms ?? 0;
-      const co = entry.byCompany.get(c) ?? { total: 0, productive: 0, sessions: [] };
-      co.total += s.total_ms ?? 0;
-      co.productive += s.productive_ms ?? 0;
-      co.sessions.push(s);
-      entry.byCompany.set(c, co);
+      entry.productive += s.productive_ms ?? 0;
+      entry.sessionsCount += 1;
       byDay.set(day, entry);
     }
     return Array.from(byDay.values()).sort((a, b) => (a.day < b.day ? 1 : -1));
   }, [history]);
 
-  const [tasksBySession, setTasksBySession] = useState<Record<string, { id: string; title: string; company: Company; completed_at: string }[]>>({});
-  useEffect(() => {
-    if (history.length === 0) { setTasksBySession({}); return; }
-    let cancelled = false;
-    (async () => {
-      const ids = history.map((h) => h.id);
-      const { data } = await supabase
-        .from("ponto_session_tasks")
-        .select("id, session_id, title, company, completed_at")
-        .in("session_id", ids);
-      if (cancelled || !data) return;
-      const map: Record<string, { id: string; title: string; company: Company; completed_at: string }[]> = {};
-      for (const t of data as Array<{ id: string; session_id: string; title: string; company: string; completed_at: string }>) {
-        (map[t.session_id] ??= []).push({ id: t.id, title: t.title, company: t.company as Company, completed_at: t.completed_at });
-      }
-      setTasksBySession(map);
-    })();
-  }, [history]);
-
-  const fmtClock = (ts: number | string | null) =>
-    ts ? new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
   const fmtDateLabel = (day: string) => {
     const d = new Date(day + "T00:00:00");
-    return d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "short" });
+    return d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   };
 
   return (
