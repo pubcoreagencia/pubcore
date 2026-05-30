@@ -10,6 +10,39 @@ const IDLE_LIMIT_MS = 30 * 60 * 1000;
 const ACTIVITY_KEY = "pubcore_ponto_last_activity";
 const CHECK_INTERVAL_MS = 30_000;
 
+async function closeStaleSessionRemote(sessionId: string, endAtMs: number, pauses: unknown) {
+  // Encerra retroativamente uma sessão diretamente no banco quando o usuário
+  // fechou o navegador e ficou inativo por mais de 30 min.
+  try {
+    const { data: existing } = await supabase
+      .from("ponto_sessions")
+      .select("started_at, pauses, status")
+      .eq("id", sessionId)
+      .maybeSingle();
+    if (!existing || existing.status === "ended") return;
+    const startedAt = new Date(existing.started_at).getTime();
+    const endAt = Math.max(startedAt, endAtMs);
+    const list: { start: number; end?: number }[] = Array.isArray(existing.pauses)
+      ? (existing.pauses as { start: number; end?: number }[])
+      : Array.isArray(pauses) ? (pauses as { start: number; end?: number }[]) : [];
+    const fixed = list.map((p, i) => (i === list.length - 1 && !p.end ? { ...p, end: endAt } : p));
+    const liveWorkMs = Math.max(0, endAt - startedAt);
+    const livePauseMs = fixed.reduce((acc, p) => acc + Math.max(0, (p.end ?? endAt) - p.start), 0);
+    const productiveMs = Math.max(0, liveWorkMs - livePauseMs);
+    await supabase.from("ponto_sessions").update({
+      status: "ended",
+      ended_at: new Date(endAt).toISOString(),
+      pauses: fixed as unknown as never,
+      total_ms: liveWorkMs,
+      productive_ms: productiveMs,
+      pause_ms: livePauseMs,
+      updated_at: new Date().toISOString(),
+    }).eq("id", sessionId);
+  } catch (e) {
+    console.error("[ponto-auto] close stale error", e);
+  }
+}
+
 function startOfTodayISO() { const d = new Date(); d.setHours(0,0,0,0); return d.toISOString(); }
 function readLastActivity(): number {
   if (typeof window === "undefined") return Date.now();
