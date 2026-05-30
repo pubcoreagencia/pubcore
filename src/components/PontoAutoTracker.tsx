@@ -108,14 +108,23 @@ export function PontoAutoTracker() {
           .order("started_at", { ascending: false });
         if (cancelled || error || !data) return;
         const seen = new Set<Company>();
+        const localLast = readLastActivity();
         for (const row of data) {
           const company = (row.company as Company | null);
           if (!company || !COMPANIES.includes(company) || seen.has(company)) continue;
           seen.add(company);
+          const remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+          const lastActivity = Math.max(localLast, remoteTs);
+          const idle = Date.now() - lastActivity;
+          if (idle > IDLE_LIMIT_MS) {
+            // Site ficou fechado por >30min: encerra retroativamente no banco
+            // usando o último heartbeat conhecido, sem adotar localmente.
+            await closeStaleSessionRemote(row.id as string, lastActivity, row.pauses);
+            toast(`Expediente de ${company} encerrado por inatividade`, { duration: 5000 });
+            continue;
+          }
           adoptSession(row as PontoRemoteRow);
         }
-        writeLastActivity(Date.now());
-        bootstrappedForUser.current = user.id;
       } catch (e) {
         console.error("[ponto-auto] bootstrap error", e);
       }
