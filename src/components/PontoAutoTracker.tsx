@@ -125,6 +125,8 @@ export function PontoAutoTracker() {
           }
           adoptSession(row as PontoRemoteRow);
         }
+        writeLastActivity(Date.now());
+        bootstrappedForUser.current = user.id;
       } catch (e) {
         console.error("[ponto-auto] bootstrap error", e);
       }
