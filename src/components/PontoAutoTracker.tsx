@@ -44,11 +44,14 @@ async function closeStaleSessionRemote(sessionId: string, endAtMs: number, pause
 }
 
 function startOfTodayISO() { const d = new Date(); d.setHours(0,0,0,0); return d.toISOString(); }
-function readLastActivity(): number {
-  if (typeof window === "undefined") return Date.now();
+function readLastActivity(): number | null {
+  if (typeof window === "undefined") return null;
   const raw = localStorage.getItem(ACTIVITY_KEY);
   const v = raw ? Number(raw) : NaN;
-  return Number.isFinite(v) ? v : Date.now();
+  return Number.isFinite(v) ? v : null;
+}
+function readLastActivityOrNow(): number {
+  return readLastActivity() ?? Date.now();
 }
 function writeLastActivity(ts: number) {
   if (typeof window === "undefined") return;
@@ -57,8 +60,9 @@ function writeLastActivity(ts: number) {
 
 /**
  * Auto-tracker dos expedientes por empresa.
- * - NÃO auto-inicia mais sessões. O usuário escolhe a empresa.
- * - Ao logar, adota sessões em andamento (working/paused) do dia.
+ * - NÃO auto-inicia sessões. O usuário escolhe a empresa.
+ * - Ao logar: encerra QUALQUER sessão working/paused (de qualquer dia) cujo
+ *   último heartbeat passou de 30min, e adota as ainda ativas do dia.
  * - Se a empresa ativa ficar inativa por mais de 30min, encerra automaticamente.
  * - Mantém heartbeat de updated_at para detecção cross-device.
  */
@@ -68,7 +72,13 @@ export function PontoAutoTracker() {
   const bootstrappedForUser = useRef<string | null>(null);
   const endingRef = useRef(false);
 
-  // Atividade do usuário (throttled)
+  // CRÍTICO: snapshot do heartbeat ANTES do tracker de atividade rodar.
+  // Sem isso, o bootstrap leria Date.now() recém-escrito e nunca detectaria idle.
+  const lastActivitySnapshotRef = useRef<number | null>(
+    typeof window !== "undefined" ? readLastActivity() : null,
+  );
+
+  // Atividade do usuário (throttled). Não sobrescreve heartbeat até a 1ª interação real.
   useEffect(() => {
     if (typeof window === "undefined") return;
     let lastWrite = 0;
@@ -81,12 +91,10 @@ export function PontoAutoTracker() {
     };
     const events: (keyof WindowEventMap)[] = ["mousemove", "keydown", "click", "scroll", "touchstart"];
     events.forEach((e) => window.addEventListener(e, mark, { passive: true }));
-    writeLastActivity(Date.now());
-    lastWrite = Date.now();
     return () => events.forEach((e) => window.removeEventListener(e, mark));
   }, []);
 
-  // Bootstrap: adopt in-progress sessions of the day
+  // Bootstrap: encerra sessões abandonadas e adota as válidas
   useEffect(() => {
     if (!user) { bootstrappedForUser.current = null; return; }
     if (bootstrappedForUser.current === user.id) return;
@@ -99,6 +107,30 @@ export function PontoAutoTracker() {
       }
       if (cancelled) return;
       try {
+        // 1) Cleanup GLOBAL: pega todas as sessões abertas do usuário
+        //    (inclusive de dias anteriores) e encerra as paradas.
+        const { data: openRows } = await supabase
+          .from("ponto_sessions")
+          .select("id, started_at, status, pauses, company, updated_at")
+          .eq("user_id", user.id)
+          .in("status", ["working", "paused"]);
+        if (cancelled) return;
+        const snapshot = lastActivitySnapshotRef.current ?? 0;
+        const now = Date.now();
+        const staleIds = new Set<string>();
+        for (const row of openRows ?? []) {
+          const remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+          const lastActivity = Math.max(snapshot, remoteTs);
+          const idle = now - lastActivity;
+          if (idle > IDLE_LIMIT_MS) {
+            await closeStaleSessionRemote(row.id as string, lastActivity, row.pauses);
+            staleIds.add(row.id as string);
+            const company = row.company as Company | null;
+            if (company) toast(`Expediente de ${company} encerrado por inatividade`, { duration: 5000 });
+          }
+        }
+
+        // 2) Adota apenas sessões válidas do DIA atual
         const { data, error } = await supabase
           .from("ponto_sessions")
           .select("id, started_at, ended_at, status, pauses, user_name, owner_email, company, updated_at, productive_ms, total_ms")
@@ -108,21 +140,11 @@ export function PontoAutoTracker() {
           .order("started_at", { ascending: false });
         if (cancelled || error || !data) return;
         const seen = new Set<Company>();
-        const localLast = readLastActivity();
         for (const row of data) {
+          if (staleIds.has(row.id as string)) continue;
           const company = (row.company as Company | null);
           if (!company || !COMPANIES.includes(company) || seen.has(company)) continue;
           seen.add(company);
-          const remoteTs = row.updated_at ? new Date(row.updated_at).getTime() : 0;
-          const lastActivity = Math.max(localLast, remoteTs);
-          const idle = Date.now() - lastActivity;
-          if (idle > IDLE_LIMIT_MS) {
-            // Site ficou fechado por >30min: encerra retroativamente no banco
-            // usando o último heartbeat conhecido, sem adotar localmente.
-            await closeStaleSessionRemote(row.id as string, lastActivity, row.pauses);
-            toast(`Expediente de ${company} encerrado por inatividade`, { duration: 5000 });
-            continue;
-          }
           adoptSession(row as PontoRemoteRow);
         }
         writeLastActivity(Date.now());
@@ -142,7 +164,7 @@ export function PontoAutoTracker() {
 
     const checkIdle = async () => {
       if (endingRef.current) return;
-      const localLast = readLastActivity();
+      const localLast = readLastActivityOrNow();
       let remoteTs = 0;
       let remoteStatus: string | null = null;
       if (activeSession.sessionId) {
@@ -191,7 +213,7 @@ export function PontoAutoTracker() {
     const sid = sessions[activeCompany]?.sessionId;
     if (!sid) return;
     const beat = async () => {
-      const idle = Date.now() - readLastActivity();
+      const idle = Date.now() - readLastActivityOrNow();
       if (idle > IDLE_LIMIT_MS) return;
       try {
         await supabase.from("ponto_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sid);
