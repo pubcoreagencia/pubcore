@@ -164,7 +164,7 @@ export function PontoAutoTracker() {
 
     const checkIdle = async () => {
       if (endingRef.current) return;
-      const localLast = readLastActivity();
+      const localLast = readLastActivityOrNow();
       let remoteTs = 0;
       let remoteStatus: string | null = null;
       if (activeSession.sessionId) {
