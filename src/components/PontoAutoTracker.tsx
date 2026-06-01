@@ -213,7 +213,7 @@ export function PontoAutoTracker() {
     const sid = sessions[activeCompany]?.sessionId;
     if (!sid) return;
     const beat = async () => {
-      const idle = Date.now() - readLastActivity();
+      const idle = Date.now() - readLastActivityOrNow();
       if (idle > IDLE_LIMIT_MS) return;
       try {
         await supabase.from("ponto_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sid);
