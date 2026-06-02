@@ -603,7 +603,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       }));
       if (sessionId) emit({ type: "started", sessionId, ownerEmail: owner, company });
     },
-    [persistUpdate, reloadDailyTotals, updateCompany],
+    [reloadDailyTotals, updateCompany],
   );
 
   const pauseCompany = useCallback<PontoCtx["pauseCompany"]>(
