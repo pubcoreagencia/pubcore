@@ -107,12 +107,15 @@ export function PontoAutoTracker() {
       }
       if (cancelled) return;
       try {
+        const workspaceId = getActiveWorkspaceId();
+        if (!workspaceId) return;
         // 1) Cleanup GLOBAL: pega todas as sessões abertas do usuário
         //    (inclusive de dias anteriores) e encerra as paradas.
         const { data: openRows } = await supabase
           .from("ponto_sessions")
           .select("id, started_at, status, pauses, company, updated_at")
           .eq("user_id", user.id)
+          .eq("workspace_id", workspaceId)
           .in("status", ["working", "paused"]);
         if (cancelled) return;
         const snapshot = lastActivitySnapshotRef.current ?? 0;
@@ -135,6 +138,7 @@ export function PontoAutoTracker() {
           .from("ponto_sessions")
           .select("id, started_at, ended_at, status, pauses, user_name, owner_email, company, updated_at, productive_ms, total_ms")
           .eq("user_id", user.id)
+          .eq("workspace_id", workspaceId)
           .gte("started_at", startOfTodayISO())
           .in("status", ["working", "paused"])
           .order("started_at", { ascending: false });
@@ -160,7 +164,7 @@ export function PontoAutoTracker() {
   useEffect(() => {
     if (!user || !activeCompany) return;
     const activeSession = sessions[activeCompany];
-    if (!activeSession || activeSession.status !== "working") return;
+    if (!activeSession || (activeSession.status !== "working" && activeSession.status !== "paused")) return;
 
     const checkIdle = async () => {
       if (endingRef.current) return;
