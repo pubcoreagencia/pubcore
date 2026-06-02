@@ -56,6 +56,48 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_daily_completions: {
+        Row: {
+          company: string
+          completed_at: string
+          completed_on: string
+          created_at: string
+          id: string
+          owner_email: string
+          task_id: string | null
+          task_title: string
+          user_id: string | null
+          user_name: string | null
+          workspace_id: string
+        }
+        Insert: {
+          company: string
+          completed_at?: string
+          completed_on: string
+          created_at?: string
+          id?: string
+          owner_email: string
+          task_id?: string | null
+          task_title: string
+          user_id?: string | null
+          user_name?: string | null
+          workspace_id: string
+        }
+        Update: {
+          company?: string
+          completed_at?: string
+          completed_on?: string
+          created_at?: string
+          id?: string
+          owner_email?: string
+          task_id?: string | null
+          task_title?: string
+          user_id?: string | null
+          user_name?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       checklist_tasks: {
         Row: {
           assignee: string | null
