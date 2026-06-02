@@ -79,6 +79,7 @@ export function useOperationalData() {
           .select("id, company, title, status, done_at, created_at, updated_at")
           .eq("user_id", userId)
           .eq("workspace_id", activeWorkspaceId)
+          .is("funnel_id", null)
           .limit(1000),
       ]);
       if (cancelled) return;
