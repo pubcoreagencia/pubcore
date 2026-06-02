@@ -24,26 +24,35 @@ async function closeStaleSessionRemote(sessionId: string, endAtMs: number, pause
     const endAt = Math.max(startedAt, endAtMs);
     const list: { start: number; end?: number }[] = Array.isArray(existing.pauses)
       ? (existing.pauses as { start: number; end?: number }[])
-      : Array.isArray(pauses) ? (pauses as { start: number; end?: number }[]) : [];
+      : Array.isArray(pauses)
+        ? (pauses as { start: number; end?: number }[])
+        : [];
     const fixed = list.map((p, i) => (i === list.length - 1 && !p.end ? { ...p, end: endAt } : p));
     const liveWorkMs = Math.max(0, endAt - startedAt);
     const livePauseMs = fixed.reduce((acc, p) => acc + Math.max(0, (p.end ?? endAt) - p.start), 0);
     const productiveMs = Math.max(0, liveWorkMs - livePauseMs);
-    await supabase.from("ponto_sessions").update({
-      status: "ended",
-      ended_at: new Date(endAt).toISOString(),
-      pauses: fixed as unknown as never,
-      total_ms: liveWorkMs,
-      productive_ms: productiveMs,
-      pause_ms: livePauseMs,
-      updated_at: new Date().toISOString(),
-    }).eq("id", sessionId);
+    await supabase
+      .from("ponto_sessions")
+      .update({
+        status: "ended",
+        ended_at: new Date(endAt).toISOString(),
+        pauses: fixed as unknown as never,
+        total_ms: liveWorkMs,
+        productive_ms: productiveMs,
+        pause_ms: livePauseMs,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", sessionId);
   } catch (e) {
     console.error("[ponto-auto] close stale error", e);
   }
 }
 
-function startOfTodayISO() { const d = new Date(); d.setHours(0,0,0,0); return d.toISOString(); }
+function startOfTodayISO() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+}
 function readLastActivity(): number | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem(ACTIVITY_KEY);
@@ -89,14 +98,23 @@ export function PontoAutoTracker() {
       lastWrite = now;
       writeLastActivity(now);
     };
-    const events: (keyof WindowEventMap)[] = ["mousemove", "keydown", "click", "scroll", "touchstart"];
+    const events: (keyof WindowEventMap)[] = [
+      "mousemove",
+      "keydown",
+      "click",
+      "scroll",
+      "touchstart",
+    ];
     events.forEach((e) => window.addEventListener(e, mark, { passive: true }));
     return () => events.forEach((e) => window.removeEventListener(e, mark));
   }, []);
 
   // Bootstrap: encerra sessões abandonadas e adota as válidas
   useEffect(() => {
-    if (!user) { bootstrappedForUser.current = null; return; }
+    if (!user) {
+      bootstrappedForUser.current = null;
+      return;
+    }
     if (bootstrappedForUser.current === user.id) return;
     let cancelled = false;
     (async () => {
@@ -129,14 +147,17 @@ export function PontoAutoTracker() {
             await closeStaleSessionRemote(row.id as string, lastActivity, row.pauses);
             staleIds.add(row.id as string);
             const company = row.company as Company | null;
-            if (company) toast(`Expediente de ${company} encerrado por inatividade`, { duration: 5000 });
+            if (company)
+              toast(`Expediente de ${company} encerrado por inatividade`, { duration: 5000 });
           }
         }
 
         // 2) Adota apenas sessões válidas do DIA atual
         const { data, error } = await supabase
           .from("ponto_sessions")
-          .select("id, started_at, ended_at, status, pauses, user_name, owner_email, company, updated_at, productive_ms, total_ms")
+          .select(
+            "id, started_at, ended_at, status, pauses, user_name, owner_email, company, updated_at, productive_ms, total_ms",
+          )
           .eq("user_id", user.id)
           .eq("workspace_id", workspaceId)
           .gte("started_at", startOfTodayISO())
@@ -147,7 +168,7 @@ export function PontoAutoTracker() {
         const seen = new Set<Company>();
         for (const row of data) {
           if (staleIds.has(row.id as string)) continue;
-          const company = (row.company as Company | null);
+          const company = row.company as Company | null;
           if (!company || !COMPANIES.includes(company) || seen.has(company)) continue;
           seen.add(company);
           adoptSession(row as PontoRemoteRow);
@@ -158,14 +179,17 @@ export function PontoAutoTracker() {
         console.error("[ponto-auto] bootstrap error", e);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user, adoptSession, reset]);
 
   // Idle check apenas para a empresa ativa
   useEffect(() => {
     if (!user || !activeCompany) return;
     const activeSession = sessions[activeCompany];
-    if (!activeSession || (activeSession.status !== "working" && activeSession.status !== "paused")) return;
+    if (!activeSession || (activeSession.status !== "working" && activeSession.status !== "paused"))
+      return;
 
     const checkIdle = async () => {
       if (endingRef.current) return;
@@ -183,7 +207,9 @@ export function PontoAutoTracker() {
             remoteStatus = data.status as string;
             remoteTs = data.updated_at ? new Date(data.updated_at).getTime() : 0;
           }
-        } catch { /* noop */ }
+        } catch {
+          /* noop */
+        }
       }
       if (remoteStatus === "ended") return;
       const lastActivity = Math.max(localLast, remoteTs, activeSession.startedAt ?? 0);
@@ -202,7 +228,9 @@ export function PontoAutoTracker() {
     };
 
     const interval = window.setInterval(checkIdle, CHECK_INTERVAL_MS);
-    const onVisible = () => { if (document.visibilityState === "visible") checkIdle(); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") checkIdle();
+    };
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
     return () => {
@@ -222,8 +250,13 @@ export function PontoAutoTracker() {
       const idle = Date.now() - lastActivity;
       if (idle > IDLE_LIMIT_MS) return;
       try {
-        await supabase.from("ponto_sessions").update({ updated_at: new Date(lastActivity).toISOString() }).eq("id", sid);
-      } catch { /* noop */ }
+        await supabase
+          .from("ponto_sessions")
+          .update({ updated_at: new Date(lastActivity).toISOString() })
+          .eq("id", sid);
+      } catch {
+        /* noop */
+      }
     };
     beat();
     const id = window.setInterval(beat, 60_000);
