@@ -228,7 +228,7 @@ function CityPage() {
     if (!activeWorkspaceId) return;
     const [co, tasks, sessions, archive] = await Promise.all([
       supabase.from("stock_companies").select("id,name,color,slug").eq("workspace_id", activeWorkspaceId).order("position"),
-      supabase.from("checklist_tasks").select("id,title,company,status,created_at,done_at").eq("workspace_id", activeWorkspaceId).order("created_at", { ascending: false }).limit(400),
+      supabase.from("checklist_tasks").select("id,title,company,status,created_at,done_at").eq("workspace_id", activeWorkspaceId).is("funnel_id", null).order("created_at", { ascending: false }).limit(400),
       supabase.from("ponto_sessions").select("company,productive_ms,user_name,owner_email,started_at,ended_at").eq("workspace_id", activeWorkspaceId).order("started_at", { ascending: false }).limit(200),
       supabase.from("kanban_cards_archive").select("company").eq("workspace_id", activeWorkspaceId),
     ]);
