@@ -599,15 +599,22 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
         {sortedFunnels.map((f) => {
           const isActive = f.id === activeFunnelId;
           const count = cards.filter(c => c.funnel_id === f.id).length;
+          const isCardDropTarget = !!draggingCard && f.id !== activeFunnelId;
           return (
             <div
               key={f.id}
               draggable={editingFunnel !== f.id}
               onDragStart={(e) => { setDraggingFunnel(f.id); e.dataTransfer.effectAllowed = "move"; }}
               onDragEnd={() => setDraggingFunnel(null)}
-              onDragOver={(e) => { if (draggingFunnel) e.preventDefault(); }}
+              onDragOver={(e) => { if (draggingFunnel || draggingCard) e.preventDefault(); }}
               onDrop={(e) => {
                 e.preventDefault();
+                if (draggingCard) {
+                  if (f.id !== activeFunnelId) moveCardToFunnel(draggingCard, f.id);
+                  setDraggingCard(null);
+                  setOverCol(null);
+                  return;
+                }
                 if (draggingFunnel && draggingFunnel !== f.id) {
                   reorderFunnels(draggingFunnel, f.id);
                   setDraggingFunnel(null);
@@ -616,7 +623,9 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
               className={`group flex-shrink-0 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 transition cursor-pointer ${
                 isActive
                   ? "border-primary/60 bg-primary/10 shadow-glow"
-                  : "border-border bg-card/40 hover:border-primary/30"
+                  : isCardDropTarget
+                    ? "border-dashed border-primary/60 bg-primary/5"
+                    : "border-border bg-card/40 hover:border-primary/30"
               }`}
               onClick={() => { if (editingFunnel !== f.id) setActiveFunnelId(f.id); }}
             >
