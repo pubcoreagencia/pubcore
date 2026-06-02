@@ -26,6 +26,7 @@ export type SessionsMap = Partial<Record<Company, PontoSession>>;
 const STORAGE_KEY = "pubcore_ponto_sessions_v3";
 const LEGACY_KEY = "pubcore_ponto_session_v2";
 const CHANNEL_NAME = "pubcore_ponto_sync_v3";
+const ACTIVITY_KEY = "pubcore_ponto_last_activity";
 const HOUR_LIMIT_MS = 30 * 60 * 1000; // 30min
 
 const emptySession = (company?: Company): PontoSession => ({
@@ -136,6 +137,11 @@ function load(): SessionsMap {
 function save(map: SessionsMap) {
   if (typeof window === "undefined") return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+}
+
+function markActivity(ts = Date.now()) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(ACTIVITY_KEY, String(ts));
 }
 
 function compute(s: PontoSession | undefined, now: number) {
@@ -403,6 +409,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
   const startCompany = useCallback<PontoCtx["startCompany"]>(async (company, user, ownerEmail, userId) => {
     const owner = ownerEmail ?? "guest@pubcore.local";
     const startedAt = Date.now();
+    markActivity(startedAt);
 
     // Solicitar permissão de notificação no primeiro start (gesto do usuário)
     if (typeof window !== "undefined" && "Notification" in window) {
@@ -507,6 +514,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
   }, [persistUpdate, reloadDailyTotals, updateCompany]);
 
   const pauseCompany = useCallback<PontoCtx["pauseCompany"]>((company) => {
+    markActivity();
     setSessions((prev) => {
       const cur = prev[company];
       if (!cur || cur.status !== "working") return prev;
@@ -517,6 +525,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
   }, [persistUpdate]);
 
   const resumeCompany = useCallback<PontoCtx["resumeCompany"]>((company) => {
+    markActivity();
     setSessions((prev) => {
       const cur = prev[company];
       if (!cur || cur.status !== "paused") return prev;
