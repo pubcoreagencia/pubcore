@@ -24,8 +24,6 @@ import { useAuth } from "@/lib/auth";
 import { usePonto, fmtTime, onPontoEvent } from "@/lib/ponto";
 import { useChecklist, type UserTask } from "@/lib/checklist-store";
 import { useWorkspace } from "@/lib/workspace";
-import { KanbanBoardView } from "./app.kanban";
-import { KanbanSquare } from "lucide-react";
 
 export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
