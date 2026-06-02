@@ -213,6 +213,7 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         .from("checklist_tasks")
         .select("*")
         .eq("workspace_id", activeWorkspaceId)
+        .is("funnel_id", null)
         .order("position", { ascending: true });
       if (cancelled) return;
       if (error) { console.error("[checklist] load error", error); rowsRef.current = []; setState(emptyState()); }
