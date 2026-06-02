@@ -922,13 +922,15 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
 }
 
 function CardDialog({
-  card, columns, onClose, onUpdate, onMove, onDelete,
+  card, columns, funnels, onClose, onUpdate, onMove, onMoveFunnel, onDelete,
 }: {
   card: Card;
   columns: Column[];
+  funnels: Funnel[];
   onClose: () => void;
   onUpdate: (patch: Partial<Card>) => void;
   onMove: (colId: string) => void;
+  onMoveFunnel: (funnelId: string) => void;
   onDelete: () => void;
 }) {
   const [title, setTitle] = useState(card.title);
