@@ -164,7 +164,7 @@ export function PontoAutoTracker() {
 
     const checkIdle = async () => {
       if (endingRef.current) return;
-      const localLast = readLastActivityOrNow();
+      const localLast = readLastActivity() ?? activeSession.startedAt ?? Date.now();
       let remoteTs = 0;
       let remoteStatus: string | null = null;
       if (activeSession.sessionId) {
@@ -181,7 +181,7 @@ export function PontoAutoTracker() {
         } catch { /* noop */ }
       }
       if (remoteStatus === "ended") return;
-      const lastActivity = Math.max(localLast, remoteTs);
+      const lastActivity = Math.max(localLast, remoteTs, activeSession.startedAt ?? 0);
       const idle = Date.now() - lastActivity;
       if (idle <= IDLE_LIMIT_MS) {
         if (remoteTs > localLast) writeLastActivity(remoteTs);
@@ -213,10 +213,11 @@ export function PontoAutoTracker() {
     const sid = sessions[activeCompany]?.sessionId;
     if (!sid) return;
     const beat = async () => {
-      const idle = Date.now() - readLastActivityOrNow();
+      const lastActivity = readLastActivity() ?? sessions[activeCompany]?.startedAt ?? Date.now();
+      const idle = Date.now() - lastActivity;
       if (idle > IDLE_LIMIT_MS) return;
       try {
-        await supabase.from("ponto_sessions").update({ updated_at: new Date().toISOString() }).eq("id", sid);
+        await supabase.from("ponto_sessions").update({ updated_at: new Date(lastActivity).toISOString() }).eq("id", sid);
       } catch { /* noop */ }
     };
     beat();
