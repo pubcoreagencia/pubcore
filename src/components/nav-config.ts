@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, ListChecks, Calendar, Users2, Settings,
-  StickyNote, Wallet, Boxes, Calculator, Box, MapPin,
+  StickyNote, Wallet, Boxes, Calculator, Box, MapPin, KanbanSquare,
 } from "lucide-react";
 
 export type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
@@ -18,6 +18,7 @@ export const navGroups: NavGroup[] = [
     label: "Workflow",
     items: [
       { to: "/app/checklists", label: "Centro Operacional", icon: ListChecks },
+      { to: "/app/kanban", label: "Kanban", icon: KanbanSquare },
       { to: "/app/calendar", label: "Calendário", icon: Calendar },
       { to: "/app/notes", label: "Notas", icon: StickyNote },
     ],
