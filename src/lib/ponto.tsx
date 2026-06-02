@@ -491,7 +491,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       company,
     }));
     if (sessionId) emit({ type: "started", sessionId, ownerEmail: owner, company });
-  }, [adoptSession, persistUpdate, reloadDailyTotals, updateCompany]);
+  }, [persistUpdate, reloadDailyTotals, updateCompany]);
 
   const pauseCompany = useCallback<PontoCtx["pauseCompany"]>((company) => {
     setSessions((prev) => {
