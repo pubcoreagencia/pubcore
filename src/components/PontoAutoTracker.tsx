@@ -68,7 +68,7 @@ function writeLastActivity(ts: number) {
  */
 export function PontoAutoTracker() {
   const { user } = useAuth();
-  const { sessions, activeCompany, endCompany, adoptSession } = usePonto();
+  const { sessions, activeCompany, endCompany, adoptSession, reset } = usePonto();
   const bootstrappedForUser = useRef<string | null>(null);
   const endingRef = useRef(false);
 
@@ -143,6 +143,7 @@ export function PontoAutoTracker() {
           .in("status", ["working", "paused"])
           .order("started_at", { ascending: false });
         if (cancelled || error || !data) return;
+        reset();
         const seen = new Set<Company>();
         for (const row of data) {
           if (staleIds.has(row.id as string)) continue;
@@ -158,7 +159,7 @@ export function PontoAutoTracker() {
       }
     })();
     return () => { cancelled = true; };
-  }, [user, adoptSession]);
+  }, [user, adoptSession, reset]);
 
   // Idle check apenas para a empresa ativa
   useEffect(() => {
