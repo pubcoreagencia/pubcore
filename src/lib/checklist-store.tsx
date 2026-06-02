@@ -333,6 +333,25 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
     }).eq("id", id);
     if (error) console.error("[checklist] toggle error", error);
 
+    // Persist completion in the daily history log immediately, so we never
+    // lose it even if the user unchecks later or the daily reset hasn't run.
+    if (willDone && wsRef.current) {
+      const { error: histErr } = await supabase
+        .from("checklist_daily_completions")
+        .upsert({
+          workspace_id: wsRef.current,
+          user_id: userIdRef.current,
+          owner_email: ownerRef.current,
+          user_name: nameRef.current,
+          task_id: id,
+          task_title: task.text,
+          company,
+          completed_on: localDateStr(new Date(nowIso)),
+          completed_at: nowIso,
+        } as never, { onConflict: "workspace_id,task_id,completed_on" });
+      if (histErr) console.error("[checklist] daily history error", histErr);
+    }
+
     const active = getActivePontoSession();
     if (willDone && active.sessionId && active.ownerEmail) {
       const { error: logErr } = await supabase.from("ponto_session_tasks").insert({
