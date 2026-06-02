@@ -1278,6 +1278,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      close_ponto_session: {
+        Args: { _ended_at?: string; _session_id: string }
+        Returns: boolean
+      }
+      close_stale_ponto_sessions: { Args: { _idle?: string }; Returns: number }
       has_app_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
