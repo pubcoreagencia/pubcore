@@ -909,9 +909,11 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
         <CardDialog
           card={openCard}
           columns={funnelCols}
+          funnels={sortedFunnels}
           onClose={() => setOpenCard(null)}
           onUpdate={(patch) => updateCard(openCard.id, patch)}
           onMove={(colId) => { moveCard(openCard.id, colId); setOpenCard(null); }}
+          onMoveFunnel={(fid) => { moveCardToFunnel(openCard.id, fid); setOpenCard(null); setActiveFunnelId(fid); }}
           onDelete={() => { deleteCard(openCard.id); setOpenCard(null); }}
         />
       )}
