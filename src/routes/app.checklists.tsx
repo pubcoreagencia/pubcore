@@ -156,22 +156,16 @@ function DailyTab() {
         </div>
       </div>
 
-      {/* Seção 1: Kanban (mesma base de dados, acima da checklist) */}
+      {/* Checklist Diário — verificações operacionais recorrentes (reset diário automático) */}
       <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <KanbanSquare className="h-4 w-4 text-primary" />
-          <h2 className="font-display text-lg sm:text-xl font-semibold tracking-tight">Kanban Operacional</h2>
-        </div>
-        <div className="-mx-4 sm:-mx-6 lg:-mx-10">
-          <KanbanBoardView embedded />
-        </div>
-      </section>
-
-      {/* Seção 2: Checklist (lista por empresa) */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2">
-          <ListTodo className="h-4 w-4 text-primary" />
-          <h2 className="font-display text-lg sm:text-xl font-semibold tracking-tight">Checklist Diário</h2>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <ListTodo className="h-4 w-4 text-primary" />
+            <h2 className="font-display text-lg sm:text-xl font-semibold tracking-tight">Checklist Diário</h2>
+          </div>
+          <span className="text-[10px] sm:text-xs text-muted-foreground">
+            Reseta automaticamente a cada novo dia
+          </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
           {visibleCompanies.map((company) => (
