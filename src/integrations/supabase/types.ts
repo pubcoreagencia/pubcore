@@ -481,6 +481,69 @@ export type Database = {
         }
         Relationships: []
       }
+      kanban_cards: {
+        Row: {
+          assignee: string | null
+          column_id: string | null
+          company: string
+          created_at: string
+          description: string | null
+          due_date: string | null
+          funnel_id: string | null
+          id: string
+          legacy_checklist: Json
+          notes: string | null
+          owner_email: string
+          position: number
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+          user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          assignee?: string | null
+          column_id?: string | null
+          company: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          funnel_id?: string | null
+          id?: string
+          legacy_checklist?: Json
+          notes?: string | null
+          owner_email: string
+          position?: number
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          assignee?: string | null
+          column_id?: string | null
+          company?: string
+          created_at?: string
+          description?: string | null
+          due_date?: string | null
+          funnel_id?: string | null
+          id?: string
+          legacy_checklist?: Json
+          notes?: string | null
+          owner_email?: string
+          position?: number
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       kanban_cards_archive: {
         Row: {
           assignee: string | null
