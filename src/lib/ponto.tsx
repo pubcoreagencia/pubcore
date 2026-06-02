@@ -76,6 +76,8 @@ export interface PontoRemoteRow {
   company?: string | null;
   productive_ms?: number | null;
   total_ms?: number | null;
+  pause_ms?: number | null;
+  updated_at?: string | null;
 }
 
 interface PontoCtx {
@@ -146,6 +148,53 @@ function compute(s: PontoSession | undefined, now: number) {
   }, 0);
   const productiveMs = Math.max(0, liveWorkMs - livePauseMs);
   return { liveWorkMs, livePauseMs, productiveMs };
+}
+
+function normalizePauses(input: unknown): PontoPause[] {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((p) => {
+      if (!p || typeof p !== "object") return null;
+      const raw = p as { start?: unknown; end?: unknown };
+      const start = Number(raw.start);
+      const end = raw.end === undefined || raw.end === null ? undefined : Number(raw.end);
+      if (!Number.isFinite(start)) return null;
+      return Number.isFinite(end) ? { start, end } : { start };
+    })
+    .filter(Boolean) as PontoPause[];
+}
+
+function closeSessionSnapshot(s: PontoSession, endAtMs: number): { session: PontoSession; totalMs: number; pauseMs: number; productiveMs: number } {
+  const endAt = Math.max(s.startedAt ?? endAtMs, endAtMs);
+  const pauses = [...s.pauses];
+  const last = pauses[pauses.length - 1];
+  if (last && !last.end) pauses[pauses.length - 1] = { ...last, end: endAt };
+  const session: PontoSession = { ...s, status: "ended", endedAt: endAt, pauses };
+  const { liveWorkMs, livePauseMs, productiveMs } = compute(session, endAt);
+  return { session, totalMs: liveWorkMs, pauseMs: livePauseMs, productiveMs };
+}
+
+function buildClosedRemotePayload(row: PontoRemoteRow, endAtMs: number) {
+  const startedAt = new Date(row.started_at).getTime();
+  const snapshot = closeSessionSnapshot({
+    status: row.status === "paused" ? "paused" : "working",
+    startedAt,
+    endedAt: null,
+    pauses: normalizePauses(row.pauses),
+    sessionId: row.id,
+    ownerEmail: row.owner_email,
+    user: row.user_name ?? undefined,
+    company: row.company as Company | undefined,
+  }, Math.max(startedAt, endAtMs));
+  return {
+    status: "ended",
+    ended_at: new Date(snapshot.session.endedAt ?? endAtMs).toISOString(),
+    pauses: snapshot.session.pauses as unknown as never,
+    total_ms: snapshot.totalMs,
+    productive_ms: snapshot.productiveMs,
+    pause_ms: snapshot.pauseMs,
+    updated_at: new Date().toISOString(),
+  };
 }
 
 async function resolveWorkspaceId(userId: string) {
@@ -372,20 +421,34 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Pausa automaticamente qualquer outra empresa ativa
+    // Encerra qualquer expediente aberto antes de iniciar outro. Isso impede
+    // sobreposição entre empresas, abas, dispositivos e sessões presas antigas.
+    const { data: openRows, error: openError } = await supabase
+      .from("ponto_sessions")
+      .select("id, started_at, ended_at, status, pauses, user_name, owner_email, company, productive_ms, total_ms, pause_ms, updated_at")
+      .eq("workspace_id", workspaceId)
+      .eq("user_id", resolvedUserId)
+      .in("status", ["working", "paused"]);
+    if (openError) console.error("[ponto] open sessions lookup error", openError);
+    await Promise.all((openRows ?? []).map((row) => supabase
+      .from("ponto_sessions")
+      .update(buildClosedRemotePayload(row as PontoRemoteRow, startedAt))
+      .eq("id", row.id)
+      .in("status", ["working", "paused"])
+    ));
+
     setSessions((prev) => {
       const next: SessionsMap = { ...prev };
       for (const c of COMPANIES) {
         const s = next[c];
-        if (!s) continue;
-        if (c !== company && s.status === "working") {
-          const pauses = [...s.pauses, { start: Date.now() }];
-          next[c] = { ...s, status: "paused", pauses };
-          if (s.sessionId) persistUpdate({ ...s, status: "paused", pauses });
+        if (!s || (s.status !== "working" && s.status !== "paused")) continue;
+        if (c !== company || s.sessionId) {
+          next[c] = closeSessionSnapshot(s, startedAt).session;
         }
       }
       return next;
     });
+    if ((openRows ?? []).length > 0) reloadDailyTotals();
 
     const payload: Record<string, unknown> = {
       workspace_id: workspaceId,
@@ -402,7 +465,20 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       .insert(payload as never)
       .select("id")
       .single();
-    if (error) { console.error("[ponto] start error", error); return; }
+    if (error) {
+      console.error("[ponto] start error", error);
+      const { data: current } = await supabase
+        .from("ponto_sessions")
+        .select("id, started_at, ended_at, status, pauses, user_name, owner_email, company, productive_ms, total_ms, pause_ms, updated_at")
+        .eq("workspace_id", workspaceId)
+        .eq("user_id", resolvedUserId)
+        .in("status", ["working", "paused"])
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (current) adoptSession(current as PontoRemoteRow);
+      return;
+    }
     const sessionId = (data?.id as string | undefined) ?? null;
     updateCompany(company, () => ({
       status: "working",
@@ -415,7 +491,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       company,
     }));
     if (sessionId) emit({ type: "started", sessionId, ownerEmail: owner, company });
-  }, [persistUpdate, updateCompany]);
+  }, [adoptSession, persistUpdate, reloadDailyTotals, updateCompany]);
 
   const pauseCompany = useCallback<PontoCtx["pauseCompany"]>((company) => {
     setSessions((prev) => {
