@@ -1007,6 +1007,15 @@ function CardDialog({
 
         <div className="p-3 sm:p-4 space-y-4 sm:space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Funil">
+              <select
+                value={card.funnel_id ?? ""}
+                onChange={(e) => { if (e.target.value && e.target.value !== card.funnel_id) onMoveFunnel(e.target.value); }}
+                className="w-full bg-surface rounded px-2 py-1.5 text-sm"
+              >
+                {funnels.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </Field>
             <Field label="Coluna">
               <select
                 value={card.column_id ?? ""}
