@@ -208,7 +208,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
       const [{ data: fs }, { data: cols }, { data: cs }] = await Promise.all([
         supabase.from("kanban_funnels").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
         supabase.from("kanban_columns").select("*").eq("workspace_id", activeWorkspaceId).order("position"),
-        supabase.from("checklist_tasks").select("*").eq("workspace_id", activeWorkspaceId).not("funnel_id", "is", null).order("position"),
+        supabase.from("kanban_cards").select("*").eq("workspace_id", activeWorkspaceId).not("funnel_id", "is", null).order("position"),
       ]);
       if (cancelled) return;
 
@@ -253,7 +253,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
       const orphanCards = cardList.filter(c => !c.funnel_id);
       if (orphanCards.length > 0 && firstFunnelId) {
         await Promise.all(orphanCards.map(c =>
-          supabase.from("checklist_tasks").update({ funnel_id: firstFunnelId }).eq("id", c.id)
+          supabase.from("kanban_cards").update({ funnel_id: firstFunnelId }).eq("id", c.id)
         ));
         cardList.forEach(c => { if (!c.funnel_id) c.funnel_id = firstFunnelId; });
       }
@@ -272,8 +272,8 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
         const { data } = await supabase.from("kanban_columns").select("*").eq("workspace_id", activeWorkspaceId).order("position");
         setColumns((data ?? []) as Column[]);
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "checklist_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
-        const { data } = await supabase.from("checklist_tasks").select("*").eq("workspace_id", activeWorkspaceId).not("funnel_id", "is", null).order("position");
+      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_cards", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
+        const { data } = await supabase.from("kanban_cards").select("*").eq("workspace_id", activeWorkspaceId).not("funnel_id", "is", null).order("position");
         setCards(((data ?? []) as unknown[]).map(normalizeCard));
       })
       .subscribe();
@@ -328,7 +328,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     const colsIn = columns.filter(c => c.funnel_id === id);
     const cardsIn = cards.filter(c => c.funnel_id === id);
     if (!confirm(`Excluir funil "${f?.name}" com ${colsIn.length} coluna(s) e ${cardsIn.length} card(s)?`)) return;
-    await supabase.from("checklist_tasks").delete().eq("funnel_id", id);
+    await supabase.from("kanban_cards").delete().eq("funnel_id", id);
     await supabase.from("kanban_columns").delete().eq("funnel_id", id);
     await supabase.from("kanban_funnels").delete().eq("id", id);
     if (activeFunnelId === id) {
@@ -375,7 +375,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     const colCards = cards.filter(c => c.column_id === id);
     const col = columns.find(c => c.id === id);
     if (colCards.length > 0 && !confirm(`Excluir coluna com ${colCards.length} card(s)? Os cards também serão removidos.`)) return;
-    await supabase.from("checklist_tasks").delete().eq("column_id", id);
+    await supabase.from("kanban_cards").delete().eq("column_id", id);
     await supabase.from("kanban_columns").delete().eq("id", id);
     if (col) await logActivity({
       entity_type: "kanban_column", entity_id: id, action: "deleted",
@@ -421,7 +421,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
       legacy_checklist: [] as ChecklistItem[],
     };
     const { data, error } = await supabase
-      .from("checklist_tasks")
+      .from("kanban_cards")
       .insert(payload as never)
       .select()
       .single();
@@ -446,7 +446,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
       await supabase.storage.from("kanban-attachments").remove(atts.map(a => a.storage_path));
       await supabase.from("kanban_attachments").delete().eq("card_id", id);
     }
-    await supabase.from("checklist_tasks").delete().eq("id", id);
+    await supabase.from("kanban_cards").delete().eq("id", id);
     if (card) await logActivity({
       entity_type: "kanban_card", entity_id: id, action: "deleted",
       title: card.title, company: card.company,
@@ -464,7 +464,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     delete (dbPatch as Record<string, unknown>).column_name;
     setCards(cs => cs.map(c => c.id === id ? { ...c, ...patch } : c));
     setOpenCard(c => c && c.id === id ? { ...c, ...patch } : c);
-    await supabase.from("checklist_tasks").update(dbPatch as never).eq("id", id);
+    await supabase.from("kanban_cards").update(dbPatch as never).eq("id", id);
   };
 
   const moveCard = async (cardId: string, targetColId: string, targetIdx?: number) => {
@@ -494,12 +494,12 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     }));
 
     await Promise.all([
-      ...reposTarget.map(p => supabase.from("checklist_tasks").update({ position: p.position, column_id: p.column_id }).eq("id", p.id)),
-      ...reposSource.map(p => supabase.from("checklist_tasks").update({ position: p.position }).eq("id", p.id)),
+      ...reposTarget.map(p => supabase.from("kanban_cards").update({ position: p.position, column_id: p.column_id }).eq("id", p.id)),
+      ...reposSource.map(p => supabase.from("kanban_cards").update({ position: p.position }).eq("id", p.id)),
     ]);
 
     if (isDoneColumnName(col.name) && card.status !== "done") {
-      await supabase.from("checklist_tasks").update({ status: "done" }).eq("id", cardId);
+      await supabase.from("kanban_cards").update({ status: "done" }).eq("id", cardId);
       const active = getActivePontoSession();
       if (active.sessionId && userId && activeWorkspaceId) {
         await supabase.from("ponto_session_tasks").insert({
@@ -512,7 +512,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
         toast.success("Card concluído e registrado no ponto");
       }
     } else if (!isDoneColumnName(col.name) && card.status === "done") {
-      await supabase.from("checklist_tasks").update({ status: "pending" }).eq("id", cardId);
+      await supabase.from("kanban_cards").update({ status: "pending" }).eq("id", cardId);
     }
   };
 
