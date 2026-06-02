@@ -131,18 +131,29 @@ function flatten(list: UserTask[]): UserTask[] {
   return out;
 }
 
+/** Local YYYY-MM-DD (avoids UTC drift). */
+function localDateStr(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function ChecklistProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id ?? null;
   const ownerEmail = user?.email ?? "guest@pubcore.local";
+  const userName = user?.name ?? null;
   const [state, setState] = useState<ChecklistState>(() => emptyState());
   const [loading, setLoading] = useState(true);
   const userIdRef = useRef(userId);
   const ownerRef = useRef(ownerEmail);
+  const nameRef = useRef<string | null>(userName);
   const wsRef = useRef(activeWorkspaceId);
   userIdRef.current = userId;
   ownerRef.current = ownerEmail;
+  nameRef.current = userName;
   wsRef.current = activeWorkspaceId;
 
   // Cache the raw rows so realtime events can rebuild the tree cleanly.
@@ -150,6 +161,46 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const rebuild = useCallback(() => {
     setState(groupByCompany(rowsRef.current));
+  }, []);
+
+  /** Snapshot rows completed on a previous day into the daily-history log,
+   *  then reset their status back to "pending" so the checklist restarts today. */
+  const snapshotAndResetStale = useCallback(async (rows: DbRow[]): Promise<DbRow[]> => {
+    if (!wsRef.current) return rows;
+    const today = localDateStr();
+    const stale = rows.filter((r) => {
+      if (r.status !== "done" || !r.done_at) return false;
+      return localDateStr(new Date(r.done_at)) !== today;
+    });
+    if (stale.length === 0) return rows;
+
+    const entries = stale.map((r) => ({
+      workspace_id: wsRef.current!,
+      user_id: userIdRef.current,
+      owner_email: ownerRef.current,
+      user_name: nameRef.current,
+      task_id: r.id,
+      task_title: r.title,
+      company: r.company,
+      completed_on: localDateStr(new Date(r.done_at!)),
+      completed_at: r.done_at!,
+    }));
+    const { error: histErr } = await supabase
+      .from("checklist_daily_completions")
+      .upsert(entries as never, { onConflict: "workspace_id,task_id,completed_on" });
+    if (histErr) console.error("[checklist] history snapshot error", histErr);
+
+    const ids = stale.map((r) => r.id);
+    const { error: resetErr } = await supabase
+      .from("checklist_tasks")
+      .update({ status: "pending", done_at: null })
+      .in("id", ids);
+    if (resetErr) {
+      console.error("[checklist] daily reset error", resetErr);
+      return rows;
+    }
+    const idSet = new Set(ids);
+    return rows.map((r) => (idSet.has(r.id) ? { ...r, status: "pending", done_at: null } : r));
   }, []);
 
   useEffect(() => {
@@ -165,7 +216,12 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         .order("position", { ascending: true });
       if (cancelled) return;
       if (error) { console.error("[checklist] load error", error); rowsRef.current = []; setState(emptyState()); }
-      else { rowsRef.current = (data ?? []) as DbRow[]; rebuild(); }
+      else {
+        const fresh = await snapshotAndResetStale((data ?? []) as DbRow[]);
+        if (cancelled) return;
+        rowsRef.current = fresh;
+        rebuild();
+      }
       setLoading(false);
     })();
 
@@ -190,8 +246,14 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
         })
       .subscribe();
 
-    return () => { cancelled = true; supabase.removeChannel(channel); };
-  }, [userId, activeWorkspaceId, rebuild]);
+    // Periodic check: if the tab is left open past midnight, reset.
+    const interval = window.setInterval(async () => {
+      const fresh = await snapshotAndResetStale(rowsRef.current);
+      if (fresh !== rowsRef.current) { rowsRef.current = fresh; rebuild(); }
+    }, 5 * 60 * 1000);
+
+    return () => { cancelled = true; supabase.removeChannel(channel); window.clearInterval(interval); };
+  }, [userId, activeWorkspaceId, rebuild, snapshotAndResetStale]);
 
   const add = useCallback(async (company: Company, text: string, parentId: string | null = null) => {
     const trimmed = text.trim();
