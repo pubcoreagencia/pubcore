@@ -516,6 +516,39 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     }
   };
 
+  const moveCardToFunnel = async (cardId: string, targetFunnelId: string) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card || card.funnel_id === targetFunnelId) return;
+    const targetCols = columns.filter(c => c.funnel_id === targetFunnelId).sort((a, b) => a.position - b.position);
+    if (targetCols.length === 0) { toast.error("O funil de destino não possui colunas"); return; }
+    const targetCol = targetCols[0];
+    const fromColId = card.column_id;
+    const targetCards = cards.filter(c => c.column_id === targetCol.id && c.id !== cardId).sort((a, b) => a.position - b.position);
+    const newPos = targetCards.length;
+
+    let reposSource: { id: string; position: number }[] = [];
+    if (fromColId) {
+      reposSource = cards
+        .filter(c => c.column_id === fromColId && c.id !== cardId)
+        .sort((a, b) => a.position - b.position)
+        .map((c, i) => ({ id: c.id, position: i }));
+    }
+
+    setCards(cs => cs.map(c => {
+      if (c.id === cardId) return { ...c, funnel_id: targetFunnelId, column_id: targetCol.id, column_name: targetCol.name, position: newPos };
+      const s = reposSource.find(x => x.id === c.id);
+      if (s) return { ...c, position: s.position };
+      return c;
+    }));
+    setOpenCard(c => c && c.id === cardId ? { ...c, funnel_id: targetFunnelId, column_id: targetCol.id, column_name: targetCol.name, position: newPos } : c);
+
+    await Promise.all([
+      supabase.from("kanban_cards").update({ funnel_id: targetFunnelId, column_id: targetCol.id, position: newPos }).eq("id", cardId),
+      ...reposSource.map(p => supabase.from("kanban_cards").update({ position: p.position }).eq("id", p.id)),
+    ]);
+    toast.success(`Card movido para "${funnels.find(f => f.id === targetFunnelId)?.name ?? "outro funil"}"`);
+  };
+
   // ----- RENDER -----
   if (!loaded) {
     return <div className="p-10 text-muted-foreground">Carregando Kanban…</div>;
