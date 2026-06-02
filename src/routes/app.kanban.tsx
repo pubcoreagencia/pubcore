@@ -516,6 +516,39 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     }
   };
 
+  const moveCardToFunnel = async (cardId: string, targetFunnelId: string) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card || card.funnel_id === targetFunnelId) return;
+    const targetCols = columns.filter(c => c.funnel_id === targetFunnelId).sort((a, b) => a.position - b.position);
+    if (targetCols.length === 0) { toast.error("O funil de destino não possui colunas"); return; }
+    const targetCol = targetCols[0];
+    const fromColId = card.column_id;
+    const targetCards = cards.filter(c => c.column_id === targetCol.id && c.id !== cardId).sort((a, b) => a.position - b.position);
+    const newPos = targetCards.length;
+
+    let reposSource: { id: string; position: number }[] = [];
+    if (fromColId) {
+      reposSource = cards
+        .filter(c => c.column_id === fromColId && c.id !== cardId)
+        .sort((a, b) => a.position - b.position)
+        .map((c, i) => ({ id: c.id, position: i }));
+    }
+
+    setCards(cs => cs.map(c => {
+      if (c.id === cardId) return { ...c, funnel_id: targetFunnelId, column_id: targetCol.id, column_name: targetCol.name, position: newPos };
+      const s = reposSource.find(x => x.id === c.id);
+      if (s) return { ...c, position: s.position };
+      return c;
+    }));
+    setOpenCard(c => c && c.id === cardId ? { ...c, funnel_id: targetFunnelId, column_id: targetCol.id, column_name: targetCol.name, position: newPos } : c);
+
+    await Promise.all([
+      supabase.from("kanban_cards").update({ funnel_id: targetFunnelId, column_id: targetCol.id, position: newPos }).eq("id", cardId),
+      ...reposSource.map(p => supabase.from("kanban_cards").update({ position: p.position }).eq("id", p.id)),
+    ]);
+    toast.success(`Card movido para "${funnels.find(f => f.id === targetFunnelId)?.name ?? "outro funil"}"`);
+  };
+
   // ----- RENDER -----
   if (!loaded) {
     return <div className="p-10 text-muted-foreground">Carregando Kanban…</div>;
@@ -566,15 +599,22 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
         {sortedFunnels.map((f) => {
           const isActive = f.id === activeFunnelId;
           const count = cards.filter(c => c.funnel_id === f.id).length;
+          const isCardDropTarget = !!draggingCard && f.id !== activeFunnelId;
           return (
             <div
               key={f.id}
               draggable={editingFunnel !== f.id}
               onDragStart={(e) => { setDraggingFunnel(f.id); e.dataTransfer.effectAllowed = "move"; }}
               onDragEnd={() => setDraggingFunnel(null)}
-              onDragOver={(e) => { if (draggingFunnel) e.preventDefault(); }}
+              onDragOver={(e) => { if (draggingFunnel || draggingCard) e.preventDefault(); }}
               onDrop={(e) => {
                 e.preventDefault();
+                if (draggingCard) {
+                  if (f.id !== activeFunnelId) moveCardToFunnel(draggingCard, f.id);
+                  setDraggingCard(null);
+                  setOverCol(null);
+                  return;
+                }
                 if (draggingFunnel && draggingFunnel !== f.id) {
                   reorderFunnels(draggingFunnel, f.id);
                   setDraggingFunnel(null);
@@ -583,7 +623,9 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
               className={`group flex-shrink-0 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 transition cursor-pointer ${
                 isActive
                   ? "border-primary/60 bg-primary/10 shadow-glow"
-                  : "border-border bg-card/40 hover:border-primary/30"
+                  : isCardDropTarget
+                    ? "border-dashed border-primary/60 bg-primary/5"
+                    : "border-border bg-card/40 hover:border-primary/30"
               }`}
               onClick={() => { if (editingFunnel !== f.id) setActiveFunnelId(f.id); }}
             >
@@ -867,9 +909,11 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
         <CardDialog
           card={openCard}
           columns={funnelCols}
+          funnels={sortedFunnels}
           onClose={() => setOpenCard(null)}
           onUpdate={(patch) => updateCard(openCard.id, patch)}
           onMove={(colId) => { moveCard(openCard.id, colId); setOpenCard(null); }}
+          onMoveFunnel={(fid) => { moveCardToFunnel(openCard.id, fid); setOpenCard(null); setActiveFunnelId(fid); }}
           onDelete={() => { deleteCard(openCard.id); setOpenCard(null); }}
         />
       )}
@@ -878,13 +922,15 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
 }
 
 function CardDialog({
-  card, columns, onClose, onUpdate, onMove, onDelete,
+  card, columns, funnels, onClose, onUpdate, onMove, onMoveFunnel, onDelete,
 }: {
   card: Card;
   columns: Column[];
+  funnels: Funnel[];
   onClose: () => void;
   onUpdate: (patch: Partial<Card>) => void;
   onMove: (colId: string) => void;
+  onMoveFunnel: (funnelId: string) => void;
   onDelete: () => void;
 }) {
   const [title, setTitle] = useState(card.title);
@@ -961,6 +1007,15 @@ function CardDialog({
 
         <div className="p-3 sm:p-4 space-y-4 sm:space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Funil">
+              <select
+                value={card.funnel_id ?? ""}
+                onChange={(e) => { if (e.target.value && e.target.value !== card.funnel_id) onMoveFunnel(e.target.value); }}
+                className="w-full bg-surface rounded px-2 py-1.5 text-sm"
+              >
+                {funnels.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+              </select>
+            </Field>
             <Field label="Coluna">
               <select
                 value={card.column_id ?? ""}
