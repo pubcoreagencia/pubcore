@@ -476,7 +476,20 @@ export function PontoProvider({ children }: { children: ReactNode }) {
         .order("started_at", { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (current) adoptSession(current as PontoRemoteRow);
+      const row = current as PontoRemoteRow | null;
+      const currentCompany = row?.company as Company | null;
+      if (row && currentCompany && COMPANIES.includes(currentCompany)) {
+        updateCompany(currentCompany, () => ({
+          status: row.status === "paused" ? "paused" : "working",
+          startedAt: new Date(row.started_at).getTime(),
+          endedAt: row.ended_at ? new Date(row.ended_at).getTime() : null,
+          pauses: normalizePauses(row.pauses),
+          user: row.user_name ?? undefined,
+          ownerEmail: row.owner_email,
+          sessionId: row.id,
+          company: currentCompany,
+        }));
+      }
       return;
     }
     const sessionId = (data?.id as string | undefined) ?? null;
@@ -507,15 +520,19 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     setSessions((prev) => {
       const cur = prev[company];
       if (!cur || cur.status !== "paused") return prev;
-      // Pausa outras ativas
+      // Encerra outras sessões locais que tenham ficado presas para manter apenas uma ativa.
       const map: SessionsMap = { ...prev };
       for (const c of COMPANIES) {
         const s = map[c];
         if (!s || c === company) continue;
-        if (s.status === "working") {
-          const pauses = [...s.pauses, { start: Date.now() }];
-          map[c] = { ...s, status: "paused", pauses };
-          if (s.sessionId) persistUpdate({ ...s, status: "paused", pauses });
+        if (s.status === "working" || s.status === "paused") {
+          const closed = closeSessionSnapshot(s, Date.now());
+          map[c] = closed.session;
+          if (s.sessionId) persistUpdate(closed.session, {
+            total_ms: closed.totalMs,
+            productive_ms: closed.productiveMs,
+            pause_ms: closed.pauseMs,
+          });
         }
       }
       const pauses = [...cur.pauses];
@@ -570,20 +587,14 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     }));
   }, [updateCompany]);
 
-  // Compat: empresa ativa = working primeiro, depois paused, depois ended mais recente
+  // Compat: empresa ativa = apenas expediente realmente aberto
   const activeCompany = useMemo<Company | null>(() => {
     const entries = Object.entries(sessions) as [Company, PontoSession | undefined][];
     const working = entries.find(([, s]) => s?.status === "working");
     if (working) return working[0];
     const paused = entries.find(([, s]) => s?.status === "paused");
     if (paused) return paused[0];
-    let lastEnded: { c: Company; t: number } | null = null;
-    for (const [c, s] of entries) {
-      if (s?.status === "ended" && s.endedAt && (!lastEnded || s.endedAt > lastEnded.t)) {
-        lastEnded = { c, t: s.endedAt };
-      }
-    }
-    return lastEnded?.c ?? null;
+    return null;
   }, [sessions]);
 
   const activeSession = activeCompany ? (sessions[activeCompany] ?? emptySession(activeCompany)) : emptySession();
