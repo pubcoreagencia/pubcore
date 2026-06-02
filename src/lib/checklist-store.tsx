@@ -231,17 +231,19 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
       .on("postgres_changes",
         { event: "*", schema: "public", table: "checklist_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` },
         (payload) => {
-          if (payload.eventType === "INSERT") {
-            const row = payload.new as DbRow;
-            if (!rowsRef.current.some((r) => r.id === row.id)) rowsRef.current = [...rowsRef.current, row];
-          } else if (payload.eventType === "UPDATE") {
-            const row = payload.new as DbRow;
-            const idx = rowsRef.current.findIndex((r) => r.id === row.id);
-            if (idx === -1) rowsRef.current = [...rowsRef.current, row];
-            else { const next = [...rowsRef.current]; next[idx] = row; rowsRef.current = next; }
-          } else if (payload.eventType === "DELETE") {
-            const row = payload.old as DbRow;
-            rowsRef.current = rowsRef.current.filter((r) => r.id !== row.id);
+          // Defensive: ignore any row with funnel_id (those belong to Kanban,
+          // which now lives in its own kanban_cards table).
+          const newRow = payload.new as DbRow | undefined;
+          const oldRow = payload.old as DbRow | undefined;
+          if (newRow && (newRow as { funnel_id?: string | null }).funnel_id) return;
+          if (payload.eventType === "INSERT" && newRow) {
+            if (!rowsRef.current.some((r) => r.id === newRow.id)) rowsRef.current = [...rowsRef.current, newRow];
+          } else if (payload.eventType === "UPDATE" && newRow) {
+            const idx = rowsRef.current.findIndex((r) => r.id === newRow.id);
+            if (idx === -1) rowsRef.current = [...rowsRef.current, newRow];
+            else { const next = [...rowsRef.current]; next[idx] = newRow; rowsRef.current = next; }
+          } else if (payload.eventType === "DELETE" && oldRow) {
+            rowsRef.current = rowsRef.current.filter((r) => r.id !== oldRow.id);
           }
           rebuild();
         })
