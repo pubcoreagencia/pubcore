@@ -20,6 +20,8 @@ export interface EditablePontoSession {
   description?: string | null;
   company?: string | null;
   user_name?: string | null;
+  original_started_at?: string | null;
+  original_ended_at?: string | null;
 }
 
 interface Props {
