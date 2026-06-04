@@ -779,6 +779,11 @@ interface DaySessionRow {
   pause_ms: number | null;
   user_name: string | null;
   company: string | null;
+  workspace_id?: string | null;
+  pauses?: unknown;
+  notes?: string | null;
+  description?: string | null;
+  edited_at?: string | null;
 }
 
 const HOUR_LIMIT_MS = 30 * 60 * 1000;
