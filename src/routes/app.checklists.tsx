@@ -706,6 +706,15 @@ function HistoryTab() {
                     )}
                     <div className="flex flex-wrap items-center gap-1 ml-auto">
                       {companies.map((c) => <CompanyTag key={c} company={c} />)}
+                      {s.edited_at && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded border border-warning/30 bg-warning/10 text-warning">editado</span>
+                      )}
+                      <button
+                        onClick={() => setEditing(s as EditablePontoSession)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-surface hover:bg-surface-elevated text-xs ml-1"
+                      >
+                        <Pencil className="h-3 w-3" /> Editar
+                      </button>
                     </div>
                   </li>
                 );
