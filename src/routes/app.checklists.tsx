@@ -823,7 +823,7 @@ function PontoTab() {
     const load = async () => {
       const { data, error } = await supabase
         .from("ponto_sessions")
-        .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company")
+        .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company, workspace_id, pauses, notes, description, edited_at")
         .eq("workspace_id", activeWorkspaceId)
         .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
         .eq("status", "ended")
