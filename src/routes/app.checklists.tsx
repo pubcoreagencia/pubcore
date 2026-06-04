@@ -845,19 +845,29 @@ function PontoTab() {
     return () => { cancelled = true; offEvt(); supabase.removeChannel(ch); };
   }, [user?.id, user?.email, activeWorkspaceId]);
 
-  // Resumo consolidado por dia (sem expor subpontos por empresa no histórico)
+  // Resumo consolidado por dia + sessões individuais (subpontos por empresa)
   const grouped = useMemo(() => {
-    const byDay = new Map<string, { day: string; total: number; productive: number; sessionsCount: number }>();
+    const byDay = new Map<string, { day: string; total: number; productive: number; sessions: DaySessionRow[] }>();
     for (const s of history) {
       const day = new Date(s.started_at).toISOString().slice(0, 10);
-      const entry = byDay.get(day) ?? { day, total: 0, productive: 0, sessionsCount: 0 };
+      const entry = byDay.get(day) ?? { day, total: 0, productive: 0, sessions: [] };
       entry.total += s.total_ms ?? 0;
       entry.productive += s.productive_ms ?? 0;
-      entry.sessionsCount += 1;
+      entry.sessions.push(s);
       byDay.set(day, entry);
     }
     return Array.from(byDay.values()).sort((a, b) => (a.day < b.day ? 1 : -1));
   }, [history]);
+
+  const [openDays, setOpenDays] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<EditablePontoSession | null>(null);
+  const toggleDay = (day: string) => {
+    setOpenDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(day)) next.delete(day); else next.add(day);
+      return next;
+    });
+  };
 
   const fmtDateLabel = (day: string) => {
     const d = new Date(day + "T00:00:00");
