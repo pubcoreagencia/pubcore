@@ -24,6 +24,7 @@ import { useAuth } from "@/lib/auth";
 import { usePonto, fmtTime, onPontoEvent } from "@/lib/ponto";
 import { useChecklist, type UserTask } from "@/lib/checklist-store";
 import { useWorkspace } from "@/lib/workspace";
+import { EditPontoSessionDialog, type EditablePontoSession } from "@/components/EditPontoSessionDialog";
 
 export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
@@ -537,6 +538,7 @@ function HistoryTab() {
   const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
   const [userFilter, setUserFilter] = useState<string>("Todos");
   const [page, setPage] = useState(1);
+  const [editing, setEditing] = useState<EditablePontoSession | null>(null);
   const PAGE_SIZE = 10;
 
   const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
@@ -704,6 +706,15 @@ function HistoryTab() {
                     )}
                     <div className="flex flex-wrap items-center gap-1 ml-auto">
                       {companies.map((c) => <CompanyTag key={c} company={c} />)}
+                      {s.edited_at && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded border border-warning/30 bg-warning/10 text-warning">editado</span>
+                      )}
+                      <button
+                        onClick={() => setEditing(s as EditablePontoSession)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-surface hover:bg-surface-elevated text-xs ml-1"
+                      >
+                        <Pencil className="h-3 w-3" /> Editar
+                      </button>
                     </div>
                   </li>
                 );
@@ -763,6 +774,8 @@ function HistoryTab() {
           </ol>
         )}
       </div>
+
+      <EditPontoSessionDialog session={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }
@@ -779,6 +792,11 @@ interface DaySessionRow {
   pause_ms: number | null;
   user_name: string | null;
   company: string | null;
+  workspace_id?: string | null;
+  pauses?: unknown;
+  notes?: string | null;
+  description?: string | null;
+  edited_at?: string | null;
 }
 
 const HOUR_LIMIT_MS = 30 * 60 * 1000;
@@ -818,7 +836,7 @@ function PontoTab() {
     const load = async () => {
       const { data, error } = await supabase
         .from("ponto_sessions")
-        .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company")
+        .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company, workspace_id, pauses, notes, description, edited_at")
         .eq("workspace_id", activeWorkspaceId)
         .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
         .eq("status", "ended")
@@ -839,19 +857,29 @@ function PontoTab() {
     return () => { cancelled = true; offEvt(); supabase.removeChannel(ch); };
   }, [user?.id, user?.email, activeWorkspaceId]);
 
-  // Resumo consolidado por dia (sem expor subpontos por empresa no histórico)
+  // Resumo consolidado por dia + sessões individuais (subpontos por empresa)
   const grouped = useMemo(() => {
-    const byDay = new Map<string, { day: string; total: number; productive: number; sessionsCount: number }>();
+    const byDay = new Map<string, { day: string; total: number; productive: number; sessions: DaySessionRow[] }>();
     for (const s of history) {
       const day = new Date(s.started_at).toISOString().slice(0, 10);
-      const entry = byDay.get(day) ?? { day, total: 0, productive: 0, sessionsCount: 0 };
+      const entry = byDay.get(day) ?? { day, total: 0, productive: 0, sessions: [] };
       entry.total += s.total_ms ?? 0;
       entry.productive += s.productive_ms ?? 0;
-      entry.sessionsCount += 1;
+      entry.sessions.push(s);
       byDay.set(day, entry);
     }
     return Array.from(byDay.values()).sort((a, b) => (a.day < b.day ? 1 : -1));
   }, [history]);
+
+  const [openDays, setOpenDays] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<EditablePontoSession | null>(null);
+  const toggleDay = (day: string) => {
+    setOpenDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(day)) next.delete(day); else next.add(day);
+      return next;
+    });
+  };
 
   const fmtDateLabel = (day: string) => {
     const d = new Date(day + "T00:00:00");
@@ -984,27 +1012,65 @@ function PontoTab() {
           <ul className="divide-y divide-border/60 rounded-lg border border-border/60 bg-surface/30 overflow-hidden">
             {grouped.map((d) => {
               const productivity = d.total > 0 ? Math.round((d.productive / d.total) * 100) : 0;
+              const isOpen = openDays.has(d.day);
               return (
-                <li key={d.day} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm hover:bg-surface/50 transition">
-                  <div className="min-w-[200px]">
-                    <div className="text-xs text-muted-foreground capitalize">{fmtDateLabel(d.day)}</div>
-                  </div>
-                  <div className="flex items-center gap-1.5 ml-auto">
-                    <Timer className="h-3.5 w-3.5 text-primary" />
-                    <span className="font-mono text-sm font-semibold tabular-nums">{fmtTime(d.total)}</span>
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">trabalhado</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5 text-success" />
-                    <span className="font-mono text-xs tabular-nums">{productivity}%</span>
-                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">prod</span>
-                  </div>
+                <li key={d.day} className="text-sm">
+                  <button
+                    type="button"
+                    onClick={() => toggleDay(d.day)}
+                    className="w-full flex flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-surface/50 transition"
+                  >
+                    <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                    <div className="min-w-[180px]">
+                      <div className="text-xs text-muted-foreground capitalize">{fmtDateLabel(d.day)}</div>
+                      <div className="text-[10px] text-muted-foreground">{d.sessions.length} expediente(s)</div>
+                    </div>
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      <Timer className="h-3.5 w-3.5 text-primary" />
+                      <span className="font-mono text-sm font-semibold tabular-nums">{fmtTime(d.total)}</span>
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">trabalhado</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <TrendingUp className="h-3.5 w-3.5 text-success" />
+                      <span className="font-mono text-xs tabular-nums">{productivity}%</span>
+                      <span className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">prod</span>
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <ul className="divide-y divide-border/40 bg-surface/20">
+                      {d.sessions.map((s) => {
+                        const start = new Date(s.started_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+                        const end = s.ended_at ? new Date(s.ended_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
+                        return (
+                          <li key={s.id} className="flex flex-wrap items-center gap-3 px-6 py-2.5 text-xs">
+                            {s.company && <CompanyTag company={s.company as Company} />}
+                            <span className="font-mono tabular-nums text-muted-foreground">{start} → {end}</span>
+                            <span className="font-mono tabular-nums">{fmtTime(s.total_ms ?? 0)}</span>
+                            {s.edited_at && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded border border-warning/30 bg-warning/10 text-warning">editado</span>
+                            )}
+                            {s.description && (
+                              <span className="text-muted-foreground truncate max-w-[260px]">— {s.description}</span>
+                            )}
+                            <button
+                              onClick={() => setEditing(s as EditablePontoSession)}
+                              className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-surface hover:bg-surface-elevated text-xs"
+                            >
+                              <Pencil className="h-3 w-3" /> Editar
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
                 </li>
               );
             })}
           </ul>
         )}
       </div>
+
+      <EditPontoSessionDialog session={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }

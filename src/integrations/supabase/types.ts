@@ -780,6 +780,47 @@ export type Database = {
         }
         Relationships: []
       }
+      ponto_session_edits: {
+        Row: {
+          created_at: string
+          edited_by: string
+          edited_by_email: string | null
+          id: string
+          next: Json
+          previous: Json
+          session_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          edited_by: string
+          edited_by_email?: string | null
+          id?: string
+          next: Json
+          previous: Json
+          session_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          edited_by?: string
+          edited_by_email?: string | null
+          id?: string
+          next?: Json
+          previous?: Json
+          session_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ponto_session_edits_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "ponto_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ponto_session_tasks: {
         Row: {
           company: string
@@ -834,8 +875,14 @@ export type Database = {
         Row: {
           company: string | null
           created_at: string
+          description: string | null
+          edited_at: string | null
+          edited_by: string | null
           ended_at: string | null
           id: string
+          notes: string | null
+          original_ended_at: string | null
+          original_started_at: string | null
           owner_email: string
           pause_ms: number
           pauses: Json
@@ -852,8 +899,14 @@ export type Database = {
         Insert: {
           company?: string | null
           created_at?: string
+          description?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           ended_at?: string | null
           id?: string
+          notes?: string | null
+          original_ended_at?: string | null
+          original_started_at?: string | null
           owner_email: string
           pause_ms?: number
           pauses?: Json
@@ -870,8 +923,14 @@ export type Database = {
         Update: {
           company?: string | null
           created_at?: string
+          description?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
           ended_at?: string | null
           id?: string
+          notes?: string | null
+          original_ended_at?: string | null
+          original_started_at?: string | null
           owner_email?: string
           pause_ms?: number
           pauses?: Json

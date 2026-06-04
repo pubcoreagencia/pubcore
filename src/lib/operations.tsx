@@ -14,6 +14,12 @@ export interface SessionRow {
   pause_ms: number | null;
   user_name: string | null;
   owner_email: string;
+  company?: string | null;
+  workspace_id?: string | null;
+  pauses?: unknown;
+  notes?: string | null;
+  description?: string | null;
+  edited_at?: string | null;
 }
 
 export interface SessionTaskRow {
@@ -64,7 +70,7 @@ export function useOperationalData() {
     const load = async () => {
       const [s, st, ch] = await Promise.all([
         supabase.from("ponto_sessions")
-          .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, owner_email")
+          .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, owner_email, company, workspace_id, pauses, notes, description, edited_at")
           .eq("user_id", userId)
           .eq("workspace_id", activeWorkspaceId)
           .order("started_at", { ascending: false })
