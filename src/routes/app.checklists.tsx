@@ -538,6 +538,7 @@ function HistoryTab() {
   const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
   const [userFilter, setUserFilter] = useState<string>("Todos");
   const [page, setPage] = useState(1);
+  const [editing, setEditing] = useState<EditablePontoSession | null>(null);
   const PAGE_SIZE = 10;
 
   const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
