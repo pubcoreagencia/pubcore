@@ -14,6 +14,12 @@ export interface SessionRow {
   pause_ms: number | null;
   user_name: string | null;
   owner_email: string;
+  company?: string | null;
+  workspace_id?: string | null;
+  pauses?: unknown;
+  notes?: string | null;
+  description?: string | null;
+  edited_at?: string | null;
 }
 
 export interface SessionTaskRow {
