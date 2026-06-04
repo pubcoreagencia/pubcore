@@ -24,6 +24,7 @@ import { useAuth } from "@/lib/auth";
 import { usePonto, fmtTime, onPontoEvent } from "@/lib/ponto";
 import { useChecklist, type UserTask } from "@/lib/checklist-store";
 import { useWorkspace } from "@/lib/workspace";
+import { EditPontoSessionDialog, type EditablePontoSession } from "@/components/EditPontoSessionDialog";
 
 export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
