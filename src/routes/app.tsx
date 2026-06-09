@@ -11,6 +11,8 @@ import { FirstShiftPanel } from "@/components/FirstShiftPanel";
 import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
+import { ChecklistCompaniesProvider } from "@/lib/checklist-companies";
+
 import { WorkspaceProvider } from "@/lib/workspace";
 import { PendingApprovalScreen } from "@/components/PendingApprovalScreen";
 
