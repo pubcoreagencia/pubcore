@@ -56,6 +56,44 @@ export type Database = {
         }
         Relationships: []
       }
+      checklist_companies: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_companies_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checklist_daily_completions: {
         Row: {
           company: string
@@ -1405,6 +1443,10 @@ export type Database = {
         Returns: boolean
       }
       close_stale_ponto_sessions: { Args: { _idle?: string }; Returns: number }
+      delete_checklist_company_cascade: {
+        Args: { _name: string; _workspace_id: string }
+        Returns: undefined
+      }
       has_app_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1449,6 +1491,10 @@ export type Database = {
       }
       remove_member: {
         Args: { _user_id: string; _workspace_id: string }
+        Returns: undefined
+      }
+      rename_checklist_company: {
+        Args: { _new_name: string; _old_name: string; _workspace_id: string }
         Returns: undefined
       }
       set_account_status: {
