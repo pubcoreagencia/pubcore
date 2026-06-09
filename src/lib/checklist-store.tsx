@@ -42,8 +42,8 @@ interface DbRow {
   updated_at: string;
 }
 
-const emptyState = (): ChecklistState =>
-  COMPANIES.reduce((acc, c) => { acc[c] = []; return acc; }, {} as ChecklistState);
+const emptyState = (): ChecklistState => ({});
+
 
 function fmtHHMM(iso: string | null): string | undefined {
   if (!iso) return undefined;
