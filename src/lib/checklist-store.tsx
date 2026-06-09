@@ -436,11 +436,12 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const totals = useMemo(() => {
     let total = 0, done = 0;
-    for (const c of COMPANIES) {
-      const all = flatten(state[c]);
+    for (const list of Object.values(state)) {
+      const all = flatten(list);
       total += all.length;
       done += all.filter((t) => t.done).length;
     }
+
     return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
   }, [state]);
 
