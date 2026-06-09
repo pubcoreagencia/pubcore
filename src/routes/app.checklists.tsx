@@ -12,7 +12,7 @@ import {
   BarChart, Bar, RadialBarChart, RadialBar, PolarAngleAxis,
 } from "recharts";
 import {
-  COMPANIES, COMPANY_COLORS, type Company,
+  COMPANIES, COMPANY_COLORS, DEFAULT_COMPANY_COLOR, type Company,
 } from "@/lib/mock-data";
 import {
   useOperationalData, buildDailySeries, tasksByCompany, tasksByUser,
@@ -24,7 +24,9 @@ import { useAuth } from "@/lib/auth";
 import { usePonto, fmtTime, onPontoEvent } from "@/lib/ponto";
 import { useChecklist, type UserTask } from "@/lib/checklist-store";
 import { useWorkspace } from "@/lib/workspace";
+import { useChecklistCompanies, type ChecklistCompany } from "@/lib/checklist-companies";
 import { EditPontoSessionDialog, type EditablePontoSession } from "@/components/EditPontoSessionDialog";
+
 
 export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
@@ -116,12 +118,17 @@ type StatusFilter = "Todos" | "Concluído" | "Pendente";
 
 function DailyTab() {
   const { state } = useChecklist();
-  const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
+  const { companies, canManage, create, reorder } = useChecklistCompanies();
+  const [companyFilter, setCompanyFilter] = useState<string>("Todas");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Todos");
+  const [showNew, setShowNew] = useState(false);
+  const [newName, setNewName] = useState("");
+
+  const companyNames = useMemo(() => companies.map((c) => c.name), [companies]);
 
   const visibleCompanies = useMemo(
-    () => (companyFilter === "Todas" ? [...COMPANIES] : [companyFilter]),
-    [companyFilter]
+    () => (companyFilter === "Todas" ? companyNames : [companyFilter]),
+    [companyFilter, companyNames]
   );
 
   const totals = useMemo(() => {
@@ -129,9 +136,16 @@ function DailyTab() {
     const walk = (list: UserTask[]) => {
       for (const t of list) { total += 1; if (t.done) done += 1; walk(t.subtasks); }
     };
-    for (const c of visibleCompanies) walk(state[c]);
+    for (const c of visibleCompanies) walk(state[c] ?? []);
     return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
   }, [state, visibleCompanies]);
+
+  const handleCreate = async () => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    const created = await create(trimmed);
+    if (created) { setNewName(""); setShowNew(false); }
+  };
 
   return (
     <div className="space-y-8">
@@ -141,8 +155,8 @@ function DailyTab() {
         <Select
           label="Empresa"
           value={companyFilter}
-          onChange={(v) => setCompanyFilter(v as Company | "Todas")}
-          options={["Todas", ...COMPANIES]}
+          onChange={(v) => setCompanyFilter(v)}
+          options={["Todas", ...companyNames]}
         />
         <Select
           label="Status"
@@ -159,28 +173,72 @@ function DailyTab() {
 
       {/* Checklist Diário — verificações operacionais recorrentes (reset diário automático) */}
       <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2">
             <ListTodo className="h-4 w-4 text-primary" />
             <h2 className="font-display text-lg sm:text-xl font-semibold tracking-tight">Checklist Diário</h2>
           </div>
-          <span className="text-[10px] sm:text-xs text-muted-foreground">
-            Reseta automaticamente a cada novo dia
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] sm:text-xs text-muted-foreground">
+              Reseta automaticamente a cada novo dia
+            </span>
+            {canManage && (
+              <button
+                onClick={() => setShowNew(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-primary text-primary-foreground px-3 py-1.5 text-xs font-medium shadow-glow hover:opacity-90 transition"
+              >
+                <Plus className="h-3.5 w-3.5" /> Nova Empresa
+              </button>
+            )}
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
-          {visibleCompanies.map((company) => (
-            <CompanyChecklistCard
-              key={company}
-              company={company}
-              statusFilter={statusFilter}
+
+        {showNew && canManage && (
+          <div className="flex items-center gap-2 p-3 rounded-xl border border-border bg-card shadow-card">
+            <input
+              autoFocus
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreate();
+                if (e.key === "Escape") { setShowNew(false); setNewName(""); }
+              }}
+              placeholder="Nome da empresa…"
+              className="flex-1 rounded-lg bg-surface border border-border px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring"
             />
-          ))}
-        </div>
+            <button onClick={handleCreate} disabled={!newName.trim()}
+              className="inline-flex items-center justify-center h-9 px-3 rounded-lg bg-gradient-primary text-primary-foreground text-sm font-medium shadow-glow disabled:opacity-40 transition">
+              Criar
+            </button>
+            <button onClick={() => { setShowNew(false); setNewName(""); }}
+              className="inline-flex items-center justify-center h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface transition">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {companies.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border bg-card/30 p-10 text-center text-sm text-muted-foreground">
+            {canManage ? "Nenhuma empresa cadastrada. Crie a primeira acima." : "Nenhuma empresa cadastrada ainda."}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-5">
+            {(companyFilter === "Todas" ? companies : companies.filter((c) => c.name === companyFilter)).map((c) => (
+              <CompanyChecklistCard
+                key={c.id}
+                companyRow={c}
+                statusFilter={statusFilter}
+                canManage={canManage}
+                onReorder={reorder}
+              />
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );
 }
+
 
 /** Count {done, total} recursively across a task and its subtasks. */
 function countTree(t: UserTask): { done: number; total: number } {
@@ -191,13 +249,23 @@ function countTree(t: UserTask): { done: number; total: number } {
 }
 
 function CompanyChecklistCard({
-  company, statusFilter,
-}: { company: Company; statusFilter: StatusFilter }) {
+  companyRow, statusFilter, canManage, onReorder,
+}: {
+  companyRow: ChecklistCompany;
+  statusFilter: StatusFilter;
+  canManage: boolean;
+  onReorder: (fromId: string, toId: string) => Promise<void>;
+}) {
   const { state, add, clearCompany } = useChecklist();
-  const tasks = state[company];
+  const { rename, remove: removeCompany } = useChecklistCompanies();
+  const company = companyRow.name as Company;
+  const tasks = state[company] ?? [];
   const [draft, setDraft] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(companyRow.name);
+  const [dragOver, setDragOver] = useState(false);
 
-  const color = COMPANY_COLORS[company];
+  const color = companyRow.color ?? COMPANY_COLORS[company] ?? DEFAULT_COMPANY_COLOR;
 
   const filtered = tasks.filter((t) => {
     if (statusFilter === "Concluído") return t.done;
@@ -205,7 +273,6 @@ function CompanyChecklistCard({
     return true;
   });
 
-  // Aggregate counts include subtasks
   const agg = tasks.reduce(
     (acc, t) => { const r = countTree(t); acc.done += r.done; acc.total += r.total; return acc; },
     { done: 0, total: 0 },
@@ -218,8 +285,42 @@ function CompanyChecklistCard({
     setDraft("");
   };
 
+  const saveName = async () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === companyRow.name) { setEditingName(false); setNameDraft(companyRow.name); return; }
+    const ok = await rename(companyRow.id, trimmed);
+    setEditingName(false);
+    if (!ok) setNameDraft(companyRow.name);
+  };
+
+  const handleDelete = async () => {
+    const msg = tasks.length > 0
+      ? `Excluir "${company}"?\n\nIsso removerá ${agg.total} tarefa(s) e o histórico vinculado.\nEsta ação é permanente.`
+      : `Excluir "${company}"?\nEsta ação é permanente.`;
+    if (!confirm(msg)) return;
+    await removeCompany(companyRow.id);
+  };
+
   return (
-    <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col">
+    <div
+      draggable={canManage && !editingName}
+      onDragStart={(e) => { if (!canManage) return; e.dataTransfer.setData("text/company-id", companyRow.id); e.dataTransfer.effectAllowed = "move"; }}
+      onDragOver={(e) => {
+        if (!canManage) return;
+        const id = e.dataTransfer.types.includes("text/company-id");
+        if (!id) return;
+        e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        setDragOver(false);
+        const fromId = e.dataTransfer.getData("text/company-id");
+        if (!fromId || fromId === companyRow.id) return;
+        e.preventDefault(); e.stopPropagation();
+        onReorder(fromId, companyRow.id);
+      }}
+      className={`rounded-xl border ${dragOver ? "border-primary ring-2 ring-primary/30" : "border-border"} bg-card shadow-card overflow-hidden flex flex-col transition`}
+    >
       <div
         className="p-5 border-b border-border"
         style={{
@@ -227,10 +328,49 @@ function CompanyChecklistCard({
         }}
       >
         <div className="flex items-center justify-between gap-2">
-          <CompanyTag company={company} />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {canManage && !editingName && (
+              <span className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition shrink-0" title="Arraste para reordenar">
+                <GripVertical className="h-4 w-4" />
+              </span>
+            )}
+            {editingName ? (
+              <input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={saveName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveName();
+                  if (e.key === "Escape") { setEditingName(false); setNameDraft(companyRow.name); }
+                }}
+                className="rounded-md bg-background border border-border px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring max-w-[180px]"
+              />
+            ) : (
+              <CompanyTag company={company} colorOverride={color} />
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
             <span className="font-mono text-xs text-muted-foreground">{agg.done}/{agg.total}</span>
-            {tasks.length > 0 && (
+            {canManage && !editingName && (
+              <>
+                <button
+                  onClick={() => { setEditingName(true); setNameDraft(companyRow.name); }}
+                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-surface transition"
+                  title="Renomear empresa"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                  title="Excluir empresa"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
+            {tasks.length > 0 && !canManage && (
               <button
                 onClick={() => {
                   if (confirm(`Limpar todas as tarefas de ${company}?`)) clearCompany(company);
@@ -253,6 +393,7 @@ function CompanyChecklistCard({
           <span className="text-xs font-mono font-semibold" style={{ color }}>{pct}%</span>
         </div>
       </div>
+
 
       <div className="p-3 flex-1 flex flex-col">
         {/* Add input (top-level) */}

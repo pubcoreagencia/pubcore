@@ -1,8 +1,9 @@
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from "react";
-import { COMPANIES, type Company } from "./mock-data";
+import type { Company } from "./mock-data";
 import { supabase } from "@/integrations/supabase/client";
+
 import { useAuth } from "./auth";
 import { useWorkspace } from "./workspace";
 import { getActivePontoSession, onPontoEvent } from "./ponto";
@@ -22,7 +23,7 @@ export interface UserTask {
   subtasks: UserTask[];
 }
 
-export type ChecklistState = Record<Company, UserTask[]>;
+export type ChecklistState = Record<string, UserTask[]>;
 
 interface DbRow {
   id: string;
@@ -41,8 +42,8 @@ interface DbRow {
   updated_at: string;
 }
 
-const emptyState = (): ChecklistState =>
-  COMPANIES.reduce((acc, c) => { acc[c] = []; return acc; }, {} as ChecklistState);
+const emptyState = (): ChecklistState => ({});
+
 
 function fmtHHMM(iso: string | null): string | undefined {
   if (!iso) return undefined;
@@ -79,8 +80,9 @@ function groupByCompany(rows: DbRow[]): ChecklistState {
     if (t.parentId && byId.has(t.parentId)) {
       byId.get(t.parentId)!.subtasks.push(t);
     } else {
-      const c = (rows.find((r) => r.id === t.id)?.company) as Company;
-      if (!base[c]) continue;
+      const c = (rows.find((r) => r.id === t.id)?.company) as string;
+      if (!c) continue;
+      if (!base[c]) base[c] = [];
       base[c].push(t);
     }
   }
@@ -88,9 +90,10 @@ function groupByCompany(rows: DbRow[]): ChecklistState {
     list.sort((a, b) => a.position - b.position);
     for (const t of list) sortRec(t.subtasks);
   };
-  for (const c of COMPANIES) sortRec(base[c]);
+  for (const c of Object.keys(base)) sortRec(base[c]);
   return base;
 }
+
 
 interface Ctx {
   state: ChecklistState;
@@ -433,11 +436,12 @@ export function ChecklistProvider({ children }: { children: React.ReactNode }) {
 
   const totals = useMemo(() => {
     let total = 0, done = 0;
-    for (const c of COMPANIES) {
-      const all = flatten(state[c]);
+    for (const list of Object.values(state)) {
+      const all = flatten(list);
       total += all.length;
       done += all.filter((t) => t.done).length;
     }
+
     return { total, done, pct: total ? Math.round((done / total) * 100) : 0 };
   }, [state]);
 
