@@ -12,7 +12,7 @@ import {
   BarChart, Bar, RadialBarChart, RadialBar, PolarAngleAxis,
 } from "recharts";
 import {
-  COMPANIES, COMPANY_COLORS, type Company,
+  COMPANIES, COMPANY_COLORS, DEFAULT_COMPANY_COLOR, type Company,
 } from "@/lib/mock-data";
 import {
   useOperationalData, buildDailySeries, tasksByCompany, tasksByUser,
@@ -24,7 +24,9 @@ import { useAuth } from "@/lib/auth";
 import { usePonto, fmtTime, onPontoEvent } from "@/lib/ponto";
 import { useChecklist, type UserTask } from "@/lib/checklist-store";
 import { useWorkspace } from "@/lib/workspace";
+import { useChecklistCompanies, type ChecklistCompany } from "@/lib/checklist-companies";
 import { EditPontoSessionDialog, type EditablePontoSession } from "@/components/EditPontoSessionDialog";
+
 
 export const Route = createFileRoute("/app/checklists")({
   component: ChecklistsPage,
