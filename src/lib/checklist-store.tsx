@@ -23,7 +23,7 @@ export interface UserTask {
   subtasks: UserTask[];
 }
 
-export type ChecklistState = Record<Company, UserTask[]>;
+export type ChecklistState = Record<string, UserTask[]>;
 
 interface DbRow {
   id: string;
