@@ -80,8 +80,9 @@ function groupByCompany(rows: DbRow[]): ChecklistState {
     if (t.parentId && byId.has(t.parentId)) {
       byId.get(t.parentId)!.subtasks.push(t);
     } else {
-      const c = (rows.find((r) => r.id === t.id)?.company) as Company;
-      if (!base[c]) continue;
+      const c = (rows.find((r) => r.id === t.id)?.company) as string;
+      if (!c) continue;
+      if (!base[c]) base[c] = [];
       base[c].push(t);
     }
   }
@@ -89,9 +90,10 @@ function groupByCompany(rows: DbRow[]): ChecklistState {
     list.sort((a, b) => a.position - b.position);
     for (const t of list) sortRec(t.subtasks);
   };
-  for (const c of COMPANIES) sortRec(base[c]);
+  for (const c of Object.keys(base)) sortRec(base[c]);
   return base;
 }
+
 
 interface Ctx {
   state: ChecklistState;
