@@ -43,7 +43,9 @@ function AppLayout() {
   return (
     <WorkspaceProvider>
       <PontoProvider>
+        <ChecklistCompaniesProvider>
         <ChecklistProvider>
+
           <PontoAutoTracker />
           <GratitudePanel />
           <FirstShiftPanel />
