@@ -66,6 +66,8 @@ function AppLayout() {
             </main>
           </div>
         </ChecklistProvider>
+        </ChecklistCompaniesProvider>
+
       </PontoProvider>
     </WorkspaceProvider>
   );
