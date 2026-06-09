@@ -1,8 +1,9 @@
 import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
 } from "react";
-import { COMPANIES, type Company } from "./mock-data";
+import type { Company } from "./mock-data";
 import { supabase } from "@/integrations/supabase/client";
+
 import { useAuth } from "./auth";
 import { useWorkspace } from "./workspace";
 import { getActivePontoSession, onPontoEvent } from "./ponto";
