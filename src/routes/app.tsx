@@ -12,7 +12,6 @@ import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
 import { ChecklistCompaniesProvider } from "@/lib/checklist-companies";
-
 import { WorkspaceProvider } from "@/lib/workspace";
 import { PendingApprovalScreen } from "@/components/PendingApprovalScreen";
 
@@ -44,30 +43,26 @@ function AppLayout() {
     <WorkspaceProvider>
       <PontoProvider>
         <ChecklistCompaniesProvider>
-        <ChecklistProvider>
-
-          <PontoAutoTracker />
-          <GratitudePanel />
-          <FirstShiftPanel />
-          <div className="hidden md:block">
-            <CalculatorWidget />
-            <StickyNotesWidget />
-          </div>
-
-
-          <div className="flex min-h-dvh w-full max-w-[100dvw] bg-background overflow-x-hidden">
-            <Sidebar />
-            <main className="relative flex w-full min-w-0 max-w-[100dvw] flex-1 flex-col overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+64px)] md:max-w-full md:pb-0">
-              <MobileNav />
-              <PontoHeader />
-              <div className="w-full min-w-0 max-w-full overflow-x-hidden">
-                <Outlet />
-              </div>
-            </main>
-          </div>
-        </ChecklistProvider>
+          <ChecklistProvider>
+            <PontoAutoTracker />
+            <GratitudePanel />
+            <FirstShiftPanel />
+            <div className="hidden md:block">
+              <CalculatorWidget />
+              <StickyNotesWidget />
+            </div>
+            <div className="flex min-h-dvh w-full max-w-[100dvw] bg-background overflow-x-hidden">
+              <Sidebar />
+              <main className="relative flex w-full min-w-0 max-w-[100dvw] flex-1 flex-col overflow-x-hidden pb-[calc(env(safe-area-inset-bottom)+64px)] md:max-w-full md:pb-0">
+                <MobileNav />
+                <PontoHeader />
+                <div className="w-full min-w-0 max-w-full overflow-x-hidden">
+                  <Outlet />
+                </div>
+              </main>
+            </div>
+          </ChecklistProvider>
         </ChecklistCompaniesProvider>
-
       </PontoProvider>
     </WorkspaceProvider>
   );
