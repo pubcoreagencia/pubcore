@@ -249,13 +249,23 @@ function countTree(t: UserTask): { done: number; total: number } {
 }
 
 function CompanyChecklistCard({
-  company, statusFilter,
-}: { company: Company; statusFilter: StatusFilter }) {
+  companyRow, statusFilter, canManage, onReorder,
+}: {
+  companyRow: ChecklistCompany;
+  statusFilter: StatusFilter;
+  canManage: boolean;
+  onReorder: (fromId: string, toId: string) => Promise<void>;
+}) {
   const { state, add, clearCompany } = useChecklist();
-  const tasks = state[company];
+  const { rename, remove: removeCompany } = useChecklistCompanies();
+  const company = companyRow.name as Company;
+  const tasks = state[company] ?? [];
   const [draft, setDraft] = useState("");
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(companyRow.name);
+  const [dragOver, setDragOver] = useState(false);
 
-  const color = COMPANY_COLORS[company];
+  const color = companyRow.color ?? COMPANY_COLORS[company] ?? DEFAULT_COMPANY_COLOR;
 
   const filtered = tasks.filter((t) => {
     if (statusFilter === "Concluído") return t.done;
@@ -263,7 +273,6 @@ function CompanyChecklistCard({
     return true;
   });
 
-  // Aggregate counts include subtasks
   const agg = tasks.reduce(
     (acc, t) => { const r = countTree(t); acc.done += r.done; acc.total += r.total; return acc; },
     { done: 0, total: 0 },
@@ -276,8 +285,42 @@ function CompanyChecklistCard({
     setDraft("");
   };
 
+  const saveName = async () => {
+    const trimmed = nameDraft.trim();
+    if (!trimmed || trimmed === companyRow.name) { setEditingName(false); setNameDraft(companyRow.name); return; }
+    const ok = await rename(companyRow.id, trimmed);
+    setEditingName(false);
+    if (!ok) setNameDraft(companyRow.name);
+  };
+
+  const handleDelete = async () => {
+    const msg = tasks.length > 0
+      ? `Excluir "${company}"?\n\nIsso removerá ${agg.total} tarefa(s) e o histórico vinculado.\nEsta ação é permanente.`
+      : `Excluir "${company}"?\nEsta ação é permanente.`;
+    if (!confirm(msg)) return;
+    await removeCompany(companyRow.id);
+  };
+
   return (
-    <div className="rounded-xl border border-border bg-card shadow-card overflow-hidden flex flex-col">
+    <div
+      draggable={canManage && !editingName}
+      onDragStart={(e) => { if (!canManage) return; e.dataTransfer.setData("text/company-id", companyRow.id); e.dataTransfer.effectAllowed = "move"; }}
+      onDragOver={(e) => {
+        if (!canManage) return;
+        const id = e.dataTransfer.types.includes("text/company-id");
+        if (!id) return;
+        e.preventDefault(); e.dataTransfer.dropEffect = "move"; setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        setDragOver(false);
+        const fromId = e.dataTransfer.getData("text/company-id");
+        if (!fromId || fromId === companyRow.id) return;
+        e.preventDefault(); e.stopPropagation();
+        onReorder(fromId, companyRow.id);
+      }}
+      className={`rounded-xl border ${dragOver ? "border-primary ring-2 ring-primary/30" : "border-border"} bg-card shadow-card overflow-hidden flex flex-col transition`}
+    >
       <div
         className="p-5 border-b border-border"
         style={{
@@ -285,10 +328,49 @@ function CompanyChecklistCard({
         }}
       >
         <div className="flex items-center justify-between gap-2">
-          <CompanyTag company={company} />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {canManage && !editingName && (
+              <span className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition shrink-0" title="Arraste para reordenar">
+                <GripVertical className="h-4 w-4" />
+              </span>
+            )}
+            {editingName ? (
+              <input
+                autoFocus
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                onBlur={saveName}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveName();
+                  if (e.key === "Escape") { setEditingName(false); setNameDraft(companyRow.name); }
+                }}
+                className="rounded-md bg-background border border-border px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-ring max-w-[180px]"
+              />
+            ) : (
+              <CompanyTag company={company} colorOverride={color} />
+            )}
+          </div>
+          <div className="flex items-center gap-1.5">
             <span className="font-mono text-xs text-muted-foreground">{agg.done}/{agg.total}</span>
-            {tasks.length > 0 && (
+            {canManage && !editingName && (
+              <>
+                <button
+                  onClick={() => { setEditingName(true); setNameDraft(companyRow.name); }}
+                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-surface transition"
+                  title="Renomear empresa"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
+                  title="Excluir empresa"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </>
+            )}
+            {tasks.length > 0 && !canManage && (
               <button
                 onClick={() => {
                   if (confirm(`Limpar todas as tarefas de ${company}?`)) clearCompany(company);
@@ -311,6 +393,7 @@ function CompanyChecklistCard({
           <span className="text-xs font-mono font-semibold" style={{ color }}>{pct}%</span>
         </div>
       </div>
+
 
       <div className="p-3 flex-1 flex flex-col">
         {/* Add input (top-level) */}
