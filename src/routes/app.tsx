@@ -48,6 +48,7 @@ function AppLayout() {
             <PontoAutoTracker />
             <GratitudePanel />
             <FirstShiftPanel />
+            <ShiftRotationPanel />
             <div className="hidden md:block">
               <CalculatorWidget />
               <StickyNotesWidget />
