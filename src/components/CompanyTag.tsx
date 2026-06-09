@@ -1,7 +1,7 @@
 import { COMPANY_COLORS, DEFAULT_COMPANY_COLOR } from "@/lib/mock-data";
 
-export function CompanyTag({ company }: { company: string }) {
-  const color = COMPANY_COLORS[company] ?? DEFAULT_COMPANY_COLOR;
+export function CompanyTag({ company, colorOverride }: { company: string; colorOverride?: string | null }) {
+  const color = colorOverride ?? COMPANY_COLORS[company] ?? DEFAULT_COMPANY_COLOR;
   return (
     <span
       className="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[10px] font-semibold tracking-wide"
@@ -16,3 +16,4 @@ export function CompanyTag({ company }: { company: string }) {
     </span>
   );
 }
+
