@@ -8,6 +8,7 @@ import { CalculatorWidget } from "@/components/CalculatorWidget";
 import { StickyNotesWidget } from "@/components/StickyNotesWidget";
 import { GratitudePanel } from "@/components/GratitudePanel";
 import { FirstShiftPanel } from "@/components/FirstShiftPanel";
+import { ShiftRotationPanel } from "@/components/ShiftRotationPanel";
 import { useAuth } from "@/lib/auth";
 import { PontoProvider } from "@/lib/ponto";
 import { ChecklistProvider } from "@/lib/checklist-store";
@@ -47,6 +48,7 @@ function AppLayout() {
             <PontoAutoTracker />
             <GratitudePanel />
             <FirstShiftPanel />
+            <ShiftRotationPanel />
             <div className="hidden md:block">
               <CalculatorWidget />
               <StickyNotesWidget />
