@@ -8,7 +8,7 @@ export const COMPANIES = [
   "PUB FILMS",
   "PUB IMÓVEIS",
   "PUB CASSINO",
-  "PUB FISHING",
+  
   "PUB FOOD",
   "PUB ECOM",
   "PUB LANÇAMENTOS",
@@ -30,7 +30,7 @@ export const COMPANY_COLORS: Record<string, string> = {
   "PUB FILMS": "oklch(0.72 0.16 200)",
   "PUB IMÓVEIS": "oklch(0.74 0.15 130)",
   "PUB CASSINO": "oklch(0.74 0.18 10)",
-  "PUB FISHING": "oklch(0.72 0.16 220)",
+  
   "PUB FOOD": "oklch(0.78 0.17 80)",
   "PUB ECOM": "oklch(0.74 0.16 160)",
   "PUB LANÇAMENTOS": "oklch(0.74 0.18 320)",
