@@ -535,7 +535,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
 
       setSessions((prev) => {
         const next: SessionsMap = { ...prev };
-        for (const c of COMPANIES) {
+        for (const c of Object.keys(next) as Company[]) {
           const s = next[c];
           if (!s || (s.status !== "working" && s.status !== "paused")) continue;
           if (c !== company || s.sessionId) {
