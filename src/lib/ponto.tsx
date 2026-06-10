@@ -576,7 +576,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
         const row = current as PontoRemoteRow | null;
         const currentCompany = row?.company as Company | null;
-        if (row && currentCompany && COMPANIES.includes(currentCompany)) {
+        if (row && currentCompany) {
           updateCompany(currentCompany, () => ({
             status: row.status === "paused" ? "paused" : "working",
             startedAt: new Date(row.started_at).getTime(),
