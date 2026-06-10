@@ -192,8 +192,11 @@ export function ShiftRotationPanel() {
                 Trocar para outra empresa
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {COMPANIES.filter((c) => c !== activeCompany).map((c) => {
-                  const color = COMPANY_COLORS[c];
+                {checklistCompanies
+                  .map((cc) => cc.name)
+                  .filter((c: string) => c !== activeCompany)
+                  .map((c: string) => {
+                  const color = colorOf(c);
                   const isStarting = busy === c;
                   const disabled = busy !== null && !isStarting;
                   return (
