@@ -60,6 +60,7 @@ function normalizePauses(input: unknown): { start: number; end?: number }[] {
 
 export function EditPontoSessionDialog({ session, onClose, onSaved }: Props) {
   const { user } = useAuth();
+  const { companies: checklistCompanies } = useChecklistCompanies();
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [company, setCompany] = useState<string>("");
