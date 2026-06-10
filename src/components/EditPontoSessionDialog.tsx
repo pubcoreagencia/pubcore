@@ -4,7 +4,8 @@ import { Pencil, Save, X, AlertTriangle, Timer, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { fmtTime } from "@/lib/ponto";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 
 export interface EditablePontoSession {
   id: string;
@@ -59,6 +60,7 @@ function normalizePauses(input: unknown): { start: number; end?: number }[] {
 
 export function EditPontoSessionDialog({ session, onClose, onSaved }: Props) {
   const { user } = useAuth();
+  const { companies: checklistCompanies } = useChecklistCompanies();
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [company, setCompany] = useState<string>("");
@@ -220,9 +222,13 @@ export function EditPontoSessionDialog({ session, onClose, onSaved }: Props) {
               className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
             >
               <option value="">— sem empresa —</option>
-              {COMPANIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {checklistCompanies.map((cc) => (
+                <option key={cc.id} value={cc.name}>{cc.name}</option>
               ))}
+              {/* Permite manter empresa removida da Checklist sem perder o histórico */}
+              {company && !checklistCompanies.some((cc) => cc.name === company) && (
+                <option value={company}>{company} (removida)</option>
+              )}
             </select>
           </label>
 

@@ -434,7 +434,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
   // Notificação nativa quando uma empresa cruza 30min produtivos no dia
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
-    for (const c of COMPANIES) {
+    for (const c of Object.keys(sessions) as Company[]) {
       const ms = dailyProductiveMs(c);
       if (ms < HOUR_LIMIT_MS) continue;
       const key = notifiedKey(c);
@@ -535,7 +535,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
 
       setSessions((prev) => {
         const next: SessionsMap = { ...prev };
-        for (const c of COMPANIES) {
+        for (const c of Object.keys(next) as Company[]) {
           const s = next[c];
           if (!s || (s.status !== "working" && s.status !== "paused")) continue;
           if (c !== company || s.sessionId) {
@@ -576,7 +576,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
           .maybeSingle();
         const row = current as PontoRemoteRow | null;
         const currentCompany = row?.company as Company | null;
-        if (row && currentCompany && COMPANIES.includes(currentCompany)) {
+        if (row && currentCompany) {
           updateCompany(currentCompany, () => ({
             status: row.status === "paused" ? "paused" : "working",
             startedAt: new Date(row.started_at).getTime(),
@@ -632,7 +632,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
         if (!cur || cur.status !== "paused") return prev;
         // Encerra outras sessões locais que tenham ficado presas para manter apenas uma ativa.
         const map: SessionsMap = { ...prev };
-        for (const c of COMPANIES) {
+        for (const c of Object.keys(map) as Company[]) {
           const s = map[c];
           if (!s || c === company) continue;
           if (s.status === "working" || s.status === "paused") {

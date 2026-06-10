@@ -3,7 +3,8 @@ import { Play, Loader2, RotateCw, Repeat } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { usePonto } from "@/lib/ponto";
-import { COMPANIES, COMPANY_COLORS, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { toast } from "sonner";
 
 const CYCLE_LIMIT_MS = 35 * 60 * 1000; // 35min
@@ -40,6 +41,7 @@ export function ShiftRotationPanel() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const { activeCompany, sessions, startCompany } = usePonto();
+  const { companies: checklistCompanies, colorOf } = useChecklistCompanies();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<Company | "extend" | null>(null);
 
@@ -190,8 +192,11 @@ export function ShiftRotationPanel() {
                 Trocar para outra empresa
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {COMPANIES.filter((c) => c !== activeCompany).map((c) => {
-                  const color = COMPANY_COLORS[c];
+                {checklistCompanies
+                  .map((cc) => cc.name)
+                  .filter((c: string) => c !== activeCompany)
+                  .map((c: string) => {
+                  const color = colorOf(c);
                   const isStarting = busy === c;
                   const disabled = busy !== null && !isStarting;
                   return (

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePonto, type PontoRemoteRow } from "@/lib/ponto";
 import { getActiveWorkspaceId } from "@/lib/workspace";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
 
 const IDLE_LIMIT_MS = 30 * 60 * 1000;
 const ACTIVITY_KEY = "pubcore_ponto_last_activity";
@@ -169,7 +169,7 @@ export function PontoAutoTracker() {
         for (const row of data) {
           if (staleIds.has(row.id as string)) continue;
           const company = row.company as Company | null;
-          if (!company || !COMPANIES.includes(company) || seen.has(company)) continue;
+          if (!company || seen.has(company)) continue;
           seen.add(company);
           adoptSession(row as PontoRemoteRow);
         }

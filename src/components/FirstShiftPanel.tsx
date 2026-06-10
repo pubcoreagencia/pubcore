@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { usePonto } from "@/lib/ponto";
-import { COMPANIES, COMPANY_COLORS, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { toast } from "sonner";
 
 function todayISO() {
@@ -26,6 +27,7 @@ export function FirstShiftPanel() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const { startCompany } = usePonto();
+  const { companies: checklistCompanies, colorOf } = useChecklistCompanies();
 
   const [open, setOpen] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -138,8 +140,9 @@ export function FirstShiftPanel() {
 
           <div className="px-4 md:px-8 py-6 max-h-[65vh] overflow-y-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {COMPANIES.map((c) => {
-                const color = COMPANY_COLORS[c];
+              {checklistCompanies.map((cc) => {
+                const c = cc.name;
+                const color = colorOf(c);
                 const isStarting = starting === c;
                 const disabled = starting !== null && !isStarting;
                 return (
