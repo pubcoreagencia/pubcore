@@ -169,7 +169,7 @@ export function PontoAutoTracker() {
         for (const row of data) {
           if (staleIds.has(row.id as string)) continue;
           const company = row.company as Company | null;
-          if (!company || !COMPANIES.includes(company) || seen.has(company)) continue;
+          if (!company || seen.has(company)) continue;
           seen.add(company);
           adoptSession(row as PontoRemoteRow);
         }
