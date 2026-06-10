@@ -27,6 +27,7 @@ export function FirstShiftPanel() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const { startCompany } = usePonto();
+  const { companies: checklistCompanies, colorOf } = useChecklistCompanies();
 
   const [open, setOpen] = useState(false);
   const [checking, setChecking] = useState(true);
