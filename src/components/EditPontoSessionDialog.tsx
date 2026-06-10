@@ -222,9 +222,13 @@ export function EditPontoSessionDialog({ session, onClose, onSaved }: Props) {
               className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm"
             >
               <option value="">— sem empresa —</option>
-              {COMPANIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+              {checklistCompanies.map((cc) => (
+                <option key={cc.id} value={cc.name}>{cc.name}</option>
               ))}
+              {/* Permite manter empresa removida da Checklist sem perder o histórico */}
+              {company && !checklistCompanies.some((cc) => cc.name === company) && (
+                <option value={company}>{company} (removida)</option>
+              )}
             </select>
           </label>
 
