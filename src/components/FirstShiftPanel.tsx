@@ -140,8 +140,9 @@ export function FirstShiftPanel() {
 
           <div className="px-4 md:px-8 py-6 max-h-[65vh] overflow-y-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {COMPANIES.map((c) => {
-                const color = COMPANY_COLORS[c];
+              {checklistCompanies.map((cc) => {
+                const c = cc.name;
+                const color = colorOf(c);
                 const isStarting = starting === c;
                 const disabled = starting !== null && !isStarting;
                 return (
