@@ -17,7 +17,10 @@ export const COMPANIES = [
   "PUB BRICKS",
   "PUB TÊXTIL",
 ] as const;
-export type Company = (typeof COMPANIES)[number];
+// Company é apenas um nome de empresa cadastrada na Checklist.
+// A lista canônica vem de `useChecklistCompanies()` (tabela checklist_companies).
+// COMPANIES permanece somente como seed inicial / fallback histórico.
+export type Company = string;
 
 export const COMPANY_COLORS: Record<string, string> = {
   "PUB CORE": "oklch(0.75 0.15 250)",
