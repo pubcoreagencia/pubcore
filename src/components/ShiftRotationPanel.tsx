@@ -3,7 +3,8 @@ import { Play, Loader2, RotateCw, Repeat } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { usePonto } from "@/lib/ponto";
-import { COMPANIES, COMPANY_COLORS, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { toast } from "sonner";
 
 const CYCLE_LIMIT_MS = 35 * 60 * 1000; // 35min
