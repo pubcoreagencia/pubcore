@@ -434,7 +434,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
   // Notificação nativa quando uma empresa cruza 30min produtivos no dia
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
-    for (const c of COMPANIES) {
+    for (const c of Object.keys(sessions) as Company[]) {
       const ms = dailyProductiveMs(c);
       if (ms < HOUR_LIMIT_MS) continue;
       const key = notifiedKey(c);
