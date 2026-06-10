@@ -123,7 +123,7 @@ const DISTRICTS: District[] = [
   { id: "ent", name: "Rua das Pedras", subtitle: "Entretenimento", icon: Music, color: "oklch(0.65 0.22 330)", companies: ["PUB RECORDS", "PUB FILMS", "PUB CASSINO", "PUB LANÇAMENTOS"], x: 1100, y: 1450, w: 1100, h: 380 },
   { id: "food", name: "Orla Bardot", subtitle: "Gastronômico", icon: UtensilsCrossed, color: "oklch(0.72 0.18 40)", companies: ["PUB FOOD"], x: 350, y: 1380, w: 480, h: 280 },
   { id: "industrial", name: "Zona Industrial", subtitle: "Manguinhos", icon: Factory, color: "oklch(0.55 0.10 50)", companies: ["PUB BRICKS", "PUB TÊXTIL"], x: 180, y: 480, w: 520, h: 380 },
-  { id: "commerce", name: "Marina & Comércio", subtitle: "Porto Búzios", icon: ShoppingBag, color: "oklch(0.70 0.16 160)", companies: ["PUB ECOM", "PUB FISHING"], x: 2200, y: 750, w: 550, h: 480 },
+  { id: "commerce", name: "Marina & Comércio", subtitle: "Porto Búzios", icon: ShoppingBag, color: "oklch(0.70 0.16 160)", companies: ["PUB ECOM"], x: 2200, y: 750, w: 550, h: 480 },
 ];
 
 function districtOf(companyName: string): District | undefined {
