@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { usePonto, type PontoRemoteRow } from "@/lib/ponto";
 import { getActiveWorkspaceId } from "@/lib/workspace";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
 
 const IDLE_LIMIT_MS = 30 * 60 * 1000;
 const ACTIVITY_KEY = "pubcore_ponto_last_activity";
