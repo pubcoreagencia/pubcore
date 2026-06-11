@@ -1,77 +1,113 @@
-# PUB City — Mapa Búzios + Distritos + Interiores
+## Visão geral
 
-## Escopo
-Evoluir `src/routes/app.city.tsx` mantendo o visual isométrico atual. Sem novas tabelas, sem mudar regras existentes. Tudo client-side em cima dos dados já carregados (`stock_companies`, `checklist_tasks`, `ponto_sessions`, `kanban_cards_archive`).
+Evoluir a aba Kanban para suportar **dois modos de visualização** dos mesmos dados:
 
-## Mapa inspirado em Búzios
+1. **Kanban Tradicional** (atual, intocado): Funil → Colunas → Cards
+2. **Fluxograma** (novo): Funil → Nós conectados em árvore/ramificações
 
-Layout em uma única SVG-world ~3000×2200 navegável por pan/zoom (já existe) + agora também por avatar (teclado/toque).
+Os nós do fluxograma **são os mesmos cards** do Kanban — apenas mudam a apresentação. Toda a estrutura existente (cards, anexos, comentários, descrição, empresa, responsáveis, status, prioridade) é reaproveitada.
 
-Elementos do terreno (todos desenhados em SVG, sem assets externos):
-- **Praias** em arco no leste/sul: Geribá, Ferradura, João Fernandes — areia (`oklch(0.88 0.06 85)`) + mar gradiente (`oklch(0.55 0.10 220)` → `oklch(0.35 0.12 240)`) com ondas animadas sutis.
-- **Marina** no oeste com píer e silhuetas de barcos (Marina Porto Búzios).
-- **Morros** ao norte como polígonos isométricos verde-escuro com curvas de nível.
-- **Rua das Pedras** = avenida principal diagonal cortando o centro, ladeada por prédios comerciais/gastronômicos.
-- **Orla Bardot** = calçadão curvo entre a marina e o centro.
-- **Praça Santos Dumont** no coração, hub central de onde partem as ruas dos distritos.
-- Ruas em grid isométrico conectando todos os distritos (faixas mais claras sobre o chão).
+## Modelo de dados
 
-## Distritos (7) — cada um agrupa empresas relacionadas
+Adicionar à tabela `kanban_cards` (sem quebrar nada):
 
-| Distrito | Empresas | Localização |
-|---|---|---|
-| Administrativo | PUB CORE, PUB | Centro (Praça Santos Dumont) |
-| Tecnológico | PUB IA, PUB 3D, PUB ADSENSE | Norte (morros — "Vale do Silício de Búzios") |
-| Financeiro | PUB CRYPTO, PUB IMÓVEIS | Centro-oeste |
-| Entretenimento | PUB RECORDS, PUB FILMS, PUB CASSINO, PUB LANÇAMENTOS | Rua das Pedras (sul) |
-| Gastronômico | PUB FOOD | Orla Bardot |
-| Industrial | PUB BRICKS, PUB TÊXTIL | Oeste (próximo à marina, zona industrial) |
-| Comercial | PUB ECOM, PUB FISHING | Marina/Píer |
+- `parent_card_id uuid null` — referência ao nó pai (raiz quando null)
+- `flow_x double precision null` — posição X livre no canvas (modo fluxograma)
+- `flow_y double precision null` — posição Y livre no canvas
+- `flow_collapsed boolean default false` — recolher ramo
 
-Distrito = retângulo isométrico tingido com a cor predominante do grupo + label flutuante. Empresas posicionadas dentro com offset determinístico (hash do nome) para visual orgânico, não grade.
+Nova tabela `kanban_card_links` para conexões extras (além da hierarquia pai→filho), permitindo "múltiplos caminhos" que não sejam apenas árvore pura:
 
-## Avatar caminhável
+- `id`, `funnel_id`, `from_card_id`, `to_card_id`, `label text null`, `created_at`
 
-- Avatar = circle SVG com inicial do usuário (cor primária do tema).
-- Controles: **WASD/setas** no desktop, **joystick virtual** no canto inferior esquerdo no mobile/touch.
-- Velocidade ~140 px/s em coords de mundo. Movimento livre (sem colisão por enquanto — fora de escopo manter simples).
-- Câmera segue avatar suavemente (lerp). Pan/zoom manual continua disponível e desacopla a câmera enquanto o usuário arrasta.
-- Quando o avatar fica a <60px de um prédio, mostra prompt "Pressione E / Toque para entrar".
+Com GRANTs + RLS espelhando as policies atuais de `kanban_cards` (workspace member).
 
-## Entrar/Sair de prédios (sem reload)
+**Migração automática**: cards existentes ficam com `parent_card_id = null` (todos viram raízes no fluxograma inicial), `flow_x/flow_y = null` (auto-layout). Nada se perde, nada quebra: colunas, ordem, anexos, etc. continuam funcionando exatamente como hoje.
 
-- Estado local `interior: Company | null`. Quando definido, renderiza overlay com transição (fade + zoom) sobre o mapa — sem mudar de rota.
-- **Interior** = nova vista 2D top-down do andar da empresa:
-  - Paredes coloridas com a cor da empresa
-  - **Setores operacionais** (cards/zonas) gerados dinamicamente a partir dos dados existentes:
-    - Mesa de Tarefas → contagem de `checklist_tasks` ativas, lista os 5 mais recentes
-    - Sala do Ponto → produtividade agregada e colaboradores ativos (`ponto_sessions`)
-    - Sala de Projetos → `kanban_cards_archive` por empresa
-    - Recepção → nome/slug/cor da empresa
-  - Avatar continua andando dentro do interior (mesmo controles).
-  - Botão "Sair" + tecla Esc voltam ao mapa preservando posição anterior do avatar.
-- Painel lateral (Sheet) atual de detalhe continua disponível ao clicar de longe em um prédio, complementar ao interior.
+## UI
 
-## Mudanças técnicas
+Na rota `/app/kanban`, adicionar um toggle no header do funil: **[ Kanban | Fluxograma ]** (persistido por funil em `localStorage`).
 
-**Apenas `src/routes/app.city.tsx`** (arquivo único, ~700 linhas finais):
-1. Adicionar `useAvatar()` interno: estado `{x,y, dir}`, loop `requestAnimationFrame`, listeners de teclado, joystick touch.
-2. Adicionar `useCamera()`: lerp para seguir avatar quando avatar está em movimento; modo manual quando usuário arrasta.
-3. Função `layoutDistricts(companies)` — agrupa por mapa de empresa→distrito, calcula bbox de cada distrito, posiciona prédios dentro.
-4. Componente `<Terrain />` — desenha praias, mar, morros, ruas, praça, marina como SVG em camadas.
-5. Componente `<DistrictZone />` — retângulo iso tingido + label.
-6. Componente `<Avatar />` — círculo + sombra + nome.
-7. Componente `<BuildingInterior company />` — overlay com setores; reusa as queries já feitas em `refresh()`.
-8. Tecla **E** / botão flutuante entra no prédio mais próximo.
+### Modo Fluxograma
 
-## Performance
-- SVG único com `<g>` por camada, sem re-render por frame: a câmera muda só `transform` do container (estilo já em uso).
-- Avatar/joystick em divs absolutos sobrepostos, transform via CSS vars, sem React state por frame (usar ref + rAF).
+- Canvas com **pan** (arrastar fundo) e **zoom** (scroll / pinch).
+- Renderizar cada card como um nó retangular compacto exibindo: título, badge de empresa, prioridade, status, contagem de anexos/comentários.
+- Linhas SVG ligando pai → filhos (curvas Bézier suaves estilo Whimsical/FigJam).
+- Linhas extras de `kanban_card_links` em estilo tracejado.
+- Drag-and-drop livre dos nós (atualiza `flow_x/flow_y`).
+- Botão **+** ao lado de cada nó para criar filho (cria card com `parent_card_id` setado).
+- Clicar no nó abre o **mesmo dialog de detalhe** já existente (edição completa: descrição, anexos, comentários, responsáveis, etc.).
+- Modo de conexão: clicar em "ligar" num nó e depois em outro cria entrada em `kanban_card_links`.
+- Auto-layout inicial (Reingold–Tilford simples) quando `flow_x/flow_y` é null, depois persiste posições.
+- Recolher/expandir ramos (`flow_collapsed`).
 
-## Fora de escopo (Fase futura)
-- Multiplayer realtime, colisão, pathfinding, NPCs, gamificação, XP, áudio ambiente, salvar posição do avatar no banco.
+### Performance
 
-## Arquivos alterados
-- `src/routes/app.city.tsx` (reescrita expandida)
+- Lista de nós em `useMemo`; conexões em SVG único.
+- Drag com transform CSS + commit ao soltar (1 update no Supabase).
+- Virtualização não necessária no MVP; limitar re-renders via componente `Node` memoizado.
 
-Nenhum outro arquivo é tocado. Sem migrações. Sem novas dependências.
+### Responsividade
+
+- Desktop: pan = botão do meio ou espaço+drag; zoom = scroll.
+- Touch (tablet/mobile): pan = 1 dedo no fundo, zoom = pinça, drag de nó = 1 dedo no nó.
+- Toolbar flutuante: zoom in/out, fit, recentrar, alternar modo.
+
+## Estrutura técnica
+
+```text
+src/routes/app.kanban.tsx               (adiciona toggle de modo)
+src/components/kanban/FlowCanvas.tsx    (novo — canvas, pan/zoom, SVG)
+src/components/kanban/FlowNode.tsx      (novo — nó memoizado)
+src/components/kanban/FlowToolbar.tsx   (novo)
+src/lib/kanban-flow.ts                  (novo — auto-layout, helpers de geometria)
+```
+
+Reutiliza o store/dialog atuais do Kanban — nenhuma lógica de cards é reescrita.
+
+## Migração SQL
+
+```sql
+ALTER TABLE public.kanban_cards
+  ADD COLUMN parent_card_id uuid NULL REFERENCES public.kanban_cards(id) ON DELETE SET NULL,
+  ADD COLUMN flow_x double precision NULL,
+  ADD COLUMN flow_y double precision NULL,
+  ADD COLUMN flow_collapsed boolean NOT NULL DEFAULT false;
+
+CREATE INDEX idx_kanban_cards_parent ON public.kanban_cards(parent_card_id);
+
+CREATE TABLE public.kanban_card_links (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  workspace_id uuid NOT NULL,
+  funnel_id uuid NOT NULL,
+  from_card_id uuid NOT NULL REFERENCES public.kanban_cards(id) ON DELETE CASCADE,
+  to_card_id   uuid NOT NULL REFERENCES public.kanban_cards(id) ON DELETE CASCADE,
+  label text NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.kanban_card_links TO authenticated;
+GRANT ALL ON public.kanban_card_links TO service_role;
+ALTER TABLE public.kanban_card_links ENABLE ROW LEVEL SECURITY;
+-- policies idênticas às de kanban_cards (workspace member)
+```
+
+## O que NÃO muda
+
+- Tabelas `kanban_funnels`, `kanban_columns`, `kanban_attachments` permanecem como estão.
+- Modo Kanban tradicional permanece 100% igual: colunas, drag horizontal, ordering.
+- Dialog de edição de card é o mesmo nos dois modos.
+- Histórico, anexos e comentários existentes intactos.
+
+## Escopo do MVP (esta entrega)
+
+1. Migração + types regenerados.
+2. Toggle Kanban/Fluxograma na rota.
+3. FlowCanvas com pan, zoom, auto-layout, drag de nós, criar filho, abrir detalhe.
+4. Conexões extras (`kanban_card_links`) — criar e renderizar.
+5. Suporte touch básico (pan/pinch/drag).
+
+Refinamentos futuros (não nesta entrega): mini-mapa, snap-to-grid, undo/redo, templates de fluxo.
+
+## Confirmação
+
+Posso seguir com essa abordagem? Se sim, começo pela migração do banco.

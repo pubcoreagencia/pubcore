@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useCallback, type PointerEvent } from "react";
-import { Plus, Trash2, Pencil, X, GripVertical, CalendarDays, User, FileText, ListChecks, Layers, Paperclip } from "lucide-react";
+import { Plus, Trash2, Pencil, X, GripVertical, CalendarDays, User, FileText, ListChecks, Layers, Paperclip, LayoutGrid, GitBranch } from "lucide-react";
 import { COMPANIES, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { logActivity } from "@/lib/activity-log";
 import { KanbanAttachments } from "@/components/KanbanAttachments";
 import { SaveIndicator } from "@/components/SaveIndicator";
+import { FlowCanvas } from "@/components/kanban/FlowCanvas";
 import type { SaveStatus } from "@/hooks/use-autosave";
 
 export const Route = createFileRoute("/app/kanban")({ component: KanbanRoute });
@@ -91,6 +92,11 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
 
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [activeFunnelId, setActiveFunnelId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"board" | "flow">(() => {
+    if (typeof window === "undefined") return "board";
+    return (localStorage.getItem("pubcore:kanban:viewmode") as "board" | "flow") || "board";
+  });
+  useEffect(() => { try { localStorage.setItem("pubcore:kanban:viewmode", viewMode); } catch { /* noop */ } }, [viewMode]);
   const [columns, setColumns] = useState<Column[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -699,6 +705,28 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
         )}
       </div>
 
+      {/* VIEW MODE TOGGLE */}
+      <div className="mb-3 flex items-center justify-end">
+        <div className="inline-flex items-center rounded-lg border border-border bg-card/50 p-0.5 text-xs">
+          <button
+            onClick={() => setViewMode("board")}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md transition ${viewMode === "board" ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+          </button>
+          <button
+            onClick={() => setViewMode("flow")}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md transition ${viewMode === "flow" ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <GitBranch className="h-3.5 w-3.5" /> Fluxograma
+          </button>
+        </div>
+      </div>
+
+      {viewMode === "flow" && activeFunnelId ? (
+        <FlowCanvas funnelId={activeFunnelId} />
+      ) : (
+      <>
       {/* BOARD */}
       <div
         ref={boardRef}
@@ -904,6 +932,10 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
         )}
         <div aria-hidden className="flex-shrink-0 w-6" />
       </div>
+      </>
+      )}
+
+
 
       {openCard && (
         <CardDialog
