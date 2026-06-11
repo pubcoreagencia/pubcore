@@ -519,6 +519,51 @@ export type Database = {
         }
         Relationships: []
       }
+      kanban_card_links: {
+        Row: {
+          created_at: string
+          from_card_id: string
+          funnel_id: string
+          id: string
+          label: string | null
+          to_card_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_card_id: string
+          funnel_id: string
+          id?: string
+          label?: string | null
+          to_card_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          from_card_id?: string
+          funnel_id?: string
+          id?: string
+          label?: string | null
+          to_card_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "kanban_card_links_from_card_id_fkey"
+            columns: ["from_card_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "kanban_card_links_to_card_id_fkey"
+            columns: ["to_card_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kanban_cards: {
         Row: {
           assignee: string | null
@@ -527,11 +572,15 @@ export type Database = {
           created_at: string
           description: string | null
           due_date: string | null
+          flow_collapsed: boolean
+          flow_x: number | null
+          flow_y: number | null
           funnel_id: string | null
           id: string
           legacy_checklist: Json
           notes: string | null
           owner_email: string
+          parent_card_id: string | null
           position: number
           priority: string
           status: string
@@ -547,11 +596,15 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          flow_collapsed?: boolean
+          flow_x?: number | null
+          flow_y?: number | null
           funnel_id?: string | null
           id?: string
           legacy_checklist?: Json
           notes?: string | null
           owner_email: string
+          parent_card_id?: string | null
           position?: number
           priority?: string
           status?: string
@@ -567,11 +620,15 @@ export type Database = {
           created_at?: string
           description?: string | null
           due_date?: string | null
+          flow_collapsed?: boolean
+          flow_x?: number | null
+          flow_y?: number | null
           funnel_id?: string | null
           id?: string
           legacy_checklist?: Json
           notes?: string | null
           owner_email?: string
+          parent_card_id?: string | null
           position?: number
           priority?: string
           status?: string
@@ -580,7 +637,15 @@ export type Database = {
           user_id?: string | null
           workspace_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "kanban_cards_parent_card_id_fkey"
+            columns: ["parent_card_id"]
+            isOneToOne: false
+            referencedRelation: "kanban_cards"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       kanban_cards_archive: {
         Row: {
