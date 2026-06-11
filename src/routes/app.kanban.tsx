@@ -932,6 +932,10 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
         )}
         <div aria-hidden className="flex-shrink-0 w-6" />
       </div>
+      </>
+      )}
+
+
 
       {openCard && (
         <CardDialog
