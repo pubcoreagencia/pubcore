@@ -92,6 +92,11 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
 
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [activeFunnelId, setActiveFunnelId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"board" | "flow">(() => {
+    if (typeof window === "undefined") return "board";
+    return (localStorage.getItem("pubcore:kanban:viewmode") as "board" | "flow") || "board";
+  });
+  useEffect(() => { try { localStorage.setItem("pubcore:kanban:viewmode", viewMode); } catch { /* noop */ } }, [viewMode]);
   const [columns, setColumns] = useState<Column[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [loaded, setLoaded] = useState(false);
