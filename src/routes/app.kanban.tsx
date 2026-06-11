@@ -705,6 +705,28 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
         )}
       </div>
 
+      {/* VIEW MODE TOGGLE */}
+      <div className="mb-3 flex items-center justify-end">
+        <div className="inline-flex items-center rounded-lg border border-border bg-card/50 p-0.5 text-xs">
+          <button
+            onClick={() => setViewMode("board")}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md transition ${viewMode === "board" ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+          </button>
+          <button
+            onClick={() => setViewMode("flow")}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md transition ${viewMode === "flow" ? "bg-primary/15 text-primary font-medium" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            <GitBranch className="h-3.5 w-3.5" /> Fluxograma
+          </button>
+        </div>
+      </div>
+
+      {viewMode === "flow" && activeFunnelId ? (
+        <FlowCanvas funnelId={activeFunnelId} />
+      ) : (
+      <>
       {/* BOARD */}
       <div
         ref={boardRef}
