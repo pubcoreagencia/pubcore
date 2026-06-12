@@ -146,16 +146,16 @@ export function ChecklistCompaniesProvider({ children }: { children: ReactNode }
 
   const setPontoLimit = useCallback(async (id: string, minutes: number, enabled: boolean) => {
     const safe = Math.max(1, Math.min(24 * 60, Math.round(minutes)));
-    const { error } = await supabase
-      .from("checklist_companies")
-      .update({ ponto_daily_limit_minutes: safe, ponto_limit_enabled: enabled } as never)
-      .eq("id", id);
+    const { error } = await supabase.rpc("set_company_ponto_limit" as never, {
+      _company_id: id, _minutes: safe, _enabled: enabled,
+    } as never);
     if (error) { console.error("[companies] setPontoLimit", error); return false; }
     setCompanies((prev) => prev.map((x) => x.id === id
       ? { ...x, ponto_daily_limit_minutes: safe, ponto_limit_enabled: enabled }
       : x));
     return true;
   }, []);
+
 
   const value: Ctx = useMemo(() => ({
     companies, loading, canManage: isWorkspaceAdmin,
