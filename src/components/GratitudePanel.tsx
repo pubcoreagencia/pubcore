@@ -31,6 +31,7 @@ export function GratitudePanel() {
   // ── 1. Check if today's entry exists / is completed ──
   useEffect(() => {
     if (!user || !activeWorkspaceId) return;
+    if (!gratitudeEnabled) { setOpen(false); setLoading(false); return; }
     let cancelled = false;
     (async () => {
       const date = todayISO();
