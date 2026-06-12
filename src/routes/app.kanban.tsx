@@ -338,12 +338,21 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     const colsIn = columns.filter(c => c.funnel_id === id);
     const cardsIn = cards.filter(c => c.funnel_id === id);
     if (!confirm(`Excluir funil "${f?.name}" com ${colsIn.length} coluna(s) e ${cardsIn.length} card(s)?`)) return;
-    await supabase.from("kanban_cards").delete().eq("funnel_id", id);
-    await supabase.from("kanban_columns").delete().eq("funnel_id", id);
-    await supabase.from("kanban_funnels").delete().eq("id", id);
+    // Optimistic UI
+    const prevFunnels = funnels, prevColumns = columns, prevCards = cards;
+    setCards(cs => cs.filter(c => c.funnel_id !== id));
+    setColumns(cs => cs.filter(c => c.funnel_id !== id));
+    setFunnels(fs => fs.filter(x => x.id !== id));
     if (activeFunnelId === id) {
-      const next = funnels.find(x => x.id !== id);
+      const next = prevFunnels.find(x => x.id !== id);
       setActiveFunnelId(next?.id ?? null);
+    }
+    const r1 = await supabase.from("kanban_cards").delete().eq("funnel_id", id);
+    const r2 = await supabase.from("kanban_columns").delete().eq("funnel_id", id);
+    const r3 = await supabase.from("kanban_funnels").delete().eq("id", id);
+    if (r1.error || r2.error || r3.error) {
+      toast.error("Erro ao excluir funil — restaurando");
+      setFunnels(prevFunnels); setColumns(prevColumns); setCards(prevCards);
     }
   };
 
@@ -365,13 +374,16 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     if (!newColName.trim() || !userId || !activeWorkspaceId || !activeFunnelId) return;
     const colsInFunnel = columns.filter(c => c.funnel_id === activeFunnelId);
     const position = colsInFunnel.length;
-    await supabase.from("kanban_columns").insert({
+    const payload = {
       workspace_id: activeWorkspaceId, user_id: userId,
       funnel_id: activeFunnelId,
       name: newColName.trim(), position,
       color: DEFAULT_COLUMNS[position % DEFAULT_COLUMNS.length].color,
-    } as never);
+    };
     setNewColName(""); setAddingCol(false);
+    const { data, error } = await supabase.from("kanban_columns").insert(payload as never).select().single();
+    if (error) { toast.error(error.message); return; }
+    if (data) setColumns(cs => cs.some(c => c.id === (data as Column).id) ? cs : [...cs, data as Column]);
   };
 
   const renameColumn = async (id: string, name: string) => {
@@ -385,8 +397,17 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     const colCards = cards.filter(c => c.column_id === id);
     const col = columns.find(c => c.id === id);
     if (colCards.length > 0 && !confirm(`Excluir coluna com ${colCards.length} card(s)? Os cards também serão removidos.`)) return;
-    await supabase.from("kanban_cards").delete().eq("column_id", id);
-    await supabase.from("kanban_columns").delete().eq("id", id);
+    // Optimistic UI
+    const prevColumns = columns, prevCards = cards;
+    setCards(cs => cs.filter(c => c.column_id !== id));
+    setColumns(cs => cs.filter(c => c.id !== id));
+    const r1 = await supabase.from("kanban_cards").delete().eq("column_id", id);
+    const r2 = await supabase.from("kanban_columns").delete().eq("id", id);
+    if (r1.error || r2.error) {
+      toast.error("Erro ao excluir coluna — restaurando");
+      setColumns(prevColumns); setCards(prevCards);
+      return;
+    }
     if (col) await logActivity({
       entity_type: "kanban_column", entity_id: id, action: "deleted",
       title: col.name, payload: { card_count: colCards.length },
@@ -450,13 +471,21 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
 
   const deleteCard = async (id: string) => {
     const card = cards.find(c => c.id === id);
+    // Optimistic UI
+    const prev = cards;
+    setCards(cs => cs.filter(c => c.id !== id));
     // delete attachments first
     const { data: atts } = await supabase.from("kanban_attachments").select("storage_path").eq("card_id", id);
     if (atts && atts.length > 0) {
       await supabase.storage.from("kanban-attachments").remove(atts.map(a => a.storage_path));
       await supabase.from("kanban_attachments").delete().eq("card_id", id);
     }
-    await supabase.from("kanban_cards").delete().eq("id", id);
+    const { error } = await supabase.from("kanban_cards").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir card — restaurando");
+      setCards(prev);
+      return;
+    }
     if (card) await logActivity({
       entity_type: "kanban_card", entity_id: id, action: "deleted",
       title: card.title, company: card.company,
