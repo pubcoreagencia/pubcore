@@ -5,8 +5,9 @@ import {
   Check, Filter, Plus, Trash2, Pencil, GripVertical, X,
   Play, Pause, StopCircle, RotateCcw, ChevronRight,
   TrendingUp, CheckCircle2, AlertTriangle, ListTodo, Activity,
-  Sparkles, History, Timer, BarChart3, Users,
+  Sparkles, History, Timer, BarChart3, Users, Settings2, Infinity as InfinityIcon,
 } from "lucide-react";
+
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   BarChart, Bar, RadialBarChart, RadialBar, PolarAngleAxis,
