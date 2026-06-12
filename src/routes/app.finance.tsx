@@ -889,7 +889,7 @@ function ProductsTab({ products, companyOptions }: { products: Product[]; compan
 function ProductDialog({ initial, workspaceId, userId, onClose }: { initial: Product | null; workspaceId: string | null; userId: string; onClose: () => void }) {
   const [form, setForm] = useState({
     name: initial?.name ?? "",
-    company: initial?.company ?? (COMPANIES[0] ?? ""),
+    company: initial?.company ?? "",
     cost: initial?.cost?.toString() ?? "",
     price: initial?.price?.toString() ?? "",
     avg_demand_monthly: initial?.avg_demand_monthly?.toString() ?? "0",
