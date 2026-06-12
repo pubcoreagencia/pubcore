@@ -100,17 +100,14 @@ export function FirstCompanyOnboarding() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Segmento</Label>
-                <Select value={segment} onValueChange={setSegment} disabled={saving}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione (opcional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SEGMENTS.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="company-segment">Segmento</Label>
+                <Input
+                  id="company-segment"
+                  value={segment}
+                  onChange={(e) => setSegment(e.target.value)}
+                  placeholder="Ex: Tecnologia"
+                  disabled={saving}
+                />
               </div>
 
               <div className="space-y-2">
