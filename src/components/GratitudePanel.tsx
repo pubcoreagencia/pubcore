@@ -53,7 +53,7 @@ export function GratitudePanel() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [user, activeWorkspaceId]);
+  }, [user, activeWorkspaceId, gratitudeEnabled]);
 
   // ── 2. Lock body scroll ──
   useEffect(() => {
