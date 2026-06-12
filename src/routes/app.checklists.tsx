@@ -12,8 +12,9 @@ import {
   BarChart, Bar, RadialBarChart, RadialBar, PolarAngleAxis,
 } from "recharts";
 import {
-  COMPANIES, COMPANY_COLORS, DEFAULT_COMPANY_COLOR, type Company,
+  COMPANY_COLORS, DEFAULT_COMPANY_COLOR, type Company,
 } from "@/lib/mock-data";
+
 import {
   useOperationalData, buildDailySeries, tasksByCompany, tasksByUser,
   type SessionRow, type SessionTaskRow,
