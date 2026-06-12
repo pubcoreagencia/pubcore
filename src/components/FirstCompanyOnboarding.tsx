@@ -6,13 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { DEFAULT_COMPANY_COLOR } from "@/lib/mock-data";
-
-const SEGMENTS = ["Tecnologia", "Marketing", "Comércio", "Serviços", "Indústria", "Outro"];
 
 const COLOR_SWATCHES = [
   "oklch(0.72 0.10 260)",
@@ -105,17 +100,14 @@ export function FirstCompanyOnboarding() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Segmento</Label>
-                <Select value={segment} onValueChange={setSegment} disabled={saving}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione (opcional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {SEGMENTS.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="company-segment">Segmento</Label>
+                <Input
+                  id="company-segment"
+                  value={segment}
+                  onChange={(e) => setSegment(e.target.value)}
+                  placeholder="Ex: Tecnologia"
+                  disabled={saving}
+                />
               </div>
 
               <div className="space-y-2">
