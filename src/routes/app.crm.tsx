@@ -36,11 +36,13 @@ function CRMPage() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
+  const { companies } = useChecklistCompanies();
+  const companyNames = companies.map((c) => c.name);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [drag, setDrag] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<{ name: string; company: string; owner: Company; value: string }>({
-    name: "", company: "", owner: (COMPANIES[0] ?? ""), value: "",
+    name: "", company: "", owner: "", value: "",
   });
 
   useEffect(() => {
