@@ -185,6 +185,17 @@ function LoginPage() {
                   className="w-full rounded-lg border border-input bg-surface pl-10 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
             )}
+            {mode === "signup" && (
+              <p className="text-[11px] text-muted-foreground -mt-2">
+                Use uma senha forte (mín. 8 caracteres, com letras, números e símbolos). Senhas comuns ou expostas em vazamentos são recusadas.
+              </p>
+            )}
+            {formError && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-xs text-destructive leading-relaxed">
+                {formError}
+              </div>
+            )}
+
 
             <button type="submit" disabled={loading}
               className="group w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50">
