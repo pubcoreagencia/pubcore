@@ -948,7 +948,11 @@ const HOUR_LIMIT_MS = 30 * 60 * 1000;
 function PontoTab() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
-  const { companies: checklistCompanies, colorOf } = useChecklistCompanies();
+  const { companies: checklistCompanies, colorOf, setPontoLimit, canManage } = useChecklistCompanies();
+  const [editingLimitId, setEditingLimitId] = useState<string | null>(null);
+  const [limitDraftMin, setLimitDraftMin] = useState<string>("");
+  const [limitDraftEnabled, setLimitDraftEnabled] = useState<boolean>(true);
+
   const {
     sessions: pontoSessions, activeCompany,
     computeFor, dailyProductiveMs, dailyTotalMs,
