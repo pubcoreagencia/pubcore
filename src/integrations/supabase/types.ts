@@ -1564,6 +1564,10 @@ export type Database = {
         Args: { _name: string; _workspace_id: string }
         Returns: undefined
       }
+      delete_workspace_cascade: {
+        Args: { _workspace_id: string }
+        Returns: undefined
+      }
       has_app_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1595,6 +1599,19 @@ export type Database = {
           email: string
           id: string
           status: string
+        }[]
+      }
+      list_all_workspaces: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          member_count: number
+          name: string
+          owner_email: string
+          owner_id: string
+          owner_name: string
+          slug: string
         }[]
       }
       list_workspace_members: {
