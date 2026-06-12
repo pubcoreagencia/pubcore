@@ -38,10 +38,12 @@ function CalendarPage() {
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth());
   const [year, setYear] = useState(today.getFullYear());
+  const { companies } = useChecklistCompanies();
+  const companyNames = companies.map((c) => c.name);
   const [events, setEvents] = useState<Ev[]>([]);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<{ title: string; type: EvType; company: Company; event_date: string; event_time: string }>({
-    title: "", type: "Reunião", company: (COMPANIES[0] ?? ""), event_date: today.toISOString().slice(0, 10), event_time: "09:00",
+    title: "", type: "Reunião", company: "", event_date: today.toISOString().slice(0, 10), event_time: "09:00",
   });
 
   useEffect(() => {
