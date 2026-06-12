@@ -1618,6 +1618,10 @@ export type Database = {
         Args: { _status: string; _user_id: string }
         Returns: undefined
       }
+      set_company_ponto_limit: {
+        Args: { _company_id: string; _enabled: boolean; _minutes: number }
+        Returns: undefined
+      }
       set_member_role: {
         Args: {
           _role: Database["public"]["Enums"]["workspace_role"]
