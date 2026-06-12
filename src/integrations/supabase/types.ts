@@ -58,29 +58,44 @@ export type Database = {
       }
       checklist_companies: {
         Row: {
+          archived_at: string | null
           color: string | null
           created_at: string
           id: string
           name: string
+          notes: string | null
           position: number
+          responsible: string | null
+          segment: string | null
+          status: string
           updated_at: string
           workspace_id: string
         }
         Insert: {
+          archived_at?: string | null
           color?: string | null
           created_at?: string
           id?: string
           name: string
+          notes?: string | null
           position?: number
+          responsible?: string | null
+          segment?: string | null
+          status?: string
           updated_at?: string
           workspace_id: string
         }
         Update: {
+          archived_at?: string | null
           color?: string | null
           created_at?: string
           id?: string
           name?: string
+          notes?: string | null
           position?: number
+          responsible?: string | null
+          segment?: string | null
+          status?: string
           updated_at?: string
           workspace_id?: string
         }
@@ -215,6 +230,7 @@ export type Database = {
       }
       crm_leads: {
         Row: {
+          archived_at: string | null
           company: string | null
           created_at: string
           email: string | null
@@ -229,6 +245,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          archived_at?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
@@ -243,6 +260,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          archived_at?: string | null
           company?: string | null
           created_at?: string
           email?: string | null
@@ -301,6 +319,7 @@ export type Database = {
         Row: {
           active: boolean
           amount_monthly: number
+          archived_at: string | null
           category: string | null
           company: string | null
           created_at: string
@@ -315,6 +334,7 @@ export type Database = {
         Insert: {
           active?: boolean
           amount_monthly?: number
+          archived_at?: string | null
           category?: string | null
           company?: string | null
           created_at?: string
@@ -329,6 +349,7 @@ export type Database = {
         Update: {
           active?: boolean
           amount_monthly?: number
+          archived_at?: string | null
           category?: string | null
           company?: string | null
           created_at?: string
@@ -344,6 +365,7 @@ export type Database = {
       }
       finance_products: {
         Row: {
+          archived_at: string | null
           avg_demand_monthly: number
           category: string | null
           company: string
@@ -359,6 +381,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          archived_at?: string | null
           avg_demand_monthly?: number
           category?: string | null
           company?: string
@@ -374,6 +397,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          archived_at?: string | null
           avg_demand_monthly?: number
           category?: string | null
           company?: string
@@ -393,6 +417,7 @@ export type Database = {
       finance_transactions: {
         Row: {
           amount: number
+          archived_at: string | null
           category_id: string | null
           category_name: string | null
           company: string | null
@@ -410,6 +435,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          archived_at?: string | null
           category_id?: string | null
           category_name?: string | null
           company?: string | null
@@ -427,6 +453,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          archived_at?: string | null
           category_id?: string | null
           category_name?: string | null
           company?: string | null
@@ -566,6 +593,7 @@ export type Database = {
       }
       kanban_cards: {
         Row: {
+          archived_at: string | null
           assignee: string | null
           column_id: string | null
           company: string
@@ -590,6 +618,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          archived_at?: string | null
           assignee?: string | null
           column_id?: string | null
           company: string
@@ -614,6 +643,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          archived_at?: string | null
           assignee?: string | null
           column_id?: string | null
           company?: string
@@ -756,7 +786,9 @@ export type Database = {
       }
       kanban_funnels: {
         Row: {
+          archived_at: string | null
           color: string
+          company: string | null
           created_at: string
           description: string | null
           icon: string
@@ -768,7 +800,9 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          archived_at?: string | null
           color?: string
+          company?: string | null
           created_at?: string
           description?: string | null
           icon?: string
@@ -780,7 +814,9 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          archived_at?: string | null
           color?: string
+          company?: string | null
           created_at?: string
           description?: string | null
           icon?: string
@@ -1300,6 +1336,7 @@ export type Database = {
       }
       stock_items: {
         Row: {
+          archived_at: string | null
           category: string | null
           category_id: string | null
           company: string
@@ -1325,6 +1362,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          archived_at?: string | null
           category?: string | null
           category_id?: string | null
           company?: string
@@ -1350,6 +1388,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          archived_at?: string | null
           category?: string | null
           category_id?: string | null
           company?: string
@@ -1511,6 +1550,10 @@ export type Database = {
         Returns: boolean
       }
       close_stale_ponto_sessions: { Args: { _idle?: string }; Returns: number }
+      company_impact_report: {
+        Args: { _name: string; _workspace_id: string }
+        Returns: Json
+      }
       delete_checklist_company_cascade: {
         Args: { _name: string; _workspace_id: string }
         Returns: undefined
@@ -1575,6 +1618,10 @@ export type Database = {
           _user_id: string
           _workspace_id: string
         }
+        Returns: undefined
+      }
+      transfer_company_records: {
+        Args: { _from: string; _to: string; _workspace_id: string }
         Returns: undefined
       }
     }
