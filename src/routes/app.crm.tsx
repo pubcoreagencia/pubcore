@@ -72,7 +72,7 @@ function CRMPage() {
       user_id: userId, name: draft.name.trim(), company: draft.company || null,
       owner: draft.owner, stage: "Novo", value: Number(draft.value) || 0,
     } as never);
-    if (error) toast.error(error.message); else { setOpen(false); setDraft({ name: "", company: "", owner: (COMPANIES[0] ?? ""), value: "" }); }
+    if (error) toast.error(error.message); else { setOpen(false); setDraft({ name: "", company: "", owner: "", value: "" }); }
   };
 
   const remove = async (id: string) => {
