@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -37,10 +38,12 @@ function CalendarPage() {
   const today = new Date();
   const [month, setMonth] = useState(today.getMonth());
   const [year, setYear] = useState(today.getFullYear());
+  const { companies } = useChecklistCompanies();
+  const companyNames = companies.map((c) => c.name);
   const [events, setEvents] = useState<Ev[]>([]);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<{ title: string; type: EvType; company: Company; event_date: string; event_time: string }>({
-    title: "", type: "Reunião", company: (COMPANIES[0] ?? ""), event_date: today.toISOString().slice(0, 10), event_time: "09:00",
+    title: "", type: "Reunião", company: "", event_date: today.toISOString().slice(0, 10), event_time: "09:00",
   });
 
   useEffect(() => {
@@ -174,7 +177,8 @@ function CalendarPage() {
                 {TYPES.map((t) => <option key={t}>{t}</option>)}
               </select>
               <select value={draft.company} onChange={(e) => setDraft({ ...draft, company: e.target.value as Company })} className="bg-surface rounded-lg px-3 py-2 text-sm">
-                {COMPANIES.map((c) => <option key={c}>{c}</option>)}
+                <option value="">Sem empresa</option>
+                {companyNames.map((c) => <option key={c}>{c}</option>)}
               </select>
               <input type="date" value={draft.event_date} onChange={(e) => setDraft({ ...draft, event_date: e.target.value })} className="bg-surface rounded-lg px-3 py-2 text-sm" />
               <input type="time" value={draft.event_time} onChange={(e) => setDraft({ ...draft, event_time: e.target.value })} className="bg-surface rounded-lg px-3 py-2 text-sm" />

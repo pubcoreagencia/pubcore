@@ -9,7 +9,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
 import { logActivity } from "@/lib/activity-log";
 import { Input } from "@/components/ui/input";
@@ -781,6 +782,7 @@ function Editor({
   onFav: (v: boolean) => void;
   onPin: (v: boolean) => void;
 }) {
+  const { companies: companyList } = useChecklistCompanies();
   const [tagDraft, setTagDraft] = useState("");
   const Icon = ICONS[iconName] ?? FileText;
   const addTag = () => {
@@ -848,7 +850,7 @@ function Editor({
               className="text-[11px] bg-secondary/60 border border-border/40 rounded-md px-2.5 py-1.5 outline-none cursor-pointer hover:bg-secondary text-muted-foreground"
             >
               <option value="">Sem empresa</option>
-              {COMPANIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              {companyList.map((c) => <option key={c.id} value={c.name}>{c.name}</option>)}
             </select>
 
             <div className="flex items-center gap-1 flex-wrap">

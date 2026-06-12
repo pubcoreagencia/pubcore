@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Building2, Plus, Trash2 } from "lucide-react";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -35,11 +36,13 @@ function CRMPage() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
+  const { companies } = useChecklistCompanies();
+  const companyNames = companies.map((c) => c.name);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [drag, setDrag] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<{ name: string; company: string; owner: Company; value: string }>({
-    name: "", company: "", owner: (COMPANIES[0] ?? ""), value: "",
+    name: "", company: "", owner: "", value: "",
   });
 
   useEffect(() => {
@@ -69,7 +72,7 @@ function CRMPage() {
       user_id: userId, name: draft.name.trim(), company: draft.company || null,
       owner: draft.owner, stage: "Novo", value: Number(draft.value) || 0,
     } as never);
-    if (error) toast.error(error.message); else { setOpen(false); setDraft({ name: "", company: "", owner: (COMPANIES[0] ?? ""), value: "" }); }
+    if (error) toast.error(error.message); else { setOpen(false); setDraft({ name: "", company: "", owner: "", value: "" }); }
   };
 
   const remove = async (id: string) => {
@@ -160,10 +163,14 @@ function CRMPage() {
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-elegant space-y-3" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-display text-xl font-bold">Novo lead</h2>
             <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Nome do contato" className="w-full bg-surface rounded-lg px-3 py-2 text-sm" />
-            <input value={draft.company} onChange={(e) => setDraft({ ...draft, company: e.target.value })} placeholder="Empresa" className="w-full bg-surface rounded-lg px-3 py-2 text-sm" />
+            <select value={draft.company} onChange={(e) => setDraft({ ...draft, company: e.target.value })} className="w-full bg-surface rounded-lg px-3 py-2 text-sm">
+              <option value="">Sem empresa</option>
+              {companyNames.map((c) => <option key={c}>{c}</option>)}
+            </select>
             <div className="grid grid-cols-2 gap-3">
               <select value={draft.owner} onChange={(e) => setDraft({ ...draft, owner: e.target.value as Company })} className="bg-surface rounded-lg px-3 py-2 text-sm">
-                {COMPANIES.map((c) => <option key={c}>{c}</option>)}
+                <option value="">Responsável</option>
+                {companyNames.map((c) => <option key={c}>{c}</option>)}
               </select>
               <input type="number" value={draft.value} onChange={(e) => setDraft({ ...draft, value: e.target.value })} placeholder="Valor R$" className="bg-surface rounded-lg px-3 py-2 text-sm" />
             </div>

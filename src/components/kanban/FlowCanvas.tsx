@@ -8,7 +8,8 @@ import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { CompanyTag } from "@/components/CompanyTag";
 import { KanbanAttachments } from "@/components/KanbanAttachments";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { autoLayout, bottomAnchor, topAnchor, curvePath, NODE_W, NODE_H } from "@/lib/kanban-flow";
 import { toast } from "sonner";
 
@@ -51,6 +52,7 @@ export function FlowCanvas({ funnelId }: { funnelId: string }) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
+  const { companies: companyList } = useChecklistCompanies();
 
   const [cards, setCards] = useState<FlowCard[]>([]);
   const [links, setLinks] = useState<FlowLink[]>([]);
@@ -219,7 +221,7 @@ export function FlowCanvas({ funnelId }: { funnelId: string }) {
       owner_email: user?.email ?? "guest@pubcore.local",
       funnel_id: funnelId,
       title: parent ? "Novo nó" : "Novo fluxo",
-      company: parent?.company ?? ((COMPANIES[0] ?? "") as Company),
+      company: parent?.company ?? ((companyList[0]?.name ?? "") as Company),
       priority: "Média",
       status: "pending",
       position: 0,
@@ -479,6 +481,7 @@ function NodeDialog({
   onUpdate: (patch: Partial<FlowCard>) => Promise<void>;
   onDelete: () => void;
 }) {
+  const { companies: companyList } = useChecklistCompanies();
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description ?? "");
   const [notes, setNotes] = useState(card.notes ?? "");
@@ -518,7 +521,8 @@ function NodeDialog({
             </Field>
             <Field label="Empresa">
               <select value={card.company} onChange={(e) => void onUpdate({ company: e.target.value as Company })} className="w-full bg-surface rounded px-2 py-1.5 text-sm">
-                {COMPANIES.map(c => <option key={c}>{c}</option>)}
+                <option value="">Sem empresa</option>
+                {companyList.map(c => <option key={c.id}>{c.name}</option>)}
               </select>
             </Field>
             <Field label="Prioridade">

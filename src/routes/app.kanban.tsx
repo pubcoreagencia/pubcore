@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useCallback, type PointerEvent } from "react";
 import { Plus, Trash2, Pencil, X, GripVertical, CalendarDays, User, FileText, ListChecks, Layers, Paperclip, LayoutGrid, GitBranch } from "lucide-react";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -89,6 +90,9 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
+  const { companies: companyList } = useChecklistCompanies();
+  const companyNames = companyList.map((c) => c.name);
+
 
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [activeFunnelId, setActiveFunnelId] = useState<string | null>(null);
@@ -197,7 +201,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
   const [newColName, setNewColName] = useState("");
 
   const [adding, setAdding] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ title: "", company: (COMPANIES[0] ?? "") as Company });
+  const [draft, setDraft] = useState({ title: "", company: "" as Company });
   const [openCard, setOpenCard] = useState<Card | null>(null);
 
   // funnel UI
@@ -440,7 +444,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
       const newCard = normalizeCard(data);
       setCards(cs => cs.some(c => c.id === newCard.id) ? cs : [...cs, newCard]);
     }
-    setDraft({ title: "", company: (COMPANIES[0] ?? "") });
+    setDraft({ title: "", company: "" });
     setAdding(null);
   };
 
@@ -885,7 +889,8 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
                       onChange={(e) => setDraft({ ...draft, company: e.target.value as Company })}
                       className="w-full bg-surface rounded px-2 py-1.5 text-xs"
                     >
-                      {COMPANIES.map((c) => <option key={c}>{c}</option>)}
+                      <option value="">Sem empresa</option>
+                      {companyNames.map((c) => <option key={c}>{c}</option>)}
                     </select>
                     <div className="flex gap-2">
                       <button type="button" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); createCard(col.id); }} className="flex-1 rounded bg-gradient-primary py-1.5 text-xs font-bold text-primary-foreground">Criar</button>
@@ -965,6 +970,8 @@ function CardDialog({
   onMoveFunnel: (funnelId: string) => void;
   onDelete: () => void;
 }) {
+  const { companies: companyList } = useChecklistCompanies();
+  const companyNames = companyList.map((c) => c.name);
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description ?? "");
   const [notes, setNotes] = useState(card.notes ?? "");
@@ -1075,7 +1082,8 @@ function CardDialog({
                 onChange={(e) => onUpdate({ company: e.target.value as Company })}
                 className="w-full bg-surface rounded px-2 py-1.5 text-sm"
               >
-                {COMPANIES.map((c) => <option key={c}>{c}</option>)}
+                <option value="">Sem empresa</option>
+                {companyNames.map((c) => <option key={c}>{c}</option>)}
               </select>
             </Field>
             <Field label="Prioridade">

@@ -49,8 +49,7 @@ interface Product {
   stock: number; category: string | null; notes: string | null;
 }
 
-import { COMPANIES as HOLDING_COMPANIES } from "@/lib/mock-data";
-const COMPANIES = [...HOLDING_COMPANIES];
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 const BRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n || 0);
 
@@ -183,16 +182,17 @@ function monthlySeries(tx: Tx[]) {
 function FinancePage() {
   const { activeWorkspace } = useWorkspace();
   const { transactions, costs, products, loading } = useFinanceData();
+  const { companies: registeredCompanies } = useChecklistCompanies();
   const kpis = useMemo(() => calcKPIs(transactions, costs), [transactions, costs]);
 
-  // Lista única de empresas: base canônica + valores observados nos dados.
+  // Lista única de empresas: cadastradas no módulo Empresas + observadas nos dados.
   const companyOptions = useMemo(() => {
-    const set = new Set<string>(COMPANIES);
+    const set = new Set<string>(registeredCompanies.map((c) => c.name));
     for (const t of transactions) if (t.company) set.add(t.company);
     for (const c of costs) if (c.company) set.add(c.company);
     for (const p of products) if (p.company) set.add(p.company);
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [transactions, costs, products]);
+  }, [registeredCompanies, transactions, costs, products]);
 
   return (
     <div className="px-3 sm:px-6 lg:px-10 py-4 sm:py-8 max-w-[1500px] mx-auto">
@@ -889,7 +889,7 @@ function ProductsTab({ products, companyOptions }: { products: Product[]; compan
 function ProductDialog({ initial, workspaceId, userId, onClose }: { initial: Product | null; workspaceId: string | null; userId: string; onClose: () => void }) {
   const [form, setForm] = useState({
     name: initial?.name ?? "",
-    company: initial?.company ?? (COMPANIES[0] ?? ""),
+    company: initial?.company ?? "",
     cost: initial?.cost?.toString() ?? "",
     price: initial?.price?.toString() ?? "",
     avg_demand_monthly: initial?.avg_demand_monthly?.toString() ?? "0",
