@@ -62,14 +62,14 @@ function LoginPage() {
         </div>
         <div className="relative max-w-lg">
           <h1 className="font-display text-5xl font-semibold leading-[1.05] tracking-tight">
-            A central operacional<br />
-            <span className="text-primary">executiva</span> da sua holding.
+            Sua plataforma de<br />
+            <span className="text-primary">gestão empresarial</span>.
           </h1>
           <p className="mt-6 text-muted-foreground text-lg leading-relaxed">
-            Kanban, checklists, calendário e CRM unificados — Pub 3D, Pub IA, Pub RECORDS, Pub Films, Bricks e Têxtil em uma única visão.
+            Kanban, checklists, calendário, CRM, finanças e estoque — uma só plataforma para você administrar uma ou várias empresas, do seu jeito.
           </p>
         </div>
-        <div className="relative text-xs text-muted-foreground">© {new Date().getFullYear()} PUB Holding</div>
+        <div className="relative text-xs text-muted-foreground">© {new Date().getFullYear()} PUB CORE</div>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-6 lg:p-12">

@@ -4,7 +4,7 @@ import {
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "./workspace";
-import { COMPANIES as DEFAULT_COMPANIES, COMPANY_COLORS, DEFAULT_COMPANY_COLOR } from "./mock-data";
+import { COMPANY_COLORS, DEFAULT_COMPANY_COLOR } from "./mock-data";
 
 export interface ChecklistCompany {
   id: string;
@@ -44,18 +44,11 @@ export function ChecklistCompaniesProvider({ children }: { children: ReactNode }
     return (data ?? []) as ChecklistCompany[];
   }, []);
 
-  const seedDefaults = useCallback(async (wsId: string) => {
-    const rows = DEFAULT_COMPANIES.map((name, i) => ({
-      workspace_id: wsId,
-      name,
-      color: COMPANY_COLORS[name] ?? DEFAULT_COMPANY_COLOR,
-      position: i,
-    }));
-    const { error } = await supabase
-      .from("checklist_companies")
-      .insert(rows as never, { count: "exact" })
-      .select();
-    if (error) console.warn("[companies] seed", error);
+  // Novos workspaces começam SEM empresas pré-cadastradas — o usuário
+  // adiciona suas próprias empresas pela tela de Checklists ou pelo
+  // onboarding. Função mantida como no-op para compatibilidade.
+  const seedDefaults = useCallback(async (_wsId: string) => {
+    void _wsId;
   }, []);
 
   useEffect(() => {
@@ -63,12 +56,7 @@ export function ChecklistCompaniesProvider({ children }: { children: ReactNode }
     let cancelled = false;
     setLoading(true);
     (async () => {
-      let list = await load(activeWorkspaceId);
-      if (list.length === 0 && seededRef.current !== activeWorkspaceId && isWorkspaceAdmin) {
-        seededRef.current = activeWorkspaceId;
-        await seedDefaults(activeWorkspaceId);
-        list = await load(activeWorkspaceId);
-      }
+      const list = await load(activeWorkspaceId);
       if (!cancelled) { setCompanies(list); setLoading(false); }
     })();
 
@@ -79,7 +67,8 @@ export function ChecklistCompaniesProvider({ children }: { children: ReactNode }
         async () => { const list = await load(activeWorkspaceId); if (!cancelled) setCompanies(list); })
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };
-  }, [activeWorkspaceId, isWorkspaceAdmin, load, seedDefaults]);
+  }, [activeWorkspaceId, load]);
+  void seedDefaults; void isWorkspaceAdmin; void seededRef;
 
   const create = useCallback(async (name: string, color?: string) => {
     const trimmed = name.trim();

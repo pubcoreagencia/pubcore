@@ -155,13 +155,9 @@ interface Movement {
   occurred_at: string;
 }
 
-import { COMPANIES as HOLDING_COMPANIES, COMPANY_COLORS as HOLDING_COLORS } from "@/lib/mock-data";
-
-const DEFAULT_COMPANIES: Array<{ name: string; slug: string; color: string }> = HOLDING_COMPANIES.map((name) => ({
-  name,
-  slug: name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-  color: HOLDING_COLORS[name] ?? "oklch(0.72 0.10 260)",
-}));
+// Estoque começa vazio em novos workspaces. O usuário cria suas próprias
+// empresas/categorias diretamente na tela de Estoque.
+const DEFAULT_COMPANIES: Array<{ name: string; slug: string; color: string }> = [];
 
 const SYSTEM_FIELDS: Array<{ key: string; label: string; type: FieldType; position: number }> = [
   { key: "name", label: "Nome", type: "text", position: 0 },
