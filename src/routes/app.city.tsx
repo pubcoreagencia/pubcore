@@ -116,14 +116,17 @@ type District = {
   x: number; y: number; w: number; h: number;
 };
 
+// Distritos puramente visuais (layout do mapa). As empresas exibidas em
+// cada distrito vêm dinamicamente do workspace do usuário — nenhuma
+// empresa é cadastrada por padrão.
 const DISTRICTS: District[] = [
-  { id: "admin", name: "Centro Administrativo", subtitle: "Praça Santos Dumont", icon: Building2, color: "oklch(0.72 0.14 250)", companies: ["PUB CORE", "PUB"], x: 1300, y: 950, w: 600, h: 400 },
-  { id: "tech", name: "Vale Tech", subtitle: "Morro do Humaitá", icon: Cpu, color: "oklch(0.70 0.18 200)", companies: ["PUB IA", "PUB 3D", "PUB ADSENSE"], x: 1100, y: 250, w: 900, h: 450 },
-  { id: "finance", name: "Distrito Financeiro", subtitle: "Centro-Oeste", icon: Coins, color: "oklch(0.78 0.16 90)", companies: ["PUB CRYPTO", "PUB IMÓVEIS"], x: 600, y: 900, w: 550, h: 380 },
-  { id: "ent", name: "Rua das Pedras", subtitle: "Entretenimento", icon: Music, color: "oklch(0.65 0.22 330)", companies: ["PUB RECORDS", "PUB FILMS", "PUB CASSINO", "PUB LANÇAMENTOS"], x: 1100, y: 1450, w: 1100, h: 380 },
-  { id: "food", name: "Orla Bardot", subtitle: "Gastronômico", icon: UtensilsCrossed, color: "oklch(0.72 0.18 40)", companies: ["PUB FOOD"], x: 350, y: 1380, w: 480, h: 280 },
-  { id: "industrial", name: "Zona Industrial", subtitle: "Manguinhos", icon: Factory, color: "oklch(0.55 0.10 50)", companies: ["PUB BRICKS", "PUB TÊXTIL"], x: 180, y: 480, w: 520, h: 380 },
-  { id: "commerce", name: "Marina & Comércio", subtitle: "Porto Búzios", icon: ShoppingBag, color: "oklch(0.70 0.16 160)", companies: ["PUB ECOM"], x: 2200, y: 750, w: 550, h: 480 },
+  { id: "admin", name: "Centro Administrativo", subtitle: "Sede", icon: Building2, color: "oklch(0.72 0.14 250)", companies: [], x: 1300, y: 950, w: 600, h: 400 },
+  { id: "tech", name: "Tecnologia", subtitle: "Inovação & Software", icon: Cpu, color: "oklch(0.70 0.18 200)", companies: [], x: 1100, y: 250, w: 900, h: 450 },
+  { id: "finance", name: "Financeiro", subtitle: "Capital & Investimentos", icon: Coins, color: "oklch(0.78 0.16 90)", companies: [], x: 600, y: 900, w: 550, h: 380 },
+  { id: "ent", name: "Entretenimento", subtitle: "Mídia & Cultura", icon: Music, color: "oklch(0.65 0.22 330)", companies: [], x: 1100, y: 1450, w: 1100, h: 380 },
+  { id: "food", name: "Gastronomia", subtitle: "Alimentação", icon: UtensilsCrossed, color: "oklch(0.72 0.18 40)", companies: [], x: 350, y: 1380, w: 480, h: 280 },
+  { id: "industrial", name: "Industrial", subtitle: "Produção & Logística", icon: Factory, color: "oklch(0.55 0.10 50)", companies: [], x: 180, y: 480, w: 520, h: 380 },
+  { id: "commerce", name: "Comércio", subtitle: "Vendas & Varejo", icon: ShoppingBag, color: "oklch(0.70 0.16 160)", companies: [], x: 2200, y: 750, w: 550, h: 480 },
 ];
 
 function districtOf(companyName: string): District | undefined {

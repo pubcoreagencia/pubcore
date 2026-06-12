@@ -11,7 +11,7 @@ export const navGroups: NavGroup[] = [
     label: "Operação",
     items: [
       { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
-      { to: "/app/city", label: "PUB City", icon: MapPin },
+      { to: "/app/city", label: "Cidade", icon: MapPin },
     ],
   },
   {

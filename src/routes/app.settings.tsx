@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
-import { COMPANIES } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
 
 import { Bell, Lock, Palette, Building } from "lucide-react";
@@ -12,7 +12,8 @@ export const Route = createFileRoute("/app/settings")({
 
 function SettingsPage() {
   const { user } = useAuth();
-  const { isMaster } = useWorkspace();
+  const { isMaster, activeWorkspace } = useWorkspace();
+  const { companies } = useChecklistCompanies();
 
   return (
     <div className="p-3 sm:p-6 lg:p-10 max-w-4xl mx-auto">
@@ -31,18 +32,24 @@ function SettingsPage() {
             <Field label="Nome" value={user?.name ?? ""} />
             <Field label="E-mail" value={user?.email ?? ""} />
             <Field label="Perfil" value={isMaster ? "MASTER" : (user?.role ?? "")} />
-            <Field label="Holding" value="PUB Holding" />
+            <Field label="Workspace" value={activeWorkspace?.name ?? ""} />
           </div>
         </section>
 
         <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-info"><Building className="h-4 w-4" /></div>
-            <h2 className="font-display font-bold text-lg">Empresas da holding</h2>
+            <h2 className="font-display font-bold text-lg">Minhas empresas</h2>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {COMPANIES.map((c) => <CompanyTag key={c} company={c} />)}
-          </div>
+          {companies.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhuma empresa cadastrada ainda. Adicione suas empresas na aba <strong>Centro Operacional</strong>.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {companies.map((c) => <CompanyTag key={c.id} company={c.name} />)}
+            </div>
+          )}
         </section>
 
         <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">

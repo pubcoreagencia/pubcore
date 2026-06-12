@@ -10,7 +10,7 @@ import {
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveWorkspaceId } from "@/lib/workspace";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import type { Company } from "@/lib/mock-data";
 
 export type PontoStatus = "off" | "working" | "paused" | "ended";
 
@@ -725,8 +725,10 @@ export function PontoProvider({ children }: { children: ReactNode }) {
 
   const start = useCallback<PontoCtx["start"]>(
     async (user, ownerEmail, userId) => {
-      // Back-compat: usa primeira empresa como fallback se nenhuma ativa
-      const target = activeCompany ?? COMPANIES[0];
+      // Sem fallback hardcoded: exige uma empresa ativa. Se nenhuma estiver
+      // selecionada, a UI deve direcionar o usuário ao painel de seleção.
+      const target = activeCompany;
+      if (!target) return;
       await startCompany(target, user, ownerEmail, userId);
     },
     [activeCompany, startCompany],

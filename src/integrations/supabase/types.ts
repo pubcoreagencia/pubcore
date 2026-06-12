@@ -1056,6 +1056,7 @@ export type Database = {
           display_name: string | null
           email: string | null
           id: string
+          onboarding_completed_at: string | null
           role: string | null
           status: string
           updated_at: string
@@ -1066,6 +1067,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id: string
+          onboarding_completed_at?: string | null
           role?: string | null
           status?: string
           updated_at?: string
@@ -1076,6 +1078,7 @@ export type Database = {
           display_name?: string | null
           email?: string | null
           id?: string
+          onboarding_completed_at?: string | null
           role?: string | null
           status?: string
           updated_at?: string

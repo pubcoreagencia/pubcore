@@ -603,7 +603,7 @@ function TransactionDialog({ initial, workspaceId, userId, onClose }: {
           <Input
             value={form.company}
             onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
-            placeholder="Ex: Pub 3D, Pub IA…"
+            placeholder="Ex: Minha Empresa"
             list="finance-company-suggestions"
           />
         </div>
@@ -787,7 +787,7 @@ function CostDialog({ initial, workspaceId, userId, onClose }: { initial: Cost |
           <Input
             value={form.company}
             onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
-            placeholder="Ex: Pub 3D, Pub IA…"
+            placeholder="Ex: Minha Empresa"
             list="finance-company-suggestions"
           />
         </div>
@@ -889,7 +889,7 @@ function ProductsTab({ products, companyOptions }: { products: Product[]; compan
 function ProductDialog({ initial, workspaceId, userId, onClose }: { initial: Product | null; workspaceId: string | null; userId: string; onClose: () => void }) {
   const [form, setForm] = useState({
     name: initial?.name ?? "",
-    company: initial?.company ?? COMPANIES[0],
+    company: initial?.company ?? (COMPANIES[0] ?? ""),
     cost: initial?.cost?.toString() ?? "",
     price: initial?.price?.toString() ?? "",
     avg_demand_monthly: initial?.avg_demand_monthly?.toString() ?? "0",
@@ -930,7 +930,7 @@ function ProductDialog({ initial, workspaceId, userId, onClose }: { initial: Pro
           <Input
             value={form.company}
             onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
-            placeholder="Ex: Pub 3D, Pub IA…"
+            placeholder="Ex: Minha Empresa"
             list="finance-company-suggestions"
           />
         </div>

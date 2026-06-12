@@ -197,7 +197,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
   const [newColName, setNewColName] = useState("");
 
   const [adding, setAdding] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ title: "", company: COMPANIES[0] as Company });
+  const [draft, setDraft] = useState({ title: "", company: (COMPANIES[0] ?? "") as Company });
   const [openCard, setOpenCard] = useState<Card | null>(null);
 
   // funnel UI
@@ -440,7 +440,7 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
       const newCard = normalizeCard(data);
       setCards(cs => cs.some(c => c.id === newCard.id) ? cs : [...cs, newCard]);
     }
-    setDraft({ title: "", company: COMPANIES[0] });
+    setDraft({ title: "", company: (COMPANIES[0] ?? "") });
     setAdding(null);
   };
 

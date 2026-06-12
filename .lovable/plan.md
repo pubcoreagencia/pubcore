@@ -1,113 +1,110 @@
 ## Visão geral
 
-Evoluir a aba Kanban para suportar **dois modos de visualização** dos mesmos dados:
+Transformar a PUB CORE de uma plataforma com identidade interna da Holding PUB para um SaaS de gestão empresarial multiempresa genérico, onde cada workspace começa **vazio** e o usuário monta sua própria operação (estilo ClickUp/Notion/Monday).
 
-1. **Kanban Tradicional** (atual, intocado): Funil → Colunas → Cards
-2. **Fluxograma** (novo): Funil → Nós conectados em árvore/ramificações
+A mudança é **conceitual e de seeding**, não destrutiva: contas e dados existentes ficam intactos. Apenas novos workspaces deixam de receber dados pré-cadastrados, e a UI deixa de exibir nomes/exemplos das empresas da PUB.
 
-Os nós do fluxograma **são os mesmos cards** do Kanban — apenas mudam a apresentação. Toda a estrutura existente (cards, anexos, comentários, descrição, empresa, responsáveis, status, prioridade) é reaproveitada.
+## 1. Auditoria e remoção de referências internas da PUB
 
-## Modelo de dados
+Varrer o código removendo qualquer string/exemplo/placeholder que cite empresas da holding (`PUB IA`, `PUB 3D`, `PUB FISHING`, `PUB MARKETING`, `PUB ECOM`, `Empresa Exemplo PUB`, etc.).
 
-Adicionar à tabela `kanban_cards` (sem quebrar nada):
+Locais já conhecidos a limpar:
 
-- `parent_card_id uuid null` — referência ao nó pai (raiz quando null)
-- `flow_x double precision null` — posição X livre no canvas (modo fluxograma)
-- `flow_y double precision null` — posição Y livre no canvas
-- `flow_collapsed boolean default false` — recolher ramo
+- `src/lib/mock-data.ts` — `DEFAULT_COMPANIES`, `DEFAULT_COMPANIES_COLORS`, qualquer task/lead/produto mock que use nomes PUB. Esvaziar arrays usados como seed; manter tipos/constantes neutras.
+- `src/routes/app.city.tsx` — remover o bloco hardcoded com `companies: ["PUB ECOM", ...]`. A "cidade" passa a refletir empresas reais do workspace ou exibe estado vazio.
+- `src/components/FirstShiftPanel.tsx`, `ShiftRotationPanel.tsx`, `EditPontoSessionDialog.tsx`, `PontoAutoTracker.tsx`, `lib/ponto.tsx`, `lib/checklist-companies.tsx`, `lib/checklist-store.tsx` — onde houver fallback para `DEFAULT_COMPANIES`, trocar por "lista vazia + CTA para cadastrar primeira empresa na Checklist".
+- Placeholders em inputs (`placeholder="Ex: PUB IA"` etc.) → trocar por neutros (`"Ex: Minha Empresa"`, `"Nome da empresa"`).
+- Textos institucionais que digam "central operacional da PUB", "ferramenta interna", etc. → reescrever como "plataforma de gestão empresarial".
 
-Nova tabela `kanban_card_links` para conexões extras (além da hierarquia pai→filho), permitindo "múltiplos caminhos" que não sejam apenas árvore pura:
+A marca **PUB CORE** continua como nome do produto (logo, sidebar, login). Não removemos o branding do produto — só as empresas internas da holding.
 
-- `id`, `funnel_id`, `from_card_id`, `to_card_id`, `label text null`, `created_at`
+## 2. Seed do banco: novos workspaces começam vazios
 
-Com GRANTs + RLS espelhando as policies atuais de `kanban_cards` (workspace member).
+Auditar a função `public.handle_new_user()` e qualquer trigger/função que rode no `CREATE WORKSPACE` ou no signup. Garantir que ela **só** crie:
 
-**Migração automática**: cards existentes ficam com `parent_card_id = null` (todos viram raízes no fluxograma inicial), `flow_x/flow_y = null` (auto-layout). Nada se perde, nada quebra: colunas, ordem, anexos, etc. continuam funcionando exatamente como hoje.
+- registro em `workspaces`
+- registro em `workspace_members` (owner = admin)
+- registro em `user_roles` (`user`)
+- registro em `profiles`
 
-## UI
+Nenhum insert automático em: `checklist_companies`, `checklist_tasks`, `kanban_funnels`, `kanban_columns`, `kanban_cards`, `crm_leads`, `finance_*`, `stock_*`, `ponto_sessions`, `note_categories`, `notes`, `sticky_notes`, `calendar_events`, `gratitude_entries`.
 
-Na rota `/app/kanban`, adicionar um toggle no header do funil: **[ Kanban | Fluxograma ]** (persistido por funil em `localStorage`).
+Se houver triggers/funções que populem qualquer dessas tabelas no momento de criar workspace, removê-las via migração. Workspaces existentes **não são tocados**.
 
-### Modo Fluxograma
+## 3. UI de empty-state em cada módulo
 
-- Canvas com **pan** (arrastar fundo) e **zoom** (scroll / pinch).
-- Renderizar cada card como um nó retangular compacto exibindo: título, badge de empresa, prioridade, status, contagem de anexos/comentários.
-- Linhas SVG ligando pai → filhos (curvas Bézier suaves estilo Whimsical/FigJam).
-- Linhas extras de `kanban_card_links` em estilo tracejado.
-- Drag-and-drop livre dos nós (atualiza `flow_x/flow_y`).
-- Botão **+** ao lado de cada nó para criar filho (cria card com `parent_card_id` setado).
-- Clicar no nó abre o **mesmo dialog de detalhe** já existente (edição completa: descrição, anexos, comentários, responsáveis, etc.).
-- Modo de conexão: clicar em "ligar" num nó e depois em outro cria entrada em `kanban_card_links`.
-- Auto-layout inicial (Reingold–Tilford simples) quando `flow_x/flow_y` é null, depois persiste posições.
-- Recolher/expandir ramos (`flow_collapsed`).
+Onde hoje a UI cai num fallback com nomes PUB ou exemplos, passar a renderizar um **empty state** consistente: ícone + título curto + 1 frase explicando + botão primário para criar o primeiro item. Padronizar via componente `EmptyState` reutilizável em `src/components/EmptyState.tsx`.
 
-### Performance
+Aplicar em (no mínimo):
 
-- Lista de nós em `useMemo`; conexões em SVG único.
-- Drag com transform CSS + commit ao soltar (1 update no Supabase).
-- Virtualização não necessária no MVP; limitar re-renders via componente `Node` memoizado.
+- Checklists → "Nenhuma empresa cadastrada — Adicionar empresa"
+- Bater Ponto → "Cadastre uma empresa na Checklist para começar a bater ponto"
+- Kanban → "Nenhum funil — Criar primeiro funil"
+- CRM → "Nenhum lead — Adicionar lead"
+- Estoque, Financeiro, Notas, Calendário, Cidade, etc. → mesmo padrão
 
-### Responsividade
+## 4. Onboarding guiado (multi-etapa, opcional)
 
-- Desktop: pan = botão do meio ou espaço+drag; zoom = scroll.
-- Touch (tablet/mobile): pan = 1 dedo no fundo, zoom = pinça, drag de nó = 1 dedo no nó.
-- Toolbar flutuante: zoom in/out, fit, recentrar, alternar modo.
+Detectar workspace vazio (zero empresas em `checklist_companies`) e exibir um wizard sobreposto à tela inicial (`/app`):
 
-## Estrutura técnica
+- Etapa 1 — Criar primeira empresa (nome, segmento, responsável, cor)
+- Etapa 2 — Criar primeiro funil (Kanban) — opcional/skippable
+- Etapa 3 — Criar primeira equipe / convidar membros — opcional/skippable
+- Etapa 4 — Criar primeiro processo (checklist) — opcional/skippable
+- Etapa 5 — "Tudo pronto — ir para o dashboard"
 
-```text
-src/routes/app.kanban.tsx               (adiciona toggle de modo)
-src/components/kanban/FlowCanvas.tsx    (novo — canvas, pan/zoom, SVG)
-src/components/kanban/FlowNode.tsx      (novo — nó memoizado)
-src/components/kanban/FlowToolbar.tsx   (novo)
-src/lib/kanban-flow.ts                  (novo — auto-layout, helpers de geometria)
+Cada etapa salva imediatamente no Supabase e pode ser pulada. Wizard fica acessível depois em `Configurações → Onboarding`. Persistência: flag `onboarding_completed_at` na `profiles`.
+
+Arquivos novos:
+
+```
+src/components/onboarding/OnboardingWizard.tsx
+src/components/onboarding/steps/StepCompany.tsx
+src/components/onboarding/steps/StepFunnel.tsx
+src/components/onboarding/steps/StepTeam.tsx
+src/components/onboarding/steps/StepProcess.tsx
+src/components/EmptyState.tsx
 ```
 
-Reutiliza o store/dialog atuais do Kanban — nenhuma lógica de cards é reescrita.
-
-## Migração SQL
+## 5. Migração de banco
 
 ```sql
-ALTER TABLE public.kanban_cards
-  ADD COLUMN parent_card_id uuid NULL REFERENCES public.kanban_cards(id) ON DELETE SET NULL,
-  ADD COLUMN flow_x double precision NULL,
-  ADD COLUMN flow_y double precision NULL,
-  ADD COLUMN flow_collapsed boolean NOT NULL DEFAULT false;
+-- 5.1: adicionar flag de onboarding
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS onboarding_completed_at timestamptz NULL;
 
-CREATE INDEX idx_kanban_cards_parent ON public.kanban_cards(parent_card_id);
-
-CREATE TABLE public.kanban_card_links (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  workspace_id uuid NOT NULL,
-  funnel_id uuid NOT NULL,
-  from_card_id uuid NOT NULL REFERENCES public.kanban_cards(id) ON DELETE CASCADE,
-  to_card_id   uuid NOT NULL REFERENCES public.kanban_cards(id) ON DELETE CASCADE,
-  label text NULL,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.kanban_card_links TO authenticated;
-GRANT ALL ON public.kanban_card_links TO service_role;
-ALTER TABLE public.kanban_card_links ENABLE ROW LEVEL SECURITY;
--- policies idênticas às de kanban_cards (workspace member)
+-- 5.2: revisar handle_new_user() para garantir que NÃO popula
+-- checklist_companies, kanban_*, crm_*, etc.
+-- (rewrite mantendo apenas: profiles + workspace + workspace_members + user_roles)
 ```
 
-## O que NÃO muda
+Nada é deletado. Nenhum workspace existente é alterado.
 
-- Tabelas `kanban_funnels`, `kanban_columns`, `kanban_attachments` permanecem como estão.
-- Modo Kanban tradicional permanece 100% igual: colunas, drag horizontal, ordering.
-- Dialog de edição de card é o mesmo nos dois modos.
-- Histórico, anexos e comentários existentes intactos.
+## 6. Compatibilidade
 
-## Escopo do MVP (esta entrega)
+- Auth, sessões, roles: intactos.
+- Workspaces existentes: dados preservados.
+- Permissões e RLS: inalteradas.
+- Integrações: inalteradas.
+- A flag `onboarding_completed_at` é nullable — contas antigas ficam com `null` e o wizard não aparece para elas (consideramos antigas como onboarded; só exibe wizard quando o workspace está realmente vazio E é criado após esta atualização).
 
-1. Migração + types regenerados.
-2. Toggle Kanban/Fluxograma na rota.
-3. FlowCanvas com pan, zoom, auto-layout, drag de nós, criar filho, abrir detalhe.
-4. Conexões extras (`kanban_card_links`) — criar e renderizar.
-5. Suporte touch básico (pan/pinch/drag).
+## 7. O que NÃO muda
 
-Refinamentos futuros (não nesta entrega): mini-mapa, snap-to-grid, undo/redo, templates de fluxo.
+- Nome do produto: **PUB CORE** (logo, sidebar, login, favicon).
+- Tabelas, RLS, estrutura de módulos.
+- Funcionalidade de Bater Ponto, Kanban (hibrido), Checklists, etc.
+- Dados de workspaces existentes.
+
+## Escopo do MVP desta entrega
+
+1. Migração: `onboarding_completed_at` + revisão do `handle_new_user`.
+2. Limpar `mock-data.ts`, `app.city.tsx`, fallbacks com `DEFAULT_COMPANIES`, placeholders.
+3. `EmptyState` reutilizável aplicado nos módulos principais (Checklist, Bater Ponto, Kanban, CRM).
+4. `OnboardingWizard` mínimo (5 etapas, todas pulaveis exceto a 1, persiste no Supabase).
+5. Revisar textos institucionais ("central operacional da PUB" → linguagem neutra).
+
+Refinamentos futuros (não nesta entrega): seleção de templates de funil/checklist, importação de dados, vídeos de onboarding por módulo.
 
 ## Confirmação
 
-Posso seguir com essa abordagem? Se sim, começo pela migração do banco.
+Posso seguir? Começo pela migração + auditoria de strings PUB.

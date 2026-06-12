@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./auth";
 import { useWorkspace } from "./workspace";
-import { COMPANIES, type Company } from "./mock-data";
+import { type Company } from "./mock-data";
 
 export interface SessionRow {
   id: string;
@@ -147,10 +147,9 @@ export function buildDailySeries(sessions: SessionRow[], tasks: SessionTaskRow[]
 
 export function tasksByCompany(tasks: SessionTaskRow[]) {
   const map = new Map<Company, number>();
-  for (const c of COMPANIES) map.set(c, 0);
   for (const t of tasks) {
     const c = t.company as Company;
-    if (map.has(c)) map.set(c, (map.get(c) ?? 0) + 1);
+    map.set(c, (map.get(c) ?? 0) + 1);
   }
   return Array.from(map.entries()).map(([company, completed]) => ({ company, completed }));
 }
