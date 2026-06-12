@@ -16,6 +16,7 @@ function SettingsPage() {
   const { user } = useAuth();
   const { isMaster, activeWorkspace } = useWorkspace();
   const { companies } = useChecklistCompanies();
+  const [gratitudeEnabled, setGratitudeEnabled] = useGratitudeEnabled();
 
   return (
     <div className="p-3 sm:p-6 lg:p-10 max-w-4xl mx-auto">
