@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useCallback, type PointerEvent } from "react";
 import { Plus, Trash2, Pencil, X, GripVertical, CalendarDays, User, FileText, ListChecks, Layers, Paperclip, LayoutGrid, GitBranch } from "lucide-react";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import { type Company } from "@/lib/mock-data";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
