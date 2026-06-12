@@ -219,7 +219,7 @@ export function FlowCanvas({ funnelId }: { funnelId: string }) {
       owner_email: user?.email ?? "guest@pubcore.local",
       funnel_id: funnelId,
       title: parent ? "Novo nó" : "Novo fluxo",
-      company: parent?.company ?? (COMPANIES[0] as Company),
+      company: parent?.company ?? ((COMPANIES[0] ?? "") as Company),
       priority: "Média",
       status: "pending",
       position: 0,

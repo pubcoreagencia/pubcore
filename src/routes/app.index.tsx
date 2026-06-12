@@ -260,7 +260,7 @@ function Dashboard() {
     },
     {
       label: "Empresas operadas",
-      value: `${kpis.companies}/${COMPANIES.length}`,
+      value: COMPANIES.length > 0 ? `${kpis.companies}/${COMPANIES.length}` : String(kpis.companies),
       hint: "na semana",
       icon: Factory,
       accent: "text-warning",

@@ -1290,7 +1290,7 @@ function MetricsTab() {
         <StatCard label="Produtividade" value={`${productivity}%`} icon={TrendingUp} accent="primary" hint={`período: ${period}`} />
         <StatCard label="Taxa de conclusão" value={`${completionRate}%`} icon={CheckCircle2} accent="success" hint={`${checklistDone}/${checklistTotal} checklist`} />
         <StatCard label="Tempo médio / tarefa" value={fmtTime(avgPerTaskMs)} icon={Timer} accent="info" hint="por execução" />
-        <StatCard label="Empresas ativas" value={`${activeCompanies}/${COMPANIES.length}`} icon={Users} accent="warning" hint="com produção" />
+        <StatCard label="Empresas ativas" value={COMPANIES.length > 0 ? `${activeCompanies}/${COMPANIES.length}` : String(activeCompanies)} icon={Users} accent="warning" hint="com produção" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">

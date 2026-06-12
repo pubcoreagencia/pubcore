@@ -726,7 +726,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
   const start = useCallback<PontoCtx["start"]>(
     async (user, ownerEmail, userId) => {
       // Back-compat: usa primeira empresa como fallback se nenhuma ativa
-      const target = activeCompany ?? COMPANIES[0];
+      const target = activeCompany ?? (COMPANIES[0] ?? "");
       await startCompany(target, user, ownerEmail, userId);
     },
     [activeCompany, startCompany],
