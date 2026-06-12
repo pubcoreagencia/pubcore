@@ -772,7 +772,7 @@ function HistoryTab() {
             </button>
           ))}
         </div>
-        <Select label="Empresa" value={companyFilter} onChange={(v) => setCompanyFilter(v as Company | "Todas")} options={["Todas", ...COMPANIES]} />
+        <Select label="Empresa" value={companyFilter} onChange={(v) => setCompanyFilter(v as Company | "Todas")} options={["Todas", ...checklistCompanies.map((c) => c.name)]} />
         <Select label="Usuário" value={userFilter} onChange={setUserFilter} options={userOptions} />
         <span className="ml-auto text-xs text-muted-foreground font-mono">
           {loading ? "Carregando…" : `${totals.completed} concluídas`}
