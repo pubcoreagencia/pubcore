@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Mail, ArrowRight, Lock, User } from "lucide-react";
+import { Mail, ArrowRight, Lock, User, Clock, ShieldCheck, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
 
@@ -8,20 +8,21 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
 });
 
-type Mode = "signin" | "signup" | "reset";
+type Mode = "signin" | "signup" | "reset" | "submitted";
 
 function LoginPage() {
-  const { user, signInPassword, signUp, signInGoogle, resetPassword } = useAuth();
+  const { user, signInPassword, signUp, signInGoogle, resetPassword, logout } = useAuth();
   const nav = useNavigate();
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [submittedEmail, setSubmittedEmail] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user) nav({ to: "/app" });
-  }, [user, nav]);
+    if (user && mode !== "submitted") nav({ to: "/app" });
+  }, [user, nav, mode]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +33,13 @@ function LoginPage() {
     } else if (mode === "signup") {
       const { error } = await signUp(email, password, name || email.split("@")[0]);
       if (error) toast.error(error);
-      else { toast.success("Conta criada — você já pode entrar"); setMode("signin"); }
+      else {
+        setSubmittedEmail(email);
+        // Se o cadastro auto-loga o usuário, encerra a sessão para forçar o fluxo de aprovação
+        try { await logout(); } catch {}
+        setMode("submitted");
+        setEmail(""); setPassword(""); setName("");
+      }
     } else {
       const { error } = await resetPassword(email);
       if (error) toast.error(error); else toast.success("Link de redefinição enviado");
@@ -45,6 +52,48 @@ function LoginPage() {
     const { error } = await signInGoogle();
     if (error) { toast.error(error); setLoading(false); }
   };
+
+  if (mode === "submitted") {
+    return (
+      <div className="min-h-dvh w-full flex items-center justify-center bg-background p-6">
+        <div className="relative w-full max-w-md">
+          <div className="absolute inset-0 -z-10 bg-gradient-to-br from-primary/20 via-transparent to-info/10 blur-3xl" />
+          <div className="rounded-2xl border border-border bg-card shadow-card p-8 text-center">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Clock className="h-8 w-8" />
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-2">PUB CORE</div>
+            <h1 className="font-display text-2xl font-bold tracking-tight">Conta criada com sucesso!</h1>
+            <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" /> Em Análise
+            </div>
+            <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+              Sua solicitação de acesso foi recebida e está atualmente em análise por nossa equipe.
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+              A aprovação normalmente ocorre em até <strong className="text-foreground">24 horas úteis</strong>. Você receberá uma notificação por e-mail assim que sua conta for aprovada e liberada para utilização.
+            </p>
+            {submittedEmail && (
+              <div className="mt-6 rounded-xl border border-border bg-surface/50 px-4 py-3 text-left">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Conta</div>
+                <div className="text-sm font-medium mt-0.5 truncate">{submittedEmail}</div>
+              </div>
+            )}
+            <div className="mt-5 flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <ShieldCheck className="h-3.5 w-3.5 text-success" />
+              <span>Agradecemos seu interesse em utilizar a plataforma.</span>
+            </div>
+            <button
+              onClick={() => setMode("signin")}
+              className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition"
+            >
+              <ArrowLeft className="h-4 w-4" /> Voltar ao login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-background">
