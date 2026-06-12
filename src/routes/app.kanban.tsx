@@ -90,6 +90,9 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
+  const { companies: companyList } = useChecklistCompanies();
+  const companyNames = companyList.map((c) => c.name);
+
 
   const [funnels, setFunnels] = useState<Funnel[]>([]);
   const [activeFunnelId, setActiveFunnelId] = useState<string | null>(null);
