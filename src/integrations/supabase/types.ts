@@ -64,6 +64,8 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          ponto_daily_limit_minutes: number
+          ponto_limit_enabled: boolean
           position: number
           responsible: string | null
           segment: string | null
@@ -78,6 +80,8 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          ponto_daily_limit_minutes?: number
+          ponto_limit_enabled?: boolean
           position?: number
           responsible?: string | null
           segment?: string | null
@@ -92,6 +96,8 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          ponto_daily_limit_minutes?: number
+          ponto_limit_enabled?: boolean
           position?: number
           responsible?: string | null
           segment?: string | null
