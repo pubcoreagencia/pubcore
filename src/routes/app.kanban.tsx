@@ -338,12 +338,21 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
     const colsIn = columns.filter(c => c.funnel_id === id);
     const cardsIn = cards.filter(c => c.funnel_id === id);
     if (!confirm(`Excluir funil "${f?.name}" com ${colsIn.length} coluna(s) e ${cardsIn.length} card(s)?`)) return;
-    await supabase.from("kanban_cards").delete().eq("funnel_id", id);
-    await supabase.from("kanban_columns").delete().eq("funnel_id", id);
-    await supabase.from("kanban_funnels").delete().eq("id", id);
+    // Optimistic UI
+    const prevFunnels = funnels, prevColumns = columns, prevCards = cards;
+    setCards(cs => cs.filter(c => c.funnel_id !== id));
+    setColumns(cs => cs.filter(c => c.funnel_id !== id));
+    setFunnels(fs => fs.filter(x => x.id !== id));
     if (activeFunnelId === id) {
-      const next = funnels.find(x => x.id !== id);
+      const next = prevFunnels.find(x => x.id !== id);
       setActiveFunnelId(next?.id ?? null);
+    }
+    const r1 = await supabase.from("kanban_cards").delete().eq("funnel_id", id);
+    const r2 = await supabase.from("kanban_columns").delete().eq("funnel_id", id);
+    const r3 = await supabase.from("kanban_funnels").delete().eq("id", id);
+    if (r1.error || r2.error || r3.error) {
+      toast.error("Erro ao excluir funil — restaurando");
+      setFunnels(prevFunnels); setColumns(prevColumns); setCards(prevCards);
     }
   };
 
