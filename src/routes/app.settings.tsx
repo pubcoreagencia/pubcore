@@ -3,8 +3,10 @@ import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
+import { Switch } from "@/components/ui/switch";
+import { useGratitudeEnabled } from "@/lib/user-preferences";
 
-import { Bell, Lock, Palette, Building } from "lucide-react";
+import { Bell, Lock, Palette, Building, Sun } from "lucide-react";
 
 export const Route = createFileRoute("/app/settings")({
   component: SettingsPage,
