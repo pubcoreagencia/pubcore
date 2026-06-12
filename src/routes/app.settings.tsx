@@ -57,6 +57,24 @@ function SettingsPage() {
 
         <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-amber-400"><Sun className="h-4 w-4" /></div>
+            <h2 className="font-display font-bold text-lg">Preferências</h2>
+          </div>
+          <div className="flex items-center justify-between gap-4 rounded-lg p-3 hover:bg-surface/40 transition">
+            <div className="min-w-0">
+              <div className="text-sm font-medium">Painel da Gratidão</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Exibe o ritual diário de gratidão ao iniciar o dia. Desative para não ver mais o painel.
+              </div>
+            </div>
+            <Switch checked={gratitudeEnabled} onCheckedChange={setGratitudeEnabled} />
+          </div>
+        </section>
+
+
+
+        <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-warning"><Bell className="h-4 w-4" /></div>
             <h2 className="font-display font-bold text-lg">Notificações</h2>
           </div>
