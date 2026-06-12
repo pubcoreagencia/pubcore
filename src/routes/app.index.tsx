@@ -47,6 +47,7 @@ import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { COMPANIES, COMPANY_COLORS, type Company } from "@/lib/mock-data";
 import { CompanyTag } from "@/components/CompanyTag";
+import { OnboardingBanner } from "@/components/OnboardingBanner";
 import { supabase } from "@/integrations/supabase/client";
 import { useOperationalData, buildDailySeries, tasksByCompany } from "@/lib/operations";
 import { fmtTime } from "@/lib/ponto";
@@ -335,6 +336,7 @@ function Dashboard() {
 
   return (
     <div className="w-full min-w-0 max-w-[1600px] mx-auto p-3 sm:p-6 lg:p-10 space-y-5 md:space-y-8 overflow-x-hidden">
+      <OnboardingBanner />
       <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div className="min-w-0">
           <div className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-muted-foreground">
