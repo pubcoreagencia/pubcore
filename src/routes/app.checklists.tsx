@@ -5,8 +5,9 @@ import {
   Check, Filter, Plus, Trash2, Pencil, GripVertical, X,
   Play, Pause, StopCircle, RotateCcw, ChevronRight,
   TrendingUp, CheckCircle2, AlertTriangle, ListTodo, Activity,
-  Sparkles, History, Timer, BarChart3, Users,
+  Sparkles, History, Timer, BarChart3, Users, Settings2, Infinity as InfinityIcon,
 } from "lucide-react";
+
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   BarChart, Bar, RadialBarChart, RadialBar, PolarAngleAxis,
@@ -943,12 +944,16 @@ interface DaySessionRow {
   edited_at?: string | null;
 }
 
-const HOUR_LIMIT_MS = 30 * 60 * 1000;
+
 
 function PontoTab() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
-  const { companies: checklistCompanies, colorOf } = useChecklistCompanies();
+  const { companies: checklistCompanies, colorOf, setPontoLimit, canManage } = useChecklistCompanies();
+  const [editingLimitId, setEditingLimitId] = useState<string | null>(null);
+  const [limitDraftMin, setLimitDraftMin] = useState<string>("");
+  const [limitDraftEnabled, setLimitDraftEnabled] = useState<boolean>(true);
+
   const {
     sessions: pontoSessions, activeCompany,
     computeFor, dailyProductiveMs, dailyTotalMs,
@@ -1070,10 +1075,13 @@ function PontoTab() {
           const isActive = activeCompany === c && (status === "working" || status === "paused");
           const isWorking = status === "working";
           const isPaused = status === "paused";
-          const overLimit = dailyMs >= HOUR_LIMIT_MS;
+          const limitEnabled = cc.ponto_limit_enabled !== false;
+          const limitMinutes = Math.max(1, cc.ponto_daily_limit_minutes ?? 30);
+          const limitMs = limitMinutes * 60 * 1000;
+          const overLimit = limitEnabled && dailyMs >= limitMs;
           const color = colorOf(c);
-          const pct = Math.min(100, Math.round((dailyMs / HOUR_LIMIT_MS) * 100));
-
+          const pct = limitEnabled ? Math.min(100, Math.round((dailyMs / limitMs) * 100)) : 0;
+          const isEditingLimit = editingLimitId === cc.id;
 
           return (
             <div key={c} className={`relative rounded-2xl border bg-card p-5 shadow-card overflow-hidden transition ${isActive ? "border-primary/40" : "border-border"}`}>
@@ -1085,14 +1093,29 @@ function PontoTab() {
                     <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color, boxShadow: isWorking ? `0 0 12px ${color}` : undefined }} />
                     <span className="font-display font-bold tracking-tight">{c}</span>
                   </div>
-                  <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full border ${
-                    isWorking ? "border-success/40 bg-success/10 text-success" :
-                    isPaused ? "border-warning/40 bg-warning/10 text-warning" :
-                    status === "ended" ? "border-primary/30 bg-primary/10 text-primary" :
-                    "border-border bg-surface text-muted-foreground"
-                  }`}>
-                    {isWorking ? "Ativo" : isPaused ? "Pausado" : status === "ended" ? "Encerrado" : "Parado"}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[10px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-full border ${
+                      isWorking ? "border-success/40 bg-success/10 text-success" :
+                      isPaused ? "border-warning/40 bg-warning/10 text-warning" :
+                      status === "ended" ? "border-primary/30 bg-primary/10 text-primary" :
+                      "border-border bg-surface text-muted-foreground"
+                    }`}>
+                      {isWorking ? "Ativo" : isPaused ? "Pausado" : status === "ended" ? "Encerrado" : "Parado"}
+                    </span>
+                    {canManage && (
+                      <button
+                        onClick={() => {
+                          setEditingLimitId(isEditingLimit ? null : cc.id);
+                          setLimitDraftMin(String(limitMinutes));
+                          setLimitDraftEnabled(limitEnabled);
+                        }}
+                        title="Editar limite diário"
+                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface"
+                      >
+                        <Settings2 className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -1103,18 +1126,70 @@ function PontoTab() {
                 <div>
                   <div className="flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
                     <span>Total do dia</span>
-                    <span className={overLimit ? "text-warning" : ""}>{fmtTime(totalDay)} / 30min</span>
+                    <span className={overLimit ? "text-warning" : ""}>
+                      {fmtTime(totalDay)}
+                      {limitEnabled ? ` / ${limitMinutes}min` : (
+                        <span className="inline-flex items-center gap-1 ml-1"><InfinityIcon className="h-3 w-3" /> sem limite</span>
+                      )}
+                    </span>
                   </div>
-                  <div className="mt-1.5 h-1.5 rounded-full bg-surface overflow-hidden">
-                    <div className="h-full transition-all rounded-full"
-                      style={{ width: `${pct}%`, backgroundColor: overLimit ? "oklch(0.78 0.16 65)" : color }} />
-                  </div>
+                  {limitEnabled && (
+                    <div className="mt-1.5 h-1.5 rounded-full bg-surface overflow-hidden">
+                      <div className="h-full transition-all rounded-full"
+                        style={{ width: `${pct}%`, backgroundColor: overLimit ? "oklch(0.78 0.16 65)" : color }} />
+                    </div>
+                  )}
                   {overLimit && (
                     <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] text-warning font-medium">
                       <AlertTriangle className="h-3 w-3" /> Limite diário excedido
                     </div>
                   )}
                 </div>
+
+                {isEditingLimit && (
+                  <div className="rounded-xl border border-border/70 bg-surface/60 p-3 space-y-3">
+                    <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Limite diário deste ponto</div>
+                    <label className="flex items-center justify-between gap-3 text-xs">
+                      <span>Limite ativo</span>
+                      <button
+                        type="button"
+                        onClick={() => setLimitDraftEnabled((v) => !v)}
+                        className={`relative h-5 w-9 rounded-full transition ${limitDraftEnabled ? "bg-primary" : "bg-muted"}`}
+                      >
+                        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-background transition ${limitDraftEnabled ? "left-4" : "left-0.5"}`} />
+                      </button>
+                    </label>
+                    <label className="flex items-center justify-between gap-3 text-xs">
+                      <span>Minutos por dia</span>
+                      <input
+                        type="number" min={1} max={1440}
+                        value={limitDraftMin}
+                        onChange={(e) => setLimitDraftMin(e.target.value)}
+                        disabled={!limitDraftEnabled}
+                        className="w-24 rounded-md border border-border bg-card px-2 py-1 text-right font-mono disabled:opacity-50"
+                      />
+                    </label>
+                    <div className="flex justify-end gap-2 pt-1">
+                      <button
+                        onClick={() => setEditingLimitId(null)}
+                        className="px-2.5 py-1 text-[11px] rounded-md border border-border hover:bg-surface-elevated"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={async () => {
+                          const n = Number(limitDraftMin);
+                          const ok = await setPontoLimit(cc.id, Number.isFinite(n) && n > 0 ? n : 30, limitDraftEnabled);
+                          if (ok) setEditingLimitId(null);
+                        }}
+                        className="px-2.5 py-1 text-[11px] rounded-md bg-gradient-primary text-primary-foreground font-semibold shadow-glow"
+                      >
+                        Salvar
+                      </button>
+                    </div>
+                  </div>
+                )}
+
 
                 <div className="flex flex-wrap gap-2">
                   {status === "off" || status === "ended" ? (

@@ -12,6 +12,8 @@ export interface ChecklistCompany {
   name: string;
   color: string | null;
   position: number;
+  ponto_daily_limit_minutes?: number | null;
+  ponto_limit_enabled?: boolean | null;
 }
 
 interface Ctx {
@@ -23,8 +25,10 @@ interface Ctx {
   recolor: (id: string, color: string) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   reorder: (fromId: string, toId: string) => Promise<void>;
+  setPontoLimit: (id: string, minutes: number, enabled: boolean) => Promise<boolean>;
   colorOf: (name: string) => string;
 }
+
 
 const CompaniesCtx = createContext<Ctx | null>(null);
 
@@ -140,10 +144,24 @@ export function ChecklistCompaniesProvider({ children }: { children: ReactNode }
     return c?.color ?? COMPANY_COLORS[name] ?? DEFAULT_COMPANY_COLOR;
   }, [companies]);
 
+  const setPontoLimit = useCallback(async (id: string, minutes: number, enabled: boolean) => {
+    const safe = Math.max(1, Math.min(24 * 60, Math.round(minutes)));
+    const { error } = await supabase
+      .from("checklist_companies")
+      .update({ ponto_daily_limit_minutes: safe, ponto_limit_enabled: enabled } as never)
+      .eq("id", id);
+    if (error) { console.error("[companies] setPontoLimit", error); return false; }
+    setCompanies((prev) => prev.map((x) => x.id === id
+      ? { ...x, ponto_daily_limit_minutes: safe, ponto_limit_enabled: enabled }
+      : x));
+    return true;
+  }, []);
+
   const value: Ctx = useMemo(() => ({
     companies, loading, canManage: isWorkspaceAdmin,
-    create, rename, recolor, remove, reorder, colorOf,
-  }), [companies, loading, isWorkspaceAdmin, create, rename, recolor, remove, reorder, colorOf]);
+    create, rename, recolor, remove, reorder, setPontoLimit, colorOf,
+  }), [companies, loading, isWorkspaceAdmin, create, rename, recolor, remove, reorder, setPontoLimit, colorOf]);
+
 
   return <CompaniesCtx.Provider value={value}>{children}</CompaniesCtx.Provider>;
 }
