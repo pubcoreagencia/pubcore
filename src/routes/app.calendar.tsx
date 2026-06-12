@@ -177,7 +177,8 @@ function CalendarPage() {
                 {TYPES.map((t) => <option key={t}>{t}</option>)}
               </select>
               <select value={draft.company} onChange={(e) => setDraft({ ...draft, company: e.target.value as Company })} className="bg-surface rounded-lg px-3 py-2 text-sm">
-                {COMPANIES.map((c) => <option key={c}>{c}</option>)}
+                <option value="">Sem empresa</option>
+                {companyNames.map((c) => <option key={c}>{c}</option>)}
               </select>
               <input type="date" value={draft.event_date} onChange={(e) => setDraft({ ...draft, event_date: e.target.value })} className="bg-surface rounded-lg px-3 py-2 text-sm" />
               <input type="time" value={draft.event_time} onChange={(e) => setDraft({ ...draft, event_time: e.target.value })} className="bg-surface rounded-lg px-3 py-2 text-sm" />
