@@ -22,6 +22,7 @@ import { Route as AppKanbanRouteImport } from './routes/app.kanban'
 import { Route as AppGratitudeRouteImport } from './routes/app.gratitude'
 import { Route as AppFinanceRouteImport } from './routes/app.finance'
 import { Route as AppCrmRouteImport } from './routes/app.crm'
+import { Route as AppCompaniesRouteImport } from './routes/app.companies'
 import { Route as AppCityRouteImport } from './routes/app.city'
 import { Route as AppChecklistsRouteImport } from './routes/app.checklists'
 import { Route as AppCalendarRouteImport } from './routes/app.calendar'
@@ -94,6 +95,11 @@ const AppCrmRoute = AppCrmRouteImport.update({
   path: '/crm',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCompaniesRoute = AppCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCityRoute = AppCityRouteImport.update({
   id: '/city',
   path: '/city',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
   '/app/city': typeof AppCityRoute
+  '/app/companies': typeof AppCompaniesRoute
   '/app/crm': typeof AppCrmRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
   '/app/city': typeof AppCityRoute
+  '/app/companies': typeof AppCompaniesRoute
   '/app/crm': typeof AppCrmRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/app/calendar': typeof AppCalendarRoute
   '/app/checklists': typeof AppChecklistsRoute
   '/app/city': typeof AppCityRoute
+  '/app/companies': typeof AppCompaniesRoute
   '/app/crm': typeof AppCrmRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
@@ -201,6 +210,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/checklists'
     | '/app/city'
+    | '/app/companies'
     | '/app/crm'
     | '/app/finance'
     | '/app/gratitude'
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/checklists'
     | '/app/city'
+    | '/app/companies'
     | '/app/crm'
     | '/app/finance'
     | '/app/gratitude'
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/app/calendar'
     | '/app/checklists'
     | '/app/city'
+    | '/app/companies'
     | '/app/crm'
     | '/app/finance'
     | '/app/gratitude'
@@ -353,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCrmRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/companies': {
+      id: '/app/companies'
+      path: '/companies'
+      fullPath: '/app/companies'
+      preLoaderRoute: typeof AppCompaniesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/city': {
       id: '/app/city'
       path: '/city'
@@ -405,6 +424,7 @@ interface AppRouteChildren {
   AppCalendarRoute: typeof AppCalendarRoute
   AppChecklistsRoute: typeof AppChecklistsRoute
   AppCityRoute: typeof AppCityRoute
+  AppCompaniesRoute: typeof AppCompaniesRoute
   AppCrmRoute: typeof AppCrmRoute
   AppFinanceRoute: typeof AppFinanceRoute
   AppGratitudeRoute: typeof AppGratitudeRoute
@@ -423,6 +443,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCalendarRoute: AppCalendarRoute,
   AppChecklistsRoute: AppChecklistsRoute,
   AppCityRoute: AppCityRoute,
+  AppCompaniesRoute: AppCompaniesRoute,
   AppCrmRoute: AppCrmRoute,
   AppFinanceRoute: AppFinanceRoute,
   AppGratitudeRoute: AppGratitudeRoute,
