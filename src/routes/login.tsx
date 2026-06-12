@@ -10,6 +10,18 @@ export const Route = createFileRoute("/login")({
 
 type Mode = "signin" | "signup" | "reset" | "submitted";
 
+function translateAuthError(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("weak") || m.includes("pwned")) return "Senha muito fraca ou exposta em vazamentos públicos. Use uma senha forte: combine letras maiúsculas e minúsculas, números e símbolos (ex.: K9$mPx2!vBq4).";
+  if (m.includes("already registered") || m.includes("user already")) return "Este e-mail já está cadastrado. Faça login ou recupere sua senha.";
+  if (m.includes("invalid login") || m.includes("invalid credentials")) return "E-mail ou senha incorretos.";
+  if (m.includes("email not confirmed")) return "Confirme seu e-mail antes de entrar.";
+  if (m.includes("password should be") || m.includes("at least 6")) return "A senha deve ter pelo menos 6 caracteres.";
+  if (m.includes("rate limit") || m.includes("too many")) return "Muitas tentativas. Aguarde alguns instantes e tente novamente.";
+  if (m.includes("invalid email")) return "E-mail inválido.";
+  return msg;
+}
+
 function LoginPage() {
   const { user, signInPassword, signUp, signInGoogle, resetPassword, logout } = useAuth();
   const nav = useNavigate();
@@ -19,6 +31,7 @@ function LoginPage() {
   const [name, setName] = useState("");
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user && mode === "signin") nav({ to: "/app" });
@@ -27,13 +40,15 @@ function LoginPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setFormError(null);
     if (mode === "signin") {
       const { error } = await signInPassword(email, password);
-      if (error) toast.error(error); else { toast.success("Bem-vindo"); nav({ to: "/app" }); }
+      if (error) { const t = translateAuthError(error); setFormError(t); toast.error(t); }
+      else { toast.success("Bem-vindo"); nav({ to: "/app" }); }
     } else if (mode === "signup") {
       const emailUsed = email;
       const { error } = await signUp(email, password, name || email.split("@")[0]);
-      if (error) toast.error(error);
+      if (error) { const t = translateAuthError(error); setFormError(t); toast.error(t); }
       else {
         setSubmittedEmail(emailUsed);
         setMode("submitted");
@@ -42,7 +57,8 @@ function LoginPage() {
       }
     } else {
       const { error } = await resetPassword(email);
-      if (error) toast.error(error); else toast.success("Link de redefinição enviado");
+      if (error) { const t = translateAuthError(error); setFormError(t); toast.error(t); }
+      else toast.success("Link de redefinição enviado");
     }
     setLoading(false);
   };
@@ -169,6 +185,17 @@ function LoginPage() {
                   className="w-full rounded-lg border border-input bg-surface pl-10 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring" />
               </div>
             )}
+            {mode === "signup" && (
+              <p className="text-[11px] text-muted-foreground -mt-2">
+                Use uma senha forte (mín. 8 caracteres, com letras, números e símbolos). Senhas comuns ou expostas em vazamentos são recusadas.
+              </p>
+            )}
+            {formError && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-xs text-destructive leading-relaxed">
+                {formError}
+              </div>
+            )}
+
 
             <button type="submit" disabled={loading}
               className="group w-full rounded-lg bg-primary py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50">
