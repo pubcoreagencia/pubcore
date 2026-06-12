@@ -944,7 +944,7 @@ interface DaySessionRow {
   edited_at?: string | null;
 }
 
-const HOUR_LIMIT_MS = 30 * 60 * 1000;
+
 
 function PontoTab() {
   const { user } = useAuth();
