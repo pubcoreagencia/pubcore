@@ -603,7 +603,7 @@ function TransactionDialog({ initial, workspaceId, userId, onClose }: {
           <Input
             value={form.company}
             onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
-            placeholder="Ex: Pub 3D, Pub IA…"
+            placeholder="Ex: Minha Empresa"
             list="finance-company-suggestions"
           />
         </div>
@@ -787,7 +787,7 @@ function CostDialog({ initial, workspaceId, userId, onClose }: { initial: Cost |
           <Input
             value={form.company}
             onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
-            placeholder="Ex: Pub 3D, Pub IA…"
+            placeholder="Ex: Minha Empresa"
             list="finance-company-suggestions"
           />
         </div>
@@ -930,7 +930,7 @@ function ProductDialog({ initial, workspaceId, userId, onClose }: { initial: Pro
           <Input
             value={form.company}
             onChange={(e) => setForm(f => ({ ...f, company: e.target.value }))}
-            placeholder="Ex: Pub 3D, Pub IA…"
+            placeholder="Ex: Minha Empresa"
             list="finance-company-suggestions"
           />
         </div>
