@@ -10,7 +10,7 @@ import {
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getActiveWorkspaceId } from "@/lib/workspace";
-import { COMPANIES, type Company } from "@/lib/mock-data";
+import type { Company } from "@/lib/mock-data";
 
 export type PontoStatus = "off" | "working" | "paused" | "ended";
 
