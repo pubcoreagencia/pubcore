@@ -20,6 +20,7 @@ function todayISO() {
 export function GratitudePanel() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
+  const [gratitudeEnabled] = useGratitudeEnabled();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
