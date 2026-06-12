@@ -1232,8 +1232,10 @@ function PontoTab() {
 
 function MetricsTab() {
   const { sessions, sessionTasks, checklist, loading } = useOperationalData();
+  const { companies: checklistCompanies } = useChecklistCompanies();
   const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">("semanal");
   const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
+
   const cutoff = useMemo(() => {
     const d = new Date(); d.setHours(0,0,0,0);
     return d.getTime() - (days - 1) * 86400000;
