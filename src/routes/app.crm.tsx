@@ -163,10 +163,14 @@ function CRMPage() {
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-elegant space-y-3" onClick={(e) => e.stopPropagation()}>
             <h2 className="font-display text-xl font-bold">Novo lead</h2>
             <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Nome do contato" className="w-full bg-surface rounded-lg px-3 py-2 text-sm" />
-            <input value={draft.company} onChange={(e) => setDraft({ ...draft, company: e.target.value })} placeholder="Empresa" className="w-full bg-surface rounded-lg px-3 py-2 text-sm" />
+            <select value={draft.company} onChange={(e) => setDraft({ ...draft, company: e.target.value })} className="w-full bg-surface rounded-lg px-3 py-2 text-sm">
+              <option value="">Sem empresa</option>
+              {companyNames.map((c) => <option key={c}>{c}</option>)}
+            </select>
             <div className="grid grid-cols-2 gap-3">
               <select value={draft.owner} onChange={(e) => setDraft({ ...draft, owner: e.target.value as Company })} className="bg-surface rounded-lg px-3 py-2 text-sm">
-                {COMPANIES.map((c) => <option key={c}>{c}</option>)}
+                <option value="">Responsável</option>
+                {companyNames.map((c) => <option key={c}>{c}</option>)}
               </select>
               <input type="number" value={draft.value} onChange={(e) => setDraft({ ...draft, value: e.target.value })} placeholder="Valor R$" className="bg-surface rounded-lg px-3 py-2 text-sm" />
             </div>
