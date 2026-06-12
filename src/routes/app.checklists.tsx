@@ -945,11 +945,13 @@ const HOUR_LIMIT_MS = 30 * 60 * 1000;
 function PontoTab() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
+  const { companies: checklistCompanies, colorOf } = useChecklistCompanies();
   const {
     sessions: pontoSessions, activeCompany,
     computeFor, dailyProductiveMs, dailyTotalMs,
     startCompany, pauseCompany, resumeCompany, endCompany,
   } = usePonto();
+
 
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
