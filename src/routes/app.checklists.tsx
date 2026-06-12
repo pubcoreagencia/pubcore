@@ -12,8 +12,9 @@ import {
   BarChart, Bar, RadialBarChart, RadialBar, PolarAngleAxis,
 } from "recharts";
 import {
-  COMPANIES, COMPANY_COLORS, DEFAULT_COMPANY_COLOR, type Company,
+  COMPANY_COLORS, DEFAULT_COMPANY_COLOR, type Company,
 } from "@/lib/mock-data";
+
 import {
   useOperationalData, buildDailySeries, tasksByCompany, tasksByUser,
   type SessionRow, type SessionTaskRow,
@@ -675,12 +676,14 @@ type TimelineEvent = {
 
 function HistoryTab() {
   const { sessions, sessionTasks, loading } = useOperationalData();
+  const { companies: checklistCompanies } = useChecklistCompanies();
   const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">("semanal");
   const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
   const [userFilter, setUserFilter] = useState<string>("Todos");
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<EditablePontoSession | null>(null);
   const PAGE_SIZE = 10;
+
 
   const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
   const cutoff = useMemo(() => {
@@ -770,7 +773,7 @@ function HistoryTab() {
             </button>
           ))}
         </div>
-        <Select label="Empresa" value={companyFilter} onChange={(v) => setCompanyFilter(v as Company | "Todas")} options={["Todas", ...COMPANIES]} />
+        <Select label="Empresa" value={companyFilter} onChange={(v) => setCompanyFilter(v as Company | "Todas")} options={["Todas", ...checklistCompanies.map((c) => c.name)]} />
         <Select label="Usuário" value={userFilter} onChange={setUserFilter} options={userOptions} />
         <span className="ml-auto text-xs text-muted-foreground font-mono">
           {loading ? "Carregando…" : `${totals.completed} concluídas`}
@@ -945,11 +948,13 @@ const HOUR_LIMIT_MS = 30 * 60 * 1000;
 function PontoTab() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
+  const { companies: checklistCompanies, colorOf } = useChecklistCompanies();
   const {
     sessions: pontoSessions, activeCompany,
     computeFor, dailyProductiveMs, dailyTotalMs,
     startCompany, pauseCompany, resumeCompany, endCompany,
   } = usePonto();
+
 
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">(
     typeof window !== "undefined" && "Notification" in window ? Notification.permission : "unsupported"
@@ -1048,8 +1053,15 @@ function PontoTab() {
         </div>
       )}
 
+      {checklistCompanies.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Nenhuma empresa cadastrada. Adicione empresas em <strong>Empresas</strong> para liberar pontos.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {COMPANIES.map((c) => {
+        {checklistCompanies.map((cc) => {
+          const c = cc.name as Company;
           const s = pontoSessions[c];
           const m = computeFor(c);
           const dailyMs = dailyProductiveMs(c);
@@ -1059,8 +1071,9 @@ function PontoTab() {
           const isWorking = status === "working";
           const isPaused = status === "paused";
           const overLimit = dailyMs >= HOUR_LIMIT_MS;
-          const color = COMPANY_COLORS[c];
+          const color = colorOf(c);
           const pct = Math.min(100, Math.round((dailyMs / HOUR_LIMIT_MS) * 100));
+
 
           return (
             <div key={c} className={`relative rounded-2xl border bg-card p-5 shadow-card overflow-hidden transition ${isActive ? "border-primary/40" : "border-border"}`}>
@@ -1220,8 +1233,10 @@ function PontoTab() {
 
 function MetricsTab() {
   const { sessions, sessionTasks, checklist, loading } = useOperationalData();
+  const { companies: checklistCompanies } = useChecklistCompanies();
   const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">("semanal");
   const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
+
   const cutoff = useMemo(() => {
     const d = new Date(); d.setHours(0,0,0,0);
     return d.getTime() - (days - 1) * 86400000;
@@ -1290,7 +1305,7 @@ function MetricsTab() {
         <StatCard label="Produtividade" value={`${productivity}%`} icon={TrendingUp} accent="primary" hint={`período: ${period}`} />
         <StatCard label="Taxa de conclusão" value={`${completionRate}%`} icon={CheckCircle2} accent="success" hint={`${checklistDone}/${checklistTotal} checklist`} />
         <StatCard label="Tempo médio / tarefa" value={fmtTime(avgPerTaskMs)} icon={Timer} accent="info" hint="por execução" />
-        <StatCard label="Empresas ativas" value={COMPANIES.length > 0 ? `${activeCompanies}/${COMPANIES.length}` : String(activeCompanies)} icon={Users} accent="warning" hint="com produção" />
+        <StatCard label="Empresas ativas" value={checklistCompanies.length > 0 ? `${activeCompanies}/${checklistCompanies.length}` : String(activeCompanies)} icon={Users} accent="warning" hint="com produção" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-5">
