@@ -970,6 +970,8 @@ function CardDialog({
   onMoveFunnel: (funnelId: string) => void;
   onDelete: () => void;
 }) {
+  const { companies: companyList } = useChecklistCompanies();
+  const companyNames = companyList.map((c) => c.name);
   const [title, setTitle] = useState(card.title);
   const [description, setDescription] = useState(card.description ?? "");
   const [notes, setNotes] = useState(card.notes ?? "");
@@ -1080,7 +1082,8 @@ function CardDialog({
                 onChange={(e) => onUpdate({ company: e.target.value as Company })}
                 className="w-full bg-surface rounded px-2 py-1.5 text-sm"
               >
-                {COMPANIES.map((c) => <option key={c}>{c}</option>)}
+                <option value="">Sem empresa</option>
+                {companyNames.map((c) => <option key={c}>{c}</option>)}
               </select>
             </Field>
             <Field label="Prioridade">
