@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useAutosave } from "@/hooks/use-autosave";
+import { useGratitudeEnabled } from "@/lib/user-preferences";
 
 function todayISO() {
   const d = new Date();
