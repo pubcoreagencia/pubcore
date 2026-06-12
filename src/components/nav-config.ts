@@ -26,6 +26,7 @@ export const navGroups: NavGroup[] = [
   {
     label: "Gestão",
     items: [
+      { to: "/app/companies", label: "Empresas", icon: Building2 },
       { to: "/app/crm", label: "CRM", icon: Users2 },
       { to: "/app/finance", label: "Finanças", icon: Wallet },
       { to: "/app/stock", label: "Estoque", icon: Boxes },
