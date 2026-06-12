@@ -21,7 +21,7 @@ function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (user && mode !== "submitted") nav({ to: "/app" });
+    if (user && mode === "signin") nav({ to: "/app" });
   }, [user, nav, mode]);
 
   const submit = async (e: React.FormEvent) => {
@@ -31,14 +31,14 @@ function LoginPage() {
       const { error } = await signInPassword(email, password);
       if (error) toast.error(error); else { toast.success("Bem-vindo"); nav({ to: "/app" }); }
     } else if (mode === "signup") {
+      const emailUsed = email;
       const { error } = await signUp(email, password, name || email.split("@")[0]);
       if (error) toast.error(error);
       else {
-        setSubmittedEmail(email);
-        // Se o cadastro auto-loga o usuário, encerra a sessão para forçar o fluxo de aprovação
-        try { await logout(); } catch {}
+        setSubmittedEmail(emailUsed);
         setMode("submitted");
         setEmail(""); setPassword(""); setName("");
+        try { await logout(); } catch {}
       }
     } else {
       const { error } = await resetPassword(email);
