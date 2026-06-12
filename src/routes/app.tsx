@@ -47,7 +47,7 @@ function AppLayout() {
           <ChecklistProvider>
             <PontoAutoTracker />
             <GratitudePanel />
-            <FirstShiftPanel />
+            <FirstCompanyOnboarding />
             <ShiftRotationPanel />
             <div className="hidden md:block">
               <CalculatorWidget />
