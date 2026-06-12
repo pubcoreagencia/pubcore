@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useAutosave } from "@/hooks/use-autosave";
+import { useGratitudeEnabled } from "@/lib/user-preferences";
 
 function todayISO() {
   const d = new Date();
@@ -19,6 +20,7 @@ function todayISO() {
 export function GratitudePanel() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
+  const [gratitudeEnabled] = useGratitudeEnabled();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -29,6 +31,7 @@ export function GratitudePanel() {
   // ── 1. Check if today's entry exists / is completed ──
   useEffect(() => {
     if (!user || !activeWorkspaceId) return;
+    if (!gratitudeEnabled) { setOpen(false); setLoading(false); return; }
     let cancelled = false;
     (async () => {
       const date = todayISO();
@@ -50,7 +53,7 @@ export function GratitudePanel() {
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [user, activeWorkspaceId]);
+  }, [user, activeWorkspaceId, gratitudeEnabled]);
 
   // ── 2. Lock body scroll ──
   useEffect(() => {

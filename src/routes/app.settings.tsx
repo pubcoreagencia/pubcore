@@ -3,8 +3,10 @@ import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
+import { Switch } from "@/components/ui/switch";
+import { useGratitudeEnabled } from "@/lib/user-preferences";
 
-import { Bell, Lock, Palette, Building } from "lucide-react";
+import { Bell, Lock, Palette, Building, Sun } from "lucide-react";
 
 export const Route = createFileRoute("/app/settings")({
   component: SettingsPage,
@@ -14,6 +16,7 @@ function SettingsPage() {
   const { user } = useAuth();
   const { isMaster, activeWorkspace } = useWorkspace();
   const { companies } = useChecklistCompanies();
+  const [gratitudeEnabled, setGratitudeEnabled] = useGratitudeEnabled();
 
   return (
     <div className="p-3 sm:p-6 lg:p-10 max-w-4xl mx-auto">
@@ -51,6 +54,24 @@ function SettingsPage() {
             </div>
           )}
         </section>
+
+        <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-amber-400"><Sun className="h-4 w-4" /></div>
+            <h2 className="font-display font-bold text-lg">Preferências</h2>
+          </div>
+          <div className="flex items-center justify-between gap-4 rounded-lg p-3 hover:bg-surface/40 transition">
+            <div className="min-w-0">
+              <div className="text-sm font-medium">Painel da Gratidão</div>
+              <div className="text-xs text-muted-foreground mt-0.5">
+                Exibe o ritual diário de gratidão ao iniciar o dia. Desative para não ver mais o painel.
+              </div>
+            </div>
+            <Switch checked={gratitudeEnabled} onCheckedChange={setGratitudeEnabled} />
+          </div>
+        </section>
+
+
 
         <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
