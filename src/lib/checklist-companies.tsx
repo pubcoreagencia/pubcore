@@ -12,6 +12,8 @@ export interface ChecklistCompany {
   name: string;
   color: string | null;
   position: number;
+  ponto_daily_limit_minutes?: number | null;
+  ponto_limit_enabled?: boolean | null;
 }
 
 interface Ctx {
@@ -23,8 +25,10 @@ interface Ctx {
   recolor: (id: string, color: string) => Promise<boolean>;
   remove: (id: string) => Promise<boolean>;
   reorder: (fromId: string, toId: string) => Promise<void>;
+  setPontoLimit: (id: string, minutes: number, enabled: boolean) => Promise<boolean>;
   colorOf: (name: string) => string;
 }
+
 
 const CompaniesCtx = createContext<Ctx | null>(null);
 
