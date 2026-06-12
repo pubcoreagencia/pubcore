@@ -675,12 +675,14 @@ type TimelineEvent = {
 
 function HistoryTab() {
   const { sessions, sessionTasks, loading } = useOperationalData();
+  const { companies: checklistCompanies } = useChecklistCompanies();
   const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">("semanal");
   const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
   const [userFilter, setUserFilter] = useState<string>("Todos");
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<EditablePontoSession | null>(null);
   const PAGE_SIZE = 10;
+
 
   const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
   const cutoff = useMemo(() => {
