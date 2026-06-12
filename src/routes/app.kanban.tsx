@@ -471,13 +471,21 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
 
   const deleteCard = async (id: string) => {
     const card = cards.find(c => c.id === id);
+    // Optimistic UI
+    const prev = cards;
+    setCards(cs => cs.filter(c => c.id !== id));
     // delete attachments first
     const { data: atts } = await supabase.from("kanban_attachments").select("storage_path").eq("card_id", id);
     if (atts && atts.length > 0) {
       await supabase.storage.from("kanban-attachments").remove(atts.map(a => a.storage_path));
       await supabase.from("kanban_attachments").delete().eq("card_id", id);
     }
-    await supabase.from("kanban_cards").delete().eq("id", id);
+    const { error } = await supabase.from("kanban_cards").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir card — restaurando");
+      setCards(prev);
+      return;
+    }
     if (card) await logActivity({
       entity_type: "kanban_card", entity_id: id, action: "deleted",
       title: card.title, company: card.company,
