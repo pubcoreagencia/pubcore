@@ -1050,8 +1050,15 @@ function PontoTab() {
         </div>
       )}
 
+      {checklistCompanies.length === 0 && (
+        <div className="rounded-xl border border-dashed border-border bg-card p-6 text-center text-sm text-muted-foreground">
+          Nenhuma empresa cadastrada. Adicione empresas em <strong>Empresas</strong> para liberar pontos.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        {COMPANIES.map((c) => {
+        {checklistCompanies.map((cc) => {
+          const c = cc.name as Company;
           const s = pontoSessions[c];
           const m = computeFor(c);
           const dailyMs = dailyProductiveMs(c);
@@ -1061,8 +1068,9 @@ function PontoTab() {
           const isWorking = status === "working";
           const isPaused = status === "paused";
           const overLimit = dailyMs >= HOUR_LIMIT_MS;
-          const color = COMPANY_COLORS[c];
+          const color = colorOf(c);
           const pct = Math.min(100, Math.round((dailyMs / HOUR_LIMIT_MS) * 100));
+
 
           return (
             <div key={c} className={`relative rounded-2xl border bg-card p-5 shadow-card overflow-hidden transition ${isActive ? "border-primary/40" : "border-border"}`}>
