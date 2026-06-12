@@ -1102,19 +1102,18 @@ function PontoTab() {
                     }`}>
                       {isWorking ? "Ativo" : isPaused ? "Pausado" : status === "ended" ? "Encerrado" : "Parado"}
                     </span>
-                    {canManage && (
-                      <button
-                        onClick={() => {
-                          setEditingLimitId(isEditingLimit ? null : cc.id);
-                          setLimitDraftMin(String(limitMinutes));
-                          setLimitDraftEnabled(limitEnabled);
-                        }}
-                        title="Editar limite diário"
-                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface"
-                      >
-                        <Settings2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => {
+                        setEditingLimitId(isEditingLimit ? null : cc.id);
+                        setLimitDraftMin(String(limitMinutes));
+                        setLimitDraftEnabled(limitEnabled);
+                      }}
+                      title="Editar limite diário"
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-surface"
+                    >
+                      <Settings2 className="h-3.5 w-3.5" />
+                    </button>
+
                   </div>
                 </div>
 
