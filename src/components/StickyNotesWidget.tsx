@@ -103,39 +103,39 @@ export function StickyNotesWidget() {
     try { localStorage.setItem(POS_KEY, JSON.stringify(pos)); } catch {}
   }, [pos]);
 
-  // Fetch + realtime
+  // Fetch + realtime — usa a mesma tabela "notes" da página Notas
   useEffect(() => {
     if (!activeWorkspaceId) { setNotes([]); return; }
     let active = true;
     setLoading(true);
     (async () => {
       const { data } = await supabase
-        .from("sticky_notes")
-        .select("*")
+        .from("notes")
+        .select("id,workspace_id,user_id,title,content,color,category,favorite,pinned,created_at,updated_at")
         .eq("workspace_id", activeWorkspaceId)
-        .order("position", { ascending: true })
-        .order("created_at", { ascending: false });
+        .order("pinned", { ascending: false })
+        .order("updated_at", { ascending: false });
       if (active && data) setNotes(data as StickyNoteRow[]);
       setLoading(false);
     })();
 
     const ch = supabase
-      .channel(`sticky_notes:${activeWorkspaceId}`)
+      .channel(`notes_widget:${activeWorkspaceId}`)
       .on("postgres_changes",
-        { event: "*", schema: "public", table: "sticky_notes", filter: `workspace_id=eq.${activeWorkspaceId}` },
+        { event: "*", schema: "public", table: "notes", filter: `workspace_id=eq.${activeWorkspaceId}` },
         (payload) => {
           setNotes((prev) => {
             if (payload.eventType === "INSERT") {
               const n = payload.new as StickyNoteRow;
               if (prev.some((x) => x.id === n.id)) return prev;
-              return [...prev, n].sort((a, b) => a.position - b.position);
+              return [n, ...prev];
             }
             if (payload.eventType === "UPDATE") {
               const n = payload.new as StickyNoteRow;
               return prev.map((x) => (x.id === n.id ? { ...x, ...n } : x));
             }
             if (payload.eventType === "DELETE") {
-              const n = payload.old as StickyNoteRow;
+              const n = payload.old as { id: string };
               return prev.filter((x) => x.id !== n.id);
             }
             return prev;
@@ -178,38 +178,37 @@ export function StickyNotesWidget() {
 
   const createNote = useCallback(async () => {
     if (!activeWorkspaceId || !user) return;
-    const maxPos = notes.reduce((m, n) => Math.max(m, n.position), 0);
     const { data } = await supabase
-      .from("sticky_notes")
+      .from("notes")
       .insert({
         workspace_id: activeWorkspaceId,
         user_id: user.id,
         owner_email: user.email ?? "",
-        title: "",
+        title: "Sem título",
         content: "",
+        category: "Ideias",
         color: COLOR_KEYS[Math.floor(Math.random() * COLOR_KEYS.length)],
-        position: maxPos + 1,
       })
-      .select()
+      .select("id,workspace_id,user_id,title,content,color,category,favorite,pinned,created_at,updated_at")
       .single();
-    if (data) setNotes((prev) => [...prev, data as StickyNoteRow]);
-  }, [activeWorkspaceId, user, notes]);
+    if (data) setNotes((prev) => [data as StickyNoteRow, ...prev.filter(p => p.id !== (data as StickyNoteRow).id)]);
+  }, [activeWorkspaceId, user]);
 
   const updateNoteLocal = useCallback((id: string, patch: Partial<StickyNoteRow>) => {
     setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch } : n)));
     if (saveTimers.current[id]) clearTimeout(saveTimers.current[id]);
     saveTimers.current[id] = setTimeout(async () => {
-      await supabase.from("sticky_notes").update(patch).eq("id", id);
+      await supabase.from("notes").update(patch as never).eq("id", id);
     }, 500);
   }, []);
 
   const deleteNote = useCallback(async (id: string) => {
     setNotes((prev) => prev.filter((n) => n.id !== id));
-    await supabase.from("sticky_notes").delete().eq("id", id);
+    await supabase.from("notes").delete().eq("id", id);
   }, []);
 
   const cycleColor = useCallback((n: StickyNoteRow) => {
-    const idx = COLOR_KEYS.indexOf(n.color);
+    const idx = COLOR_KEYS.indexOf(n.color ?? "yellow");
     const next = COLOR_KEYS[(idx + 1) % COLOR_KEYS.length];
     updateNoteLocal(n.id, { color: next });
   }, [updateNoteLocal]);
