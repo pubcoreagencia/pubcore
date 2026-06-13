@@ -518,7 +518,7 @@ function TrackDetail({
   };
 
   return (
-    <aside className="hidden lg:flex w-[420px] xl:w-[480px] shrink-0 flex-col border-l border-border bg-surface/30 overflow-hidden">
+    <aside className="fixed inset-0 z-40 flex flex-col bg-background lg:static lg:z-auto lg:w-[420px] xl:w-[480px] lg:shrink-0 lg:border-l lg:border-border lg:bg-surface/30 overflow-hidden">
       <div className="p-4 border-b border-border flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
