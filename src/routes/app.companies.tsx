@@ -184,7 +184,7 @@ function CompaniesPage() {
           </p>
         </div>
         {canManage && (
-          <Button onClick={() => setCreating(true)} className="gap-2 self-start sm:self-auto">
+          <Button onClick={() => setCreating({ parentId: null })} className="gap-2 self-start sm:self-auto">
             <Plus className="h-4 w-4" /> Nova empresa
           </Button>
         )}
@@ -221,24 +221,48 @@ function CompaniesPage() {
             {showArchived ? "Nenhuma empresa arquivada." : "Nenhuma empresa cadastrada ainda."}
           </div>
           {canManage && !showArchived && (
-            <Button variant="outline" onClick={() => setCreating(true)} className="mt-4 gap-2">
+            <Button variant="outline" onClick={() => setCreating({ parentId: null })} className="mt-4 gap-2">
               <Plus className="h-4 w-4" /> Cadastrar primeira empresa
             </Button>
           )}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((c) => (
-            <CompanyCard
-              key={c.id}
-              company={c}
-              canManage={canManage}
-              onEdit={() => setEditing(c)}
-              onDuplicate={() => handleDuplicate(c)}
-              onArchive={() => handleArchive(c)}
-              onDelete={() => setDeleting(c)}
-            />
-          ))}
+        <div className="space-y-4">
+          {parents.map((p) => {
+            const kids = childrenByParent.get(p.id) ?? [];
+            const isSub = !!p.parent_company_id;
+            return (
+              <div key={p.id} className="space-y-2">
+                <CompanyCard
+                  company={p}
+                  canManage={canManage}
+                  isSub={isSub}
+                  childCount={kids.length}
+                  onEdit={() => setEditing(p)}
+                  onDuplicate={() => handleDuplicate(p)}
+                  onArchive={() => handleArchive(p)}
+                  onDelete={() => setDeleting(p)}
+                  onAddSub={!isSub && canManage ? () => setCreating({ parentId: p.id }) : undefined}
+                />
+                {kids.length > 0 && (
+                  <div className="ml-6 pl-4 border-l-2 border-border/60 space-y-2">
+                    {kids.map((k) => (
+                      <CompanyCard
+                        key={k.id}
+                        company={k}
+                        canManage={canManage}
+                        isSub
+                        onEdit={() => setEditing(k)}
+                        onDuplicate={() => handleDuplicate(k)}
+                        onArchive={() => handleArchive(k)}
+                        onDelete={() => setDeleting(k)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -248,7 +272,9 @@ function CompaniesPage() {
           existing={editing}
           existingNames={companies.map((c) => c.name)}
           position={companies.length}
-          onClose={() => { setCreating(false); setEditing(null); }}
+          defaultParentId={creating?.parentId ?? null}
+          parentOptions={companies.filter((c) => !c.parent_company_id && c.status !== "archived" && c.id !== editing?.id)}
+          onClose={() => { setCreating(null); setEditing(null); }}
         />
       )}
 
