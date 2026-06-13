@@ -17,8 +17,9 @@ interface StickyNoteRow {
   title: string;
   content: string;
   color: string;
-  tag: string | null;
-  position: number;
+  category: string;
+  favorite: boolean;
+  pinned: boolean;
   created_at: string;
   updated_at: string;
 }
