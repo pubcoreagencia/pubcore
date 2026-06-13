@@ -366,12 +366,14 @@ function CompanyCard({
 }
 
 function CompanyDialog({
-  workspaceId, existing, existingNames, position, onClose,
+  workspaceId, existing, existingNames, position, defaultParentId = null, parentOptions = [], onClose,
 }: {
   workspaceId: string;
   existing: Company | null;
   existingNames: string[];
   position: number;
+  defaultParentId?: string | null;
+  parentOptions?: Company[];
   onClose: () => void;
 }) {
   const [name, setName] = useState(existing?.name ?? "");
@@ -380,6 +382,8 @@ function CompanyDialog({
   const [color, setColor] = useState(existing?.color ?? PRESET_COLORS[0]);
   const [status, setStatus] = useState<string>(existing?.status ?? "active");
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [description, setDescription] = useState(existing?.description ?? "");
+  const [parentId, setParentId] = useState<string | null>(existing?.parent_company_id ?? defaultParentId);
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
@@ -391,7 +395,6 @@ function CompanyDialog({
     try {
       if (existing) {
         if (trimmed !== existing.name) {
-          // Rename + cascade
           const { error } = await supabase.from("checklist_companies")
             .update({ name: trimmed } as never).eq("id", existing.id);
           if (error) throw error;
@@ -401,7 +404,8 @@ function CompanyDialog({
           if (rpcErr) throw rpcErr;
         }
         const { error } = await supabase.from("checklist_companies")
-          .update({ segment, responsible, color, status, notes,
+          .update({ segment, responsible, color, status, notes, description,
+            parent_company_id: parentId,
             archived_at: status === "archived" ? (existing.archived_at ?? new Date().toISOString()) : null,
           } as never)
           .eq("id", existing.id);
@@ -410,16 +414,18 @@ function CompanyDialog({
       } else {
         const { error } = await supabase.from("checklist_companies").insert({
           workspace_id: workspaceId,
-          name: trimmed, segment, responsible, color, status, notes,
+          name: trimmed, segment, responsible, color, status, notes, description,
+          parent_company_id: parentId,
           position,
         } as never);
         if (error) throw error;
-        toast.success("Empresa criada");
+        toast.success(parentId ? "Subempresa criada" : "Empresa criada");
       }
       onClose();
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(e);
-      toast.error("Erro ao salvar empresa");
+      const msg = (e as { message?: string })?.message ?? "Erro ao salvar empresa";
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
