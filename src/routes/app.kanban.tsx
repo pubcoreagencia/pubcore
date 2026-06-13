@@ -86,7 +86,7 @@ function isDoneColumnName(name: string) {
   return /conclu/i.test(name) || /done/i.test(name);
 }
 
-export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {}) {
+function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
@@ -274,17 +274,45 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
 
     const sfx = Math.random().toString(36).slice(2, 8);
     const ch = supabase.channel(`kanban:${activeWorkspaceId}:${sfx}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_funnels", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
-        const { data } = await supabase.from("kanban_funnels").select("*").eq("workspace_id", activeWorkspaceId).order("position");
-        setFunnels((data ?? []) as Funnel[]);
+      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_funnels", filter: `workspace_id=eq.${activeWorkspaceId}` }, (payload) => {
+        if (payload.eventType === "DELETE") {
+          const old = payload.old as { id: string };
+          setFunnels(fs => fs.filter(f => f.id !== old.id));
+        } else {
+          const n = payload.new as Funnel;
+          setFunnels(fs => {
+            const idx = fs.findIndex(f => f.id === n.id);
+            if (idx === -1) return [...fs, n].sort((a, b) => a.position - b.position);
+            const copy = fs.slice(); copy[idx] = { ...copy[idx], ...n }; return copy;
+          });
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_columns", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
-        const { data } = await supabase.from("kanban_columns").select("*").eq("workspace_id", activeWorkspaceId).order("position");
-        setColumns((data ?? []) as Column[]);
+      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_columns", filter: `workspace_id=eq.${activeWorkspaceId}` }, (payload) => {
+        if (payload.eventType === "DELETE") {
+          const old = payload.old as { id: string };
+          setColumns(cs => cs.filter(c => c.id !== old.id));
+        } else {
+          const n = payload.new as Column;
+          setColumns(cs => {
+            const idx = cs.findIndex(c => c.id === n.id);
+            if (idx === -1) return [...cs, n].sort((a, b) => a.position - b.position);
+            const copy = cs.slice(); copy[idx] = { ...copy[idx], ...n }; return copy;
+          });
+        }
       })
-      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_cards", filter: `workspace_id=eq.${activeWorkspaceId}` }, async () => {
-        const { data } = await supabase.from("kanban_cards").select("*").eq("workspace_id", activeWorkspaceId).not("funnel_id", "is", null).order("position");
-        setCards(((data ?? []) as unknown[]).map(normalizeCard));
+      .on("postgres_changes", { event: "*", schema: "public", table: "kanban_cards", filter: `workspace_id=eq.${activeWorkspaceId}` }, (payload) => {
+        if (payload.eventType === "DELETE") {
+          const old = payload.old as { id: string };
+          setCards(cs => cs.filter(c => c.id !== old.id));
+        } else {
+          const n = normalizeCard(payload.new);
+          if (!n.funnel_id) return;
+          setCards(cs => {
+            const idx = cs.findIndex(c => c.id === n.id);
+            if (idx === -1) return [...cs, n];
+            const copy = cs.slice(); copy[idx] = { ...copy[idx], ...n }; return copy;
+          });
+        }
       })
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };

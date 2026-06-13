@@ -1,141 +1,60 @@
-# Reestruturação PUB CORE — Empresas como Núcleo
+# Plano de Otimização — PUB CORE
 
-## Objetivo
-Transformar **Empresas** na entidade central da plataforma e padronizar CRUD completo (criar / editar / duplicar / arquivar / excluir / reordenar) em todos os módulos, com sincronização em tempo real entre eles.
+Foco: ganhos reais de performance, estabilidade e fluidez **sem alterar design, funcionalidades ou integrações**. Aplicação cirúrgica nos pontos com maior custo (rotas com 1k+ linhas, widgets globais, realtime, drag-and-drop).
 
----
+## 1. Code-splitting global (impacto: tempo de boot)
+- Converter todas as rotas pesadas (`app.kanban`, `app.stock`, `app.finance`, `app.checklists`, `app.notes`, `app.files`, `app.city`, `app.calc3d`, `app.index`) para **lazy chunks** via `React.lazy` + `Suspense` com skeleton já presente.
+- Hoje o bundle inicial carrega todas as ferramentas mesmo quando o usuário só abre o Dashboard.
 
-## 1. Módulo Empresas (novo, dedicado)
+## 2. Realtime e queries Supabase
+- Auditar todas as `supabase.channel(...)` para garantir cleanup no `useEffect` (já vi pelo menos um caso correto, validar os demais).
+- Substituir `select("*")` por **lista explícita de campos** nas rotas grandes (Kanban, Stock, Finance, Notes, Files).
+- Remover refetchs duplicados após mutação quando já existe subscription realtime (hoje muitas rotas fazem `loadX()` + recebem evento realtime → query dupla).
+- Adicionar `.limit()` + paginação incremental em Estoque, Finanças e Central de Arquivos.
 
-Rota: `/app/companies` (novo item na sidebar, grupo "Gestão", logo após CRM).
+## 3. Kanban (prioridade alta)
+- Estado otimista em **delete/move/edit**: aplicar mudança local antes do round-trip Supabase, com rollback em erro.
+- Memoizar `KanbanCard` e `KanbanColumn` com `React.memo` + comparador raso.
+- Trocar refetch completo por *patch* no estado quando vier evento realtime (já parcial; completar para todos os eventos).
+- Reduzir re-render durante drag: extrair posição/transform para CSS-only enquanto arrasta, persistir só no drop.
 
-A tabela `checklist_companies` já existe e é usada hoje pelo Checklist e pelo Ponto. Vamos **promovê-la a tabela canônica de empresas** e adicionar colunas faltantes:
+## 4. Widgets globais (Sticky Notes, Calculator)
+- Aplicar `React.memo` e mover timers/intervalos para dentro de `useEffect` com dependências corretas (evitar múltiplos timers simultâneos).
+- Garantir que o widget de notas não dispara save em cada keystroke (já tem debounce de 500ms — validar).
 
-- `segment` (text)
-- `responsible` (text)
-- `status` (text: `active` | `archived`)
-- `notes` (text)
-- `sort_order` (int) — já existe? caso não, adicionar
-- `color` já existe
+## 5. Bater Ponto
+- Garantir 1 único `setInterval` por sessão ativa (usar `useRef` para guarda).
+- Mover cálculo do cronômetro para um componente isolado memoizado, evitando re-render do header inteiro a cada segundo.
 
-Renomear conceitualmente para "Empresa" na UI (a tabela permanece `checklist_companies` para evitar migração destrutiva; criamos uma view `companies` somente leitura para clareza opcional).
+## 6. Listas grandes
+- Estoque, Finanças (transações), Notas, Arquivos: aplicar virtualização leve via paginação por scroll (chunks de 50) sem libs novas, ou ordenação server-side com `range()`.
 
-### Tela Empresas
-- Lista em grid responsivo (card por empresa) com cor, nome, segmento, responsável, status.
-- Ações por card: **Editar**, **Duplicar**, **Arquivar/Desarquivar**, **Excluir**.
-- Botão "Nova Empresa" abre dialog com todos os campos.
-- Drag-and-drop para reordenar.
-- Filtro por status e busca por nome.
+## 7. Central de Arquivos
+- Lazy-load do preview (só carrega URL assinada quando o item entra no viewport / é clicado).
+- Debounce na busca (300ms).
+- Limitar fetch inicial a 200 itens da pasta atual.
 
-### Exclusão com impacto
-Ao clicar **Excluir**, chamar nova RPC `company_impact_report(workspace_id, name)` que retorna contagens em:
-`checklist_tasks`, `checklist_daily_completions`, `ponto_sessions`, `finance_transactions`, `finance_products`, `finance_costs`, `stock_items`, `stock_movements`, `kanban_funnels`, `kanban_cards`, `crm_leads`.
+## 8. Boot do app
+- Pré-carregar apenas dados do Dashboard no `loader` da rota `/app`; ferramentas pesadas carregam sob demanda (já viabilizado pelo passo 1).
 
-Diálogo com 3 botões:
-- **Cancelar**
-- **Transferir registros para…** (select de outra empresa) → RPC `transfer_company_records(ws, from_name, to_name)`
-- **Excluir tudo** → RPC existente `delete_checklist_company_cascade` expandida para incluir as tabelas listadas acima.
+## Detalhes técnicos
+- `React.lazy` + `Suspense` com fallback usando os skeletons já presentes em `src/components/common`.
+- `React.memo` em cards e linhas de tabela; `useCallback` em handlers passados para listas grandes.
+- Cleanup de canais Supabase: padronizar via hook `useRealtimeTable(table, filter, onChange)` reutilizado pelas rotas.
+- Mutações: padrão `setState(optimistic) → await supabase → on error: rollback + toast`.
+- Sem mudanças em RLS, esquema ou design.
 
----
+## Fora do escopo
+- Reescritas de tela.
+- Novas dependências (sem `react-window`, sem novas libs de DnD).
+- Mudanças visuais ou de UX além de skeletons em transições.
 
-## 2. Vinculação Global Empresa
+## Entrega faseada (para revisão incremental)
+1. Code-splitting de rotas + skeleton fallback.
+2. Kanban otimista + memoização + patch realtime.
+3. Auditoria de queries (`select` explícito, dedupe refetch+realtime).
+4. Paginação em Estoque/Finanças/Arquivos.
+5. Bater Ponto: timer isolado.
+6. Polimento de widgets.
 
-Adicionar coluna `company` (text, nullable até backfill) onde ainda não existe:
-- `finance_transactions`, `finance_products`, `finance_costs`, `finance_categories`
-- `stock_items` (já tem stock_companies — manter mas alimentar pelo cadastro central)
-- `kanban_funnels`, `kanban_cards`
-- `crm_leads`
-- `calendar_events`, `notes`
-
-Todos os **selects de empresa em formulários** passam a consumir o hook `useChecklistCompanies` (já é a fonte única). Remover quaisquer listas hardcoded restantes em `src/lib/mock-data.ts` e `src/lib/operations.tsx`.
-
-### Renomeação propaga
-Estender RPC existente `rename_checklist_company` para atualizar também as novas tabelas. Renomear na UI dispara invalidação Realtime (já presente) e React Query → reflete em todos os módulos sem refresh.
-
----
-
-## 3. Padronização CRUD por módulo
-
-Para cada módulo abaixo, expor um **menu de ações** (`⋮`) em cada registro com: Editar · Duplicar · Arquivar · Excluir. Adicionar também "Alterar empresa vinculada" onde aplicável.
-
-| Módulo | Itens com CRUD completo + duplicar/arquivar | Reordenar |
-|---|---|---|
-| Checklist | tarefas, etapas | sim |
-| Ponto | sessões, tarefas de sessão | sim |
-| Financeiro | receitas, despesas, categorias | — |
-| Estoque | produtos | — |
-| Kanban | funis, colunas, cards | sim (DnD) |
-| CRM | clientes (leads) | — |
-
-Componentes reutilizáveis a criar:
-- `RecordActionsMenu` (dropdown de ações)
-- `CompanyPicker` (select dinâmico a partir de `useChecklistCompanies`)
-- `DeleteWithImpactDialog` (genérico para exclusão com aviso)
-
-Para "arquivar" onde não existe coluna: adicionar `archived_at timestamptz null` nas tabelas listadas. Filtros padrão escondem arquivados.
-
----
-
-## 4. Dashboard — filtros por empresa
-
-Adicionar barra de filtro persistente em `/app`:
-- **Todas as empresas** | **Empresa única** | **Grupo de empresas** (multi-select)
-
-Estado salvo em URL search params para deep-link. Indicadores existentes passam a aceitar `companyFilter` como prop.
-
----
-
-## 5. Realtime e Performance
-
-Já há Realtime em várias tabelas. Garantir publicação `supabase_realtime` para:
-`checklist_companies`, `finance_transactions`, `stock_items`, `kanban_funnels`, `kanban_cards`, `crm_leads`.
-
-Hooks usam React Query — qualquer mutação invalida as queries relevantes. Sem refresh manual.
-
----
-
-## 6. Responsividade e UX
-
-- Diálogos viram **Drawer** em mobile (já existe `ui/drawer`).
-- Action menu acessível por toque (tamanho ≥40px).
-- Cards de lista em grid 1 col mobile / 2 tablet / 3+ desktop.
-
----
-
-## Detalhes Técnicos
-
-### Migrações SQL (uma migração consolidada)
-1. `ALTER TABLE public.checklist_companies ADD COLUMN IF NOT EXISTS segment text, ADD COLUMN responsible text, ADD COLUMN status text DEFAULT 'active', ADD COLUMN notes text;`
-2. Adicionar `company text`, `archived_at timestamptz` nas tabelas listadas (com `IF NOT EXISTS`).
-3. Novas RPCs (SECURITY DEFINER, checar `is_workspace_admin` ou `has_app_role('master')`):
-   - `company_impact_report(_ws uuid, _name text) returns jsonb`
-   - `transfer_company_records(_ws uuid, _from text, _to text) returns void`
-4. Estender `rename_checklist_company` e `delete_checklist_company_cascade` para cobrir todas as tabelas.
-5. `ALTER PUBLICATION supabase_realtime ADD TABLE …` para as faltantes.
-
-### Frontend
-- Nova rota `src/routes/app.companies.tsx`.
-- Item na sidebar (`src/components/nav-config.ts`).
-- Novos componentes em `src/components/companies/` (List, CompanyCard, CompanyDialog, DeleteWithImpactDialog).
-- `src/components/common/RecordActionsMenu.tsx` reutilizado em Checklist, Ponto, Financeiro, Estoque, Kanban, CRM.
-- `src/components/common/CompanyPicker.tsx` substitui qualquer dropdown estático de empresa.
-- Filtro de dashboard em `src/routes/app.index.tsx` com `validateSearch`.
-
----
-
-## Escopo desta entrega
-Dado o volume, proponho entregar em **duas fases**:
-
-**Fase 1 (esta tarefa)**
-- Migração SQL completa (colunas + RPCs + realtime).
-- Módulo Empresas completo (CRUD + impacto + transferência).
-- `CompanyPicker` + `RecordActionsMenu` reutilizáveis.
-- Integração em Checklist e Financeiro (módulos mais usados).
-- Filtro por empresa no Dashboard.
-
-**Fase 2 (próxima mensagem após validação)**
-- Estender ações completas (duplicar/arquivar) em Ponto, Estoque, Kanban, CRM.
-- Migração de listas remanescentes em `mock-data.ts`.
-- Polimento mobile (Drawer) em todos os diálogos.
-
-Posso seguir com a Fase 1?
+Confirma para eu começar pela fase 1, ou prefere outra ordem?
