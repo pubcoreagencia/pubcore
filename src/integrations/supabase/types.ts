@@ -282,6 +282,141 @@ export type Database = {
         }
         Relationships: []
       }
+      files_folders: {
+        Row: {
+          color: string | null
+          company: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          favorite: boolean
+          icon: string | null
+          id: string
+          name: string
+          parent_id: string | null
+          pos_x: number
+          pos_y: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          color?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          favorite?: boolean
+          icon?: string | null
+          id?: string
+          name: string
+          parent_id?: string | null
+          pos_x?: number
+          pos_y?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          color?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          favorite?: boolean
+          icon?: string | null
+          id?: string
+          name?: string
+          parent_id?: string | null
+          pos_x?: number
+          pos_y?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_folders_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "files_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_folders_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      files_items: {
+        Row: {
+          category: string | null
+          company: string | null
+          created_at: string
+          created_by: string | null
+          favorite: boolean
+          folder_id: string | null
+          id: string
+          mime_type: string | null
+          name: string
+          pos_x: number
+          pos_y: number
+          size_bytes: number
+          storage_path: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          category?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          favorite?: boolean
+          folder_id?: string | null
+          id?: string
+          mime_type?: string | null
+          name: string
+          pos_x?: number
+          pos_y?: number
+          size_bytes?: number
+          storage_path: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          category?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          favorite?: boolean
+          folder_id?: string | null
+          id?: string
+          mime_type?: string | null
+          name?: string
+          pos_x?: number
+          pos_y?: number
+          size_bytes?: number
+          storage_path?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "files_items_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "files_folders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "files_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_categories: {
         Row: {
           color: string
