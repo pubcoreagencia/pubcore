@@ -141,11 +141,35 @@ function CompaniesPage() {
       responsible: c.responsible,
       status: "active",
       notes: c.notes,
+      description: c.description,
+      parent_company_id: c.parent_company_id,
       position: companies.length,
     } as never);
     if (error) { toast.error("Erro ao duplicar"); return; }
     toast.success("Empresa duplicada");
   };
+
+  // Build parent/children groupings (only 1 level)
+  const { parents, childrenByParent } = useMemo(() => {
+    const ps: Company[] = [];
+    const map = new Map<string, Company[]>();
+    for (const c of filtered) {
+      if (c.parent_company_id) {
+        const arr = map.get(c.parent_company_id) ?? [];
+        arr.push(c);
+        map.set(c.parent_company_id, arr);
+      } else {
+        ps.push(c);
+      }
+    }
+    // If a child's parent is filtered out (e.g. archived view), promote it so it still shows
+    const parentIds = new Set(ps.map((p) => p.id));
+    for (const [pid, kids] of map.entries()) {
+      if (!parentIds.has(pid)) ps.push(...kids);
+    }
+    return { parents: ps, childrenByParent: map };
+  }, [filtered]);
+
 
   return (
     <div className="p-3 sm:p-6 lg:p-10 max-w-7xl mx-auto">
