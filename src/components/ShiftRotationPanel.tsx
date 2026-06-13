@@ -54,11 +54,10 @@ export function ShiftRotationPanel() {
   // Configuração dinâmica da empresa ativa (fonte única de verdade)
   const activeConfig = useMemo(() => {
     const cc = checklistCompanies.find((x) => x.name === activeCompany);
-    const limitEnabled = cc?.ponto_limit_enabled !== false; // default ON
-    const limitMinutes = Math.max(
-      1,
-      cc?.ponto_daily_limit_minutes ?? DEFAULT_LIMIT_MIN,
-    );
+    // Sem empresa carregada ou sem limite configurado → painel desativado.
+    const hasConfig = !!cc && typeof cc.ponto_daily_limit_minutes === "number" && cc.ponto_daily_limit_minutes > 0;
+    const limitEnabled = hasConfig && cc?.ponto_limit_enabled !== false;
+    const limitMinutes = hasConfig ? Math.max(1, cc!.ponto_daily_limit_minutes as number) : 0;
     return { limitEnabled, limitMinutes, limitMs: limitMinutes * 60 * 1000 };
   }, [checklistCompanies, activeCompany]);
 
