@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, ListChecks, Calendar, Users2, Settings,
-  StickyNote, Wallet, Boxes, Calculator, MapPin, KanbanSquare, Building2, FolderOpen, Disc3,
+  StickyNote, Wallet, Boxes, Calculator, MapPin, KanbanSquare, Building2, FolderOpen,
 } from "lucide-react";
 
 
@@ -23,7 +23,6 @@ export const navGroups: NavGroup[] = [
       { to: "/app/calendar", label: "Calendário", icon: Calendar },
       { to: "/app/notes", label: "Notas", icon: StickyNote },
       { to: "/app/files", label: "Central de Arquivos", icon: FolderOpen },
-      { to: "/app/discography", label: "Discografia", icon: Disc3 },
     ],
 
   },
