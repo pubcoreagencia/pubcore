@@ -5,8 +5,10 @@ import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
 import { Switch } from "@/components/ui/switch";
 import { useGratitudeEnabled } from "@/lib/user-preferences";
+import { useTheme, type ThemeMode } from "@/lib/theme";
 
-import { Bell, Lock, Palette, Building, Sun } from "lucide-react";
+import { Bell, Lock, Palette, Building, Sun, Moon, Monitor } from "lucide-react";
+
 
 export const Route = createFileRoute("/app/settings")({
   component: SettingsPage,
@@ -90,8 +92,9 @@ function SettingsPage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-surface text-success"><Palette className="h-4 w-4" /></div>
             <h2 className="font-display font-bold text-lg">Aparência</h2>
           </div>
-          <div className="text-sm text-muted-foreground">PUB CORE usa tema dark premium otimizado para uso prolongado em ambientes executivos.</div>
+          <ThemePicker />
         </section>
+
 
         <section className="rounded-xl border border-border bg-card shadow-card p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
@@ -126,3 +129,47 @@ function Toggle({ label, defaultOn = false }: { label: string; defaultOn?: boole
     </label>
   );
 }
+
+function ThemePicker() {
+  const { theme, resolved, setTheme } = useTheme();
+  const options: { id: ThemeMode; label: string; desc: string; icon: typeof Sun }[] = [
+    { id: "dark", label: "Tema Escuro", desc: "Dark mode premium PUB CORE", icon: Moon },
+    { id: "light", label: "Tema Claro", desc: "Versão clara da interface", icon: Sun },
+    { id: "system", label: "Padrão do sistema", desc: "Acompanha a preferência do dispositivo", icon: Monitor },
+  ];
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground mb-3">
+        Tema atual: <span className="text-foreground font-medium">{resolved === "dark" ? "Escuro" : "Claro"}</span>
+        {theme === "system" && <span className="ml-1">(do sistema)</span>}
+      </div>
+      <div className="grid sm:grid-cols-3 gap-2.5">
+        {options.map((opt) => {
+          const active = theme === opt.id;
+          const Icon = opt.icon;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setTheme(opt.id)}
+              className={`text-left rounded-xl border p-3.5 transition-all hover:border-primary/40 ${
+                active
+                  ? "border-primary/60 bg-primary/10 shadow-glow"
+                  : "border-border bg-surface/40"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className={`h-7 w-7 rounded-lg grid place-items-center ${active ? "bg-primary/20 text-primary" : "bg-surface text-muted-foreground"}`}>
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+                <div className="text-sm font-medium text-foreground">{opt.label}</div>
+              </div>
+              <div className="text-[11px] text-muted-foreground leading-relaxed">{opt.desc}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
