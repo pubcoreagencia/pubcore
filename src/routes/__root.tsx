@@ -1,6 +1,8 @@
 import { Outlet, createRootRoute, HeadContent, Scripts, redirect } from "@tanstack/react-router";
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
+import { ThemeProvider } from "@/lib/theme";
+
 
 export const Route = createRootRoute({
   head: () => ({
@@ -22,7 +24,7 @@ export const Route = createRootRoute({
     links: [{ rel: "stylesheet", href: appCss }],
   }),
   shellComponent: RootShell,
-  component: () => <AuthProvider><Outlet /></AuthProvider>,
+  component: () => <ThemeProvider><AuthProvider><Outlet /></AuthProvider></ThemeProvider>,
   notFoundComponent: NotFound,
 });
 
