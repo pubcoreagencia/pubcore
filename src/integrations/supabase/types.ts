@@ -295,6 +295,252 @@ export type Database = {
         }
         Relationships: []
       }
+      disco_comments: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          body: string
+          created_at: string
+          id: string
+          track_id: string
+          version_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          track_id: string
+          version_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          track_id?: string
+          version_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disco_comments_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "disco_tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disco_comments_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "disco_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disco_comments_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disco_projects: {
+        Row: {
+          artist: string | null
+          company: string | null
+          cover_path: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          position: number
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          artist?: string | null
+          company?: string | null
+          cover_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          position?: number
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          artist?: string | null
+          company?: string | null
+          cover_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disco_projects_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disco_tracks: {
+        Row: {
+          artist: string | null
+          bpm: number | null
+          cover_path: string | null
+          created_at: string
+          created_by: string | null
+          genre: string | null
+          id: string
+          lyrics: string | null
+          lyrics_storage_path: string | null
+          music_key: string | null
+          name: string
+          notes: string | null
+          position: number
+          project_id: string | null
+          responsible: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          artist?: string | null
+          bpm?: number | null
+          cover_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          genre?: string | null
+          id?: string
+          lyrics?: string | null
+          lyrics_storage_path?: string | null
+          music_key?: string | null
+          name: string
+          notes?: string | null
+          position?: number
+          project_id?: string | null
+          responsible?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          artist?: string | null
+          bpm?: number | null
+          cover_path?: string | null
+          created_at?: string
+          created_by?: string | null
+          genre?: string | null
+          id?: string
+          lyrics?: string | null
+          lyrics_storage_path?: string | null
+          music_key?: string | null
+          name?: string
+          notes?: string | null
+          position?: number
+          project_id?: string | null
+          responsible?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disco_tracks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "disco_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disco_tracks_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disco_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          duration_ms: number | null
+          id: string
+          label: string
+          mime_type: string | null
+          notes: string | null
+          position: number
+          size_bytes: number
+          storage_path: string
+          track_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          id?: string
+          label: string
+          mime_type?: string | null
+          notes?: string | null
+          position?: number
+          size_bytes?: number
+          storage_path: string
+          track_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          duration_ms?: number | null
+          id?: string
+          label?: string
+          mime_type?: string | null
+          notes?: string | null
+          position?: number
+          size_bytes?: number
+          storage_path?: string
+          track_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disco_versions_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "disco_tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "disco_versions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       files_folders: {
         Row: {
           color: string | null
