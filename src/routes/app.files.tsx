@@ -55,6 +55,66 @@ function humanSize(n: number) {
   return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
+// Free-mode slot grid (prevents overlap and keeps items aligned).
+const SLOT_COL = 140, SLOT_ROW = 140, SLOT_X0 = 16, SLOT_Y0 = 16, SLOT_COLS = 7;
+function toCell(x: number, y: number) {
+  return {
+    cx: Math.max(0, Math.round((x - SLOT_X0) / SLOT_COL)),
+    cy: Math.max(0, Math.round((y - SLOT_Y0) / SLOT_ROW)),
+  };
+}
+function fromCell(cx: number, cy: number) {
+  return { x: SLOT_X0 + cx * SLOT_COL, y: SLOT_Y0 + cy * SLOT_ROW };
+}
+function buildOccupied(
+  folders: { id: string; pos_x: number; pos_y: number }[],
+  items: { id: string; pos_x: number; pos_y: number }[],
+  excludeId?: string,
+) {
+  const occ = new Map<string, string>();
+  const add = (id: string, x: number, y: number) => {
+    if (id === excludeId) return;
+    const { cx, cy } = toCell(x, y);
+    occ.set(`${cx},${cy}`, id);
+  };
+  for (const f of folders) add(f.id, f.pos_x, f.pos_y);
+  for (const it of items) add(it.id, it.pos_x, it.pos_y);
+  return occ;
+}
+function nextFreeSlot(
+  folders: { id: string; pos_x: number; pos_y: number }[],
+  items: { id: string; pos_x: number; pos_y: number }[],
+  excludeId?: string,
+) {
+  const occ = buildOccupied(folders, items, excludeId);
+  for (let i = 0; i < 4000; i++) {
+    const cx = i % SLOT_COLS, cy = Math.floor(i / SLOT_COLS);
+    if (!occ.has(`${cx},${cy}`)) return fromCell(cx, cy);
+  }
+  return fromCell(0, 0);
+}
+function nearestFreeSlot(
+  x: number, y: number,
+  folders: { id: string; pos_x: number; pos_y: number }[],
+  items: { id: string; pos_x: number; pos_y: number }[],
+  excludeId?: string,
+) {
+  const occ = buildOccupied(folders, items, excludeId);
+  const { cx, cy } = toCell(x, y);
+  if (!occ.has(`${cx},${cy}`)) return fromCell(cx, cy);
+  for (let r = 1; r < 40; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+        const ncx = cx + dx, ncy = cy + dy;
+        if (ncx < 0 || ncy < 0) continue;
+        if (!occ.has(`${ncx},${ncy}`)) return fromCell(ncx, ncy);
+      }
+    }
+  }
+  return fromCell(cx, cy);
+}
+
 function FilesPage() {
   const { activeWorkspaceId } = useWorkspace();
   const { user } = useAuth();
