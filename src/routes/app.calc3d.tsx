@@ -1,5 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
+
 import {
   Box,
   Save,
@@ -17,6 +18,8 @@ import {
   Percent,
   ChevronDown,
   X,
+  ArrowLeft,
+
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
@@ -244,6 +247,12 @@ function Calc3DPage() {
 
   return (
     <div className="w-full min-w-0 max-w-full xl:max-w-[1600px] xl:mx-auto p-3 sm:p-4 md:p-8 overflow-x-hidden">
+      <Link
+        to="/app/calculator"
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition mb-3"
+      >
+        <ArrowLeft className="h-3.5 w-3.5" /> Voltar para Calculadora Padrão
+      </Link>
       {/* Header */}
       <header className="mb-3 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
@@ -255,7 +264,7 @@ function Calc3DPage() {
               Calculadora 3D
             </h1>
             <p className="text-[11px] sm:text-sm text-muted-foreground truncate">
-              Precificação profissional 3D
+              Calculadora de Custos · Precificação 3D
             </p>
           </div>
         </div>
@@ -275,6 +284,7 @@ function Calc3DPage() {
           </button>
         </div>
       </header>
+
 
       {/* Mobile sticky price summary */}
       <div className="lg:hidden sticky top-14 z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 pb-2 pt-1 bg-background/85 backdrop-blur-md mb-3">

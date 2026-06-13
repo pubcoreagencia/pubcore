@@ -20,8 +20,8 @@ const TABS: Tab[] = [
   { to: "/app/stock", label: "Estoque", icon: Boxes },
   { to: "/app/calendar", label: "Agenda", icon: Calendar },
   { to: "/app/crm", label: "CRM", icon: Users2 },
-  { to: "/app/calculator", label: "Calc.", icon: Calculator },
-  { to: "/app/calc3d", label: "Calc. 3D", icon: Box },
+  { to: "/app/calculator", label: "Custos", icon: Calculator },
+
   { to: "/app/settings", label: "Config.", icon: Settings },
 ];
 
