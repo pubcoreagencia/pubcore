@@ -325,7 +325,7 @@ function FilesPage() {
   }, []);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-screen w-full min-w-0">
+    <div className="flex flex-col h-[calc(100dvh-7.5rem)] md:h-screen w-full min-w-0">
       {/* Header */}
       <div className="px-3 sm:px-6 pt-3 sm:pt-6 pb-2 border-b border-border/50">
         <div className="flex items-center gap-2 mb-3">
