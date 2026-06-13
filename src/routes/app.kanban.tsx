@@ -86,7 +86,7 @@ function isDoneColumnName(name: string) {
   return /conclu/i.test(name) || /done/i.test(name);
 }
 
-export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {}) {
+function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;
