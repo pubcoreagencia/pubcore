@@ -351,7 +351,7 @@ function DiscographyPage() {
             project={projects.find((p) => p.id === selectedTrack.project_id) ?? null}
             canManage={canManage}
             userId={user?.id ?? null}
-            userName={user?.user_metadata?.name ?? user?.email ?? null}
+            userName={user?.name ?? user?.email ?? null}
             onClose={() => setSelectedTrackId(null)}
             onEdit={() => setEditingTrack(selectedTrack)}
             onPlay={(v) => setPlayer({
