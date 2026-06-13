@@ -238,16 +238,21 @@ function FilesPage() {
     if (!fl || !activeWorkspaceId) return;
     setUploading(true);
     try {
+      const siblingFolders = folders.filter((f) => f.parent_id === currentFolderId);
+      const siblingItems = items.filter((it) => it.folder_id === currentFolderId);
+      const pending: { id: string; pos_x: number; pos_y: number }[] = [];
       for (const file of Array.from(fl)) {
         const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `${activeWorkspaceId}/${crypto.randomUUID()}_${safe}`;
         const up = await supabase.storage.from("files").upload(path, file, { upsert: false, contentType: file.type || undefined });
         if (up.error) { toast.error(up.error.message); continue; }
+        const slot = nextFreeSlot(siblingFolders, [...siblingItems, ...pending]);
+        pending.push({ id: path, pos_x: slot.x, pos_y: slot.y });
         const { error } = await supabase.from("files_items").insert({
           workspace_id: activeWorkspaceId, folder_id: currentFolderId,
           name: file.name, storage_path: path, mime_type: file.type || null,
           size_bytes: file.size, created_by: user?.id,
-          pos_x: Math.round(32 + Math.random() * 200), pos_y: Math.round(32 + Math.random() * 120),
+          pos_x: slot.x, pos_y: slot.y,
         } as any);
         if (error) toast.error(error.message);
       }
