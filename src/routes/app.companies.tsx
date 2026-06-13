@@ -76,7 +76,7 @@ function CompaniesPage() {
 
   // Dialog states
   const [editing, setEditing] = useState<Company | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<{ parentId: string | null } | null>(null);
   const [deleting, setDeleting] = useState<Company | null>(null);
 
   const load = useCallback(async (wsId: string) => {
