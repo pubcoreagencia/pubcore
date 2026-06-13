@@ -34,6 +34,8 @@ interface Company {
   notes: string | null;
   position: number;
   archived_at: string | null;
+  parent_company_id: string | null;
+  description: string | null;
 }
 
 type ImpactReport = Record<string, number>;
@@ -74,7 +76,7 @@ function CompaniesPage() {
 
   // Dialog states
   const [editing, setEditing] = useState<Company | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<{ parentId: string | null } | null>(null);
   const [deleting, setDeleting] = useState<Company | null>(null);
 
   const load = useCallback(async (wsId: string) => {
@@ -139,11 +141,35 @@ function CompaniesPage() {
       responsible: c.responsible,
       status: "active",
       notes: c.notes,
+      description: c.description,
+      parent_company_id: c.parent_company_id,
       position: companies.length,
     } as never);
     if (error) { toast.error("Erro ao duplicar"); return; }
     toast.success("Empresa duplicada");
   };
+
+  // Build parent/children groupings (only 1 level)
+  const { parents, childrenByParent } = useMemo(() => {
+    const ps: Company[] = [];
+    const map = new Map<string, Company[]>();
+    for (const c of filtered) {
+      if (c.parent_company_id) {
+        const arr = map.get(c.parent_company_id) ?? [];
+        arr.push(c);
+        map.set(c.parent_company_id, arr);
+      } else {
+        ps.push(c);
+      }
+    }
+    // If a child's parent is filtered out (e.g. archived view), promote it so it still shows
+    const parentIds = new Set(ps.map((p) => p.id));
+    for (const [pid, kids] of map.entries()) {
+      if (!parentIds.has(pid)) ps.push(...kids);
+    }
+    return { parents: ps, childrenByParent: map };
+  }, [filtered]);
+
 
   return (
     <div className="p-3 sm:p-6 lg:p-10 max-w-7xl mx-auto">
@@ -158,7 +184,7 @@ function CompaniesPage() {
           </p>
         </div>
         {canManage && (
-          <Button onClick={() => setCreating(true)} className="gap-2 self-start sm:self-auto">
+          <Button onClick={() => setCreating({ parentId: null })} className="gap-2 self-start sm:self-auto">
             <Plus className="h-4 w-4" /> Nova empresa
           </Button>
         )}
@@ -195,24 +221,48 @@ function CompaniesPage() {
             {showArchived ? "Nenhuma empresa arquivada." : "Nenhuma empresa cadastrada ainda."}
           </div>
           {canManage && !showArchived && (
-            <Button variant="outline" onClick={() => setCreating(true)} className="mt-4 gap-2">
+            <Button variant="outline" onClick={() => setCreating({ parentId: null })} className="mt-4 gap-2">
               <Plus className="h-4 w-4" /> Cadastrar primeira empresa
             </Button>
           )}
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((c) => (
-            <CompanyCard
-              key={c.id}
-              company={c}
-              canManage={canManage}
-              onEdit={() => setEditing(c)}
-              onDuplicate={() => handleDuplicate(c)}
-              onArchive={() => handleArchive(c)}
-              onDelete={() => setDeleting(c)}
-            />
-          ))}
+        <div className="space-y-4">
+          {parents.map((p) => {
+            const kids = childrenByParent.get(p.id) ?? [];
+            const isSub = !!p.parent_company_id;
+            return (
+              <div key={p.id} className="space-y-2">
+                <CompanyCard
+                  company={p}
+                  canManage={canManage}
+                  isSub={isSub}
+                  childCount={kids.length}
+                  onEdit={() => setEditing(p)}
+                  onDuplicate={() => handleDuplicate(p)}
+                  onArchive={() => handleArchive(p)}
+                  onDelete={() => setDeleting(p)}
+                  onAddSub={!isSub && canManage ? () => setCreating({ parentId: p.id }) : undefined}
+                />
+                {kids.length > 0 && (
+                  <div className="ml-6 pl-4 border-l-2 border-border/60 space-y-2">
+                    {kids.map((k) => (
+                      <CompanyCard
+                        key={k.id}
+                        company={k}
+                        canManage={canManage}
+                        isSub
+                        onEdit={() => setEditing(k)}
+                        onDuplicate={() => handleDuplicate(k)}
+                        onArchive={() => handleArchive(k)}
+                        onDelete={() => setDeleting(k)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -222,7 +272,9 @@ function CompaniesPage() {
           existing={editing}
           existingNames={companies.map((c) => c.name)}
           position={companies.length}
-          onClose={() => { setCreating(false); setEditing(null); }}
+          defaultParentId={creating?.parentId ?? null}
+          parentOptions={companies.filter((c) => !c.parent_company_id && c.status !== "archived" && c.id !== editing?.id)}
+          onClose={() => { setCreating(null); setEditing(null); }}
         />
       )}
 
@@ -239,29 +291,36 @@ function CompaniesPage() {
 }
 
 function CompanyCard({
-  company, canManage, onEdit, onDuplicate, onArchive, onDelete,
+  company, canManage, isSub = false, childCount = 0, onEdit, onDuplicate, onArchive, onDelete, onAddSub,
 }: {
   company: Company;
   canManage: boolean;
+  isSub?: boolean;
+  childCount?: number;
   onEdit: () => void;
   onDuplicate: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onAddSub?: () => void;
 }) {
   const color = company.color ?? DEFAULT_COMPANY_COLOR;
   const archived = company.status === "archived";
   return (
-    <div className={`group relative rounded-xl border border-border bg-card shadow-card p-4 transition hover:border-primary/40 ${archived ? "opacity-60" : ""}`}>
+    <div className={`group relative rounded-xl border border-border bg-card shadow-card p-4 transition hover:border-primary/40 ${archived ? "opacity-60" : ""} ${isSub ? "py-3" : ""}`}>
       <div className="absolute top-0 left-0 right-0 h-1 rounded-t-xl" style={{ backgroundColor: color }} />
       <div className="flex items-start justify-between gap-2 mt-1">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="h-9 w-9 shrink-0 rounded-lg flex items-center justify-center" style={{ backgroundColor: `color-mix(in oklch, ${color} 25%, transparent)` }}>
-            <Building2 className="h-4 w-4" style={{ color }} />
+          <div className={`${isSub ? "h-7 w-7" : "h-9 w-9"} shrink-0 rounded-lg flex items-center justify-center`} style={{ backgroundColor: `color-mix(in oklch, ${color} 25%, transparent)` }}>
+            <Building2 className={isSub ? "h-3.5 w-3.5" : "h-4 w-4"} style={{ color }} />
           </div>
           <div className="min-w-0">
-            <div className="font-semibold truncate text-sm">{company.name}</div>
+            <div className="font-semibold truncate text-sm flex items-center gap-2">
+              {company.name}
+              {isSub && <span className="text-[9px] uppercase tracking-wider text-muted-foreground rounded bg-surface px-1.5 py-0.5">Subempresa</span>}
+              {!isSub && childCount > 0 && <span className="text-[10px] text-muted-foreground">({childCount} sub)</span>}
+            </div>
             <div className="text-[11px] text-muted-foreground truncate">
-              {company.segment || "Sem segmento"}
+              {company.segment || company.description || "Sem segmento"}
             </div>
           </div>
         </div>
@@ -274,6 +333,9 @@ function CompanyCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-2" /> Editar</DropdownMenuItem>
+              {onAddSub && (
+                <DropdownMenuItem onClick={onAddSub}><Plus className="h-3.5 w-3.5 mr-2" /> Adicionar subempresa</DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onDuplicate}><Copy className="h-3.5 w-3.5 mr-2" /> Duplicar</DropdownMenuItem>
               <DropdownMenuItem onClick={onArchive}>
                 {archived ? <><ArchiveRestore className="h-3.5 w-3.5 mr-2" /> Restaurar</> : <><Archive className="h-3.5 w-3.5 mr-2" /> Arquivar</>}
@@ -288,19 +350,30 @@ function CompanyCard({
       </div>
       <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
         {company.responsible && <div><span className="text-foreground/80">Responsável:</span> {company.responsible}</div>}
+        {company.description && <div className="line-clamp-2">{company.description}</div>}
         {company.notes && <div className="line-clamp-2 italic">{company.notes}</div>}
       </div>
+      {onAddSub && !archived && (
+        <button
+          onClick={onAddSub}
+          className="mt-3 w-full text-[11px] inline-flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border/70 py-1.5 text-muted-foreground hover:text-foreground hover:border-primary/40 transition"
+        >
+          <Plus className="h-3 w-3" /> Adicionar subempresa
+        </button>
+      )}
     </div>
   );
 }
 
 function CompanyDialog({
-  workspaceId, existing, existingNames, position, onClose,
+  workspaceId, existing, existingNames, position, defaultParentId = null, parentOptions = [], onClose,
 }: {
   workspaceId: string;
   existing: Company | null;
   existingNames: string[];
   position: number;
+  defaultParentId?: string | null;
+  parentOptions?: Company[];
   onClose: () => void;
 }) {
   const [name, setName] = useState(existing?.name ?? "");
@@ -309,6 +382,8 @@ function CompanyDialog({
   const [color, setColor] = useState(existing?.color ?? PRESET_COLORS[0]);
   const [status, setStatus] = useState<string>(existing?.status ?? "active");
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  const [description, setDescription] = useState(existing?.description ?? "");
+  const [parentId, setParentId] = useState<string | null>(existing?.parent_company_id ?? defaultParentId);
   const [saving, setSaving] = useState(false);
 
   const onSave = async () => {
@@ -320,7 +395,6 @@ function CompanyDialog({
     try {
       if (existing) {
         if (trimmed !== existing.name) {
-          // Rename + cascade
           const { error } = await supabase.from("checklist_companies")
             .update({ name: trimmed } as never).eq("id", existing.id);
           if (error) throw error;
@@ -330,7 +404,8 @@ function CompanyDialog({
           if (rpcErr) throw rpcErr;
         }
         const { error } = await supabase.from("checklist_companies")
-          .update({ segment, responsible, color, status, notes,
+          .update({ segment, responsible, color, status, notes, description,
+            parent_company_id: parentId,
             archived_at: status === "archived" ? (existing.archived_at ?? new Date().toISOString()) : null,
           } as never)
           .eq("id", existing.id);
@@ -339,16 +414,18 @@ function CompanyDialog({
       } else {
         const { error } = await supabase.from("checklist_companies").insert({
           workspace_id: workspaceId,
-          name: trimmed, segment, responsible, color, status, notes,
+          name: trimmed, segment, responsible, color, status, notes, description,
+          parent_company_id: parentId,
           position,
         } as never);
         if (error) throw error;
-        toast.success("Empresa criada");
+        toast.success(parentId ? "Subempresa criada" : "Empresa criada");
       }
       onClose();
-    } catch (e) {
+    } catch (e: unknown) {
       console.error(e);
-      toast.error("Erro ao salvar empresa");
+      const msg = (e as { message?: string })?.message ?? "Erro ao salvar empresa";
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -363,10 +440,32 @@ function CompanyDialog({
             Empresas alimentam todos os módulos da plataforma. Alterações no nome se propagam automaticamente.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 py-2">
+        <div className="space-y-3 py-2 max-h-[70vh] overflow-y-auto pr-1">
+          <div>
+            <Label className="text-xs">Empresa-mãe (opcional)</Label>
+            <Select
+              value={parentId ?? "__none__"}
+              onValueChange={(v) => setParentId(v === "__none__" ? null : v)}
+            >
+              <SelectTrigger><SelectValue placeholder="Empresa principal" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nenhuma (empresa principal)</SelectItem>
+                {parentOptions.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Se selecionado, esta empresa será uma subempresa vinculada.
+            </p>
+          </div>
           <div>
             <Label className="text-xs">Nome</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Acme Marketing" />
+          </div>
+          <div>
+            <Label className="text-xs">Descrição</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Breve descrição da empresa" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
