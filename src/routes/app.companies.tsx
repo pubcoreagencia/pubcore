@@ -440,10 +440,32 @@ function CompanyDialog({
             Empresas alimentam todos os módulos da plataforma. Alterações no nome se propagam automaticamente.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-3 py-2">
+        <div className="space-y-3 py-2 max-h-[70vh] overflow-y-auto pr-1">
+          <div>
+            <Label className="text-xs">Empresa-mãe (opcional)</Label>
+            <Select
+              value={parentId ?? "__none__"}
+              onValueChange={(v) => setParentId(v === "__none__" ? null : v)}
+            >
+              <SelectTrigger><SelectValue placeholder="Empresa principal" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Nenhuma (empresa principal)</SelectItem>
+                {parentOptions.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground mt-1">
+              Se selecionado, esta empresa será uma subempresa vinculada.
+            </p>
+          </div>
           <div>
             <Label className="text-xs">Nome</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Acme Marketing" />
+          </div>
+          <div>
+            <Label className="text-xs">Descrição</Label>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Breve descrição da empresa" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
