@@ -291,29 +291,36 @@ function CompaniesPage() {
 }
 
 function CompanyCard({
-  company, canManage, onEdit, onDuplicate, onArchive, onDelete,
+  company, canManage, isSub = false, childCount = 0, onEdit, onDuplicate, onArchive, onDelete, onAddSub,
 }: {
   company: Company;
   canManage: boolean;
+  isSub?: boolean;
+  childCount?: number;
   onEdit: () => void;
   onDuplicate: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onAddSub?: () => void;
 }) {
   const color = company.color ?? DEFAULT_COMPANY_COLOR;
   const archived = company.status === "archived";
   return (
-    <div className={`group relative rounded-xl border border-border bg-card shadow-card p-4 transition hover:border-primary/40 ${archived ? "opacity-60" : ""}`}>
+    <div className={`group relative rounded-xl border border-border bg-card shadow-card p-4 transition hover:border-primary/40 ${archived ? "opacity-60" : ""} ${isSub ? "py-3" : ""}`}>
       <div className="absolute top-0 left-0 right-0 h-1 rounded-t-xl" style={{ backgroundColor: color }} />
       <div className="flex items-start justify-between gap-2 mt-1">
         <div className="flex items-center gap-2.5 min-w-0">
-          <div className="h-9 w-9 shrink-0 rounded-lg flex items-center justify-center" style={{ backgroundColor: `color-mix(in oklch, ${color} 25%, transparent)` }}>
-            <Building2 className="h-4 w-4" style={{ color }} />
+          <div className={`${isSub ? "h-7 w-7" : "h-9 w-9"} shrink-0 rounded-lg flex items-center justify-center`} style={{ backgroundColor: `color-mix(in oklch, ${color} 25%, transparent)` }}>
+            <Building2 className={isSub ? "h-3.5 w-3.5" : "h-4 w-4"} style={{ color }} />
           </div>
           <div className="min-w-0">
-            <div className="font-semibold truncate text-sm">{company.name}</div>
+            <div className="font-semibold truncate text-sm flex items-center gap-2">
+              {company.name}
+              {isSub && <span className="text-[9px] uppercase tracking-wider text-muted-foreground rounded bg-surface px-1.5 py-0.5">Subempresa</span>}
+              {!isSub && childCount > 0 && <span className="text-[10px] text-muted-foreground">({childCount} sub)</span>}
+            </div>
             <div className="text-[11px] text-muted-foreground truncate">
-              {company.segment || "Sem segmento"}
+              {company.segment || company.description || "Sem segmento"}
             </div>
           </div>
         </div>
@@ -326,6 +333,9 @@ function CompanyCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem onClick={onEdit}><Pencil className="h-3.5 w-3.5 mr-2" /> Editar</DropdownMenuItem>
+              {onAddSub && (
+                <DropdownMenuItem onClick={onAddSub}><Plus className="h-3.5 w-3.5 mr-2" /> Adicionar subempresa</DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={onDuplicate}><Copy className="h-3.5 w-3.5 mr-2" /> Duplicar</DropdownMenuItem>
               <DropdownMenuItem onClick={onArchive}>
                 {archived ? <><ArchiveRestore className="h-3.5 w-3.5 mr-2" /> Restaurar</> : <><Archive className="h-3.5 w-3.5 mr-2" /> Arquivar</>}
@@ -340,8 +350,17 @@ function CompanyCard({
       </div>
       <div className="mt-3 space-y-1.5 text-xs text-muted-foreground">
         {company.responsible && <div><span className="text-foreground/80">Responsável:</span> {company.responsible}</div>}
+        {company.description && <div className="line-clamp-2">{company.description}</div>}
         {company.notes && <div className="line-clamp-2 italic">{company.notes}</div>}
       </div>
+      {onAddSub && !archived && (
+        <button
+          onClick={onAddSub}
+          className="mt-3 w-full text-[11px] inline-flex items-center justify-center gap-1.5 rounded-md border border-dashed border-border/70 py-1.5 text-muted-foreground hover:text-foreground hover:border-primary/40 transition"
+        >
+          <Plus className="h-3 w-3" /> Adicionar subempresa
+        </button>
+      )}
     </div>
   );
 }
