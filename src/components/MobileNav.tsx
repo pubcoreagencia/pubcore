@@ -1,8 +1,9 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
   LayoutDashboard, KanbanSquare, ListChecks, Calendar, StickyNote, Wallet, Boxes,
-  Users2, Calculator, Settings, LogOut, Box, NotebookPen,
+  Users2, Calculator, Settings, LogOut, NotebookPen,
 } from "lucide-react";
+
 import { useEffect, useRef } from "react";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
