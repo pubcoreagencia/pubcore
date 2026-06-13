@@ -947,6 +947,3 @@ function TrackDialog({
     </Dialog>
   );
 }
-
-// Unused but referenced for completeness
-void ChevronLeft;
