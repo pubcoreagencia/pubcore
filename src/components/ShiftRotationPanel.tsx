@@ -9,7 +9,9 @@ import { toast } from "sonner";
 
 const CYCLE_KEY = "pubcore_ponto_cycle_start_v1";
 const CHECK_MS = 5_000;
-const DEFAULT_LIMIT_MIN = 35;
+// Sem fallback fixo: o limite vem 100% das configurações da empresa.
+// Se a empresa ainda não foi carregada ou não tem limite definido,
+// o painel de rotação permanece inativo.
 
 type CycleState = { sessionId: string; startedAt: number } | null;
 
