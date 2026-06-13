@@ -21,6 +21,7 @@ import { Route as AppNotesRouteImport } from './routes/app.notes'
 import { Route as AppKanbanRouteImport } from './routes/app.kanban'
 import { Route as AppGratitudeRouteImport } from './routes/app.gratitude'
 import { Route as AppFinanceRouteImport } from './routes/app.finance'
+import { Route as AppFilesRouteImport } from './routes/app.files'
 import { Route as AppCrmRouteImport } from './routes/app.crm'
 import { Route as AppCompaniesRouteImport } from './routes/app.companies'
 import { Route as AppCityRouteImport } from './routes/app.city'
@@ -90,6 +91,11 @@ const AppFinanceRoute = AppFinanceRouteImport.update({
   path: '/finance',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFilesRoute = AppFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCrmRoute = AppCrmRouteImport.update({
   id: '/crm',
   path: '/crm',
@@ -144,6 +150,7 @@ export interface FileRoutesByFullPath {
   '/app/city': typeof AppCityRoute
   '/app/companies': typeof AppCompaniesRoute
   '/app/crm': typeof AppCrmRoute
+  '/app/files': typeof AppFilesRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
@@ -165,6 +172,7 @@ export interface FileRoutesByTo {
   '/app/city': typeof AppCityRoute
   '/app/companies': typeof AppCompaniesRoute
   '/app/crm': typeof AppCrmRoute
+  '/app/files': typeof AppFilesRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
@@ -188,6 +196,7 @@ export interface FileRoutesById {
   '/app/city': typeof AppCityRoute
   '/app/companies': typeof AppCompaniesRoute
   '/app/crm': typeof AppCrmRoute
+  '/app/files': typeof AppFilesRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
@@ -212,6 +221,7 @@ export interface FileRouteTypes {
     | '/app/city'
     | '/app/companies'
     | '/app/crm'
+    | '/app/files'
     | '/app/finance'
     | '/app/gratitude'
     | '/app/kanban'
@@ -233,6 +243,7 @@ export interface FileRouteTypes {
     | '/app/city'
     | '/app/companies'
     | '/app/crm'
+    | '/app/files'
     | '/app/finance'
     | '/app/gratitude'
     | '/app/kanban'
@@ -255,6 +266,7 @@ export interface FileRouteTypes {
     | '/app/city'
     | '/app/companies'
     | '/app/crm'
+    | '/app/files'
     | '/app/finance'
     | '/app/gratitude'
     | '/app/kanban'
@@ -358,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFinanceRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/files': {
+      id: '/app/files'
+      path: '/files'
+      fullPath: '/app/files'
+      preLoaderRoute: typeof AppFilesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/crm': {
       id: '/app/crm'
       path: '/crm'
@@ -426,6 +445,7 @@ interface AppRouteChildren {
   AppCityRoute: typeof AppCityRoute
   AppCompaniesRoute: typeof AppCompaniesRoute
   AppCrmRoute: typeof AppCrmRoute
+  AppFilesRoute: typeof AppFilesRoute
   AppFinanceRoute: typeof AppFinanceRoute
   AppGratitudeRoute: typeof AppGratitudeRoute
   AppKanbanRoute: typeof AppKanbanRoute
@@ -445,6 +465,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCityRoute: AppCityRoute,
   AppCompaniesRoute: AppCompaniesRoute,
   AppCrmRoute: AppCrmRoute,
+  AppFilesRoute: AppFilesRoute,
   AppFinanceRoute: AppFinanceRoute,
   AppGratitudeRoute: AppGratitudeRoute,
   AppKanbanRoute: AppKanbanRoute,
