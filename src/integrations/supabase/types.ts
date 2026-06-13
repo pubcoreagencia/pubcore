@@ -1101,6 +1101,7 @@ export type Database = {
           onboarding_completed_at: string | null
           role: string | null
           status: string
+          theme_preference: string
           updated_at: string
         }
         Insert: {
@@ -1112,6 +1113,7 @@ export type Database = {
           onboarding_completed_at?: string | null
           role?: string | null
           status?: string
+          theme_preference?: string
           updated_at?: string
         }
         Update: {
@@ -1123,6 +1125,7 @@ export type Database = {
           onboarding_completed_at?: string | null
           role?: string | null
           status?: string
+          theme_preference?: string
           updated_at?: string
         }
         Relationships: []
