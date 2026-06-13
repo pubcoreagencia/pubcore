@@ -1,7 +1,8 @@
 import {
   LayoutDashboard, ListChecks, Calendar, Users2, Settings,
-  StickyNote, Wallet, Boxes, Calculator, MapPin, KanbanSquare, Building2,
+  StickyNote, Wallet, Boxes, Calculator, MapPin, KanbanSquare, Building2, FolderOpen,
 } from "lucide-react";
+
 
 export type NavItem = { to: string; label: string; icon: typeof LayoutDashboard; exact?: boolean };
 export type NavGroup = { label: string; items: NavItem[] };
