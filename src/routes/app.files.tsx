@@ -715,17 +715,25 @@ function ListRow({ kind, name, icon, size, type, company, date, favorite, onOpen
   return (
     <div
       onDoubleClick={onOpen}
+      onClick={onOpen}
       onContextMenu={onContext}
-      className="grid grid-cols-[1fr_90px_110px_140px_40px] gap-2 px-3 py-2 border-b border-border/30 last:border-0 hover:bg-surface/40 cursor-pointer text-sm items-center"
+      className="grid grid-cols-[1fr_40px] sm:grid-cols-[1fr_90px_110px_140px_40px] gap-2 px-3 py-2 border-b border-border/30 last:border-0 hover:bg-surface/40 cursor-pointer text-sm items-center"
     >
       <div className="flex items-center gap-2 min-w-0">
-        {icon}
-        <span className="truncate text-foreground">{name}</span>
-        {favorite && <Star className="h-3 w-3 text-amber-400 flex-shrink-0" fill="currentColor" />}
+        <span className="shrink-0">{icon}</span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="truncate text-foreground">{name}</span>
+            {favorite && <Star className="h-3 w-3 text-amber-400 flex-shrink-0" fill="currentColor" />}
+          </div>
+          <div className="sm:hidden text-[10px] text-muted-foreground truncate">
+            {type} · {size} · {company || new Date(date).toLocaleDateString("pt-BR")}
+          </div>
+        </div>
       </div>
-      <div className="text-xs text-muted-foreground">{size}</div>
-      <div className="text-xs text-muted-foreground truncate">{type}</div>
-      <div className="text-xs text-muted-foreground truncate">
+      <div className="hidden sm:block text-xs text-muted-foreground">{size}</div>
+      <div className="hidden sm:block text-xs text-muted-foreground truncate">{type}</div>
+      <div className="hidden sm:block text-xs text-muted-foreground truncate">
         <div className="truncate">{company || "—"}</div>
         <div className="text-[10px]">{new Date(date).toLocaleDateString("pt-BR")}</div>
       </div>
@@ -733,6 +741,7 @@ function ListRow({ kind, name, icon, size, type, company, date, favorite, onOpen
         <MoreVertical className="h-3.5 w-3.5" />
       </button>
     </div>
+
   );
 }
 
