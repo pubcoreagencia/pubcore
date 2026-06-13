@@ -22,6 +22,7 @@ import { Route as AppKanbanRouteImport } from './routes/app.kanban'
 import { Route as AppGratitudeRouteImport } from './routes/app.gratitude'
 import { Route as AppFinanceRouteImport } from './routes/app.finance'
 import { Route as AppFilesRouteImport } from './routes/app.files'
+import { Route as AppDiscographyRouteImport } from './routes/app.discography'
 import { Route as AppCrmRouteImport } from './routes/app.crm'
 import { Route as AppCompaniesRouteImport } from './routes/app.companies'
 import { Route as AppCityRouteImport } from './routes/app.city'
@@ -96,6 +97,11 @@ const AppFilesRoute = AppFilesRouteImport.update({
   path: '/files',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDiscographyRoute = AppDiscographyRouteImport.update({
+  id: '/discography',
+  path: '/discography',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCrmRoute = AppCrmRouteImport.update({
   id: '/crm',
   path: '/crm',
@@ -150,6 +156,7 @@ export interface FileRoutesByFullPath {
   '/app/city': typeof AppCityRoute
   '/app/companies': typeof AppCompaniesRoute
   '/app/crm': typeof AppCrmRoute
+  '/app/discography': typeof AppDiscographyRoute
   '/app/files': typeof AppFilesRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByTo {
   '/app/city': typeof AppCityRoute
   '/app/companies': typeof AppCompaniesRoute
   '/app/crm': typeof AppCrmRoute
+  '/app/discography': typeof AppDiscographyRoute
   '/app/files': typeof AppFilesRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
@@ -196,6 +204,7 @@ export interface FileRoutesById {
   '/app/city': typeof AppCityRoute
   '/app/companies': typeof AppCompaniesRoute
   '/app/crm': typeof AppCrmRoute
+  '/app/discography': typeof AppDiscographyRoute
   '/app/files': typeof AppFilesRoute
   '/app/finance': typeof AppFinanceRoute
   '/app/gratitude': typeof AppGratitudeRoute
@@ -221,6 +230,7 @@ export interface FileRouteTypes {
     | '/app/city'
     | '/app/companies'
     | '/app/crm'
+    | '/app/discography'
     | '/app/files'
     | '/app/finance'
     | '/app/gratitude'
@@ -243,6 +253,7 @@ export interface FileRouteTypes {
     | '/app/city'
     | '/app/companies'
     | '/app/crm'
+    | '/app/discography'
     | '/app/files'
     | '/app/finance'
     | '/app/gratitude'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/app/city'
     | '/app/companies'
     | '/app/crm'
+    | '/app/discography'
     | '/app/files'
     | '/app/finance'
     | '/app/gratitude'
@@ -377,6 +389,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFilesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/discography': {
+      id: '/app/discography'
+      path: '/discography'
+      fullPath: '/app/discography'
+      preLoaderRoute: typeof AppDiscographyRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/crm': {
       id: '/app/crm'
       path: '/crm'
@@ -445,6 +464,7 @@ interface AppRouteChildren {
   AppCityRoute: typeof AppCityRoute
   AppCompaniesRoute: typeof AppCompaniesRoute
   AppCrmRoute: typeof AppCrmRoute
+  AppDiscographyRoute: typeof AppDiscographyRoute
   AppFilesRoute: typeof AppFilesRoute
   AppFinanceRoute: typeof AppFinanceRoute
   AppGratitudeRoute: typeof AppGratitudeRoute
@@ -465,6 +485,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppCityRoute: AppCityRoute,
   AppCompaniesRoute: AppCompaniesRoute,
   AppCrmRoute: AppCrmRoute,
+  AppDiscographyRoute: AppDiscographyRoute,
   AppFilesRoute: AppFilesRoute,
   AppFinanceRoute: AppFinanceRoute,
   AppGratitudeRoute: AppGratitudeRoute,
