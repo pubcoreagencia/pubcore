@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, ListChecks, Calendar, Users2, Settings,
-  StickyNote, Wallet, Boxes, Calculator, MapPin, KanbanSquare, Building2, FolderOpen, Disc3,
+  StickyNote, Wallet, Boxes, Calculator, MapPin, KanbanSquare, Building2, FolderOpen,
 } from "lucide-react";
 
 
