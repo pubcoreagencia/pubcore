@@ -61,9 +61,11 @@ export type Database = {
           archived_at: string | null
           color: string | null
           created_at: string
+          description: string | null
           id: string
           name: string
           notes: string | null
+          parent_company_id: string | null
           ponto_daily_limit_minutes: number
           ponto_limit_enabled: boolean
           position: number
@@ -77,9 +79,11 @@ export type Database = {
           archived_at?: string | null
           color?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name: string
           notes?: string | null
+          parent_company_id?: string | null
           ponto_daily_limit_minutes?: number
           ponto_limit_enabled?: boolean
           position?: number
@@ -93,9 +97,11 @@ export type Database = {
           archived_at?: string | null
           color?: string | null
           created_at?: string
+          description?: string | null
           id?: string
           name?: string
           notes?: string | null
+          parent_company_id?: string | null
           ponto_daily_limit_minutes?: number
           ponto_limit_enabled?: boolean
           position?: number
@@ -106,6 +112,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "checklist_companies_parent_company_id_fkey"
+            columns: ["parent_company_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "checklist_companies_workspace_id_fkey"
             columns: ["workspace_id"]
