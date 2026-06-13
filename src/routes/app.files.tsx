@@ -456,9 +456,10 @@ function FilesPage() {
         ) : (
           <div className="p-2 sm:p-4">
             <div className="rounded-xl border border-border bg-card/40 overflow-hidden">
-              <div className="grid grid-cols-[1fr_90px_110px_140px_40px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/40">
+              <div className="hidden sm:grid grid-cols-[1fr_90px_110px_140px_40px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border/40">
                 <div>Nome</div><div>Tamanho</div><div>Tipo</div><div>Empresa / Data</div><div></div>
               </div>
+
               {visibleFolders.map((f) => (
                 <ListRow key={f.id} kind="folder"
                   name={f.name} icon={<Folder className="h-4 w-4" style={{ color: f.color || "var(--color-primary)" }} />}
