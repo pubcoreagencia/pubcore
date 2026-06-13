@@ -55,6 +55,66 @@ function humanSize(n: number) {
   return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
+// Free-mode slot grid (prevents overlap and keeps items aligned).
+const SLOT_COL = 140, SLOT_ROW = 140, SLOT_X0 = 16, SLOT_Y0 = 16, SLOT_COLS = 7;
+function toCell(x: number, y: number) {
+  return {
+    cx: Math.max(0, Math.round((x - SLOT_X0) / SLOT_COL)),
+    cy: Math.max(0, Math.round((y - SLOT_Y0) / SLOT_ROW)),
+  };
+}
+function fromCell(cx: number, cy: number) {
+  return { x: SLOT_X0 + cx * SLOT_COL, y: SLOT_Y0 + cy * SLOT_ROW };
+}
+function buildOccupied(
+  folders: { id: string; pos_x: number; pos_y: number }[],
+  items: { id: string; pos_x: number; pos_y: number }[],
+  excludeId?: string,
+) {
+  const occ = new Map<string, string>();
+  const add = (id: string, x: number, y: number) => {
+    if (id === excludeId) return;
+    const { cx, cy } = toCell(x, y);
+    occ.set(`${cx},${cy}`, id);
+  };
+  for (const f of folders) add(f.id, f.pos_x, f.pos_y);
+  for (const it of items) add(it.id, it.pos_x, it.pos_y);
+  return occ;
+}
+function nextFreeSlot(
+  folders: { id: string; pos_x: number; pos_y: number }[],
+  items: { id: string; pos_x: number; pos_y: number }[],
+  excludeId?: string,
+) {
+  const occ = buildOccupied(folders, items, excludeId);
+  for (let i = 0; i < 4000; i++) {
+    const cx = i % SLOT_COLS, cy = Math.floor(i / SLOT_COLS);
+    if (!occ.has(`${cx},${cy}`)) return fromCell(cx, cy);
+  }
+  return fromCell(0, 0);
+}
+function nearestFreeSlot(
+  x: number, y: number,
+  folders: { id: string; pos_x: number; pos_y: number }[],
+  items: { id: string; pos_x: number; pos_y: number }[],
+  excludeId?: string,
+) {
+  const occ = buildOccupied(folders, items, excludeId);
+  const { cx, cy } = toCell(x, y);
+  if (!occ.has(`${cx},${cy}`)) return fromCell(cx, cy);
+  for (let r = 1; r < 40; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+        const ncx = cx + dx, ncy = cy + dy;
+        if (ncx < 0 || ncy < 0) continue;
+        if (!occ.has(`${ncx},${ncy}`)) return fromCell(ncx, ncy);
+      }
+    }
+  }
+  return fromCell(cx, cy);
+}
+
 function FilesPage() {
   const { activeWorkspaceId } = useWorkspace();
   const { user } = useAuth();
@@ -160,11 +220,14 @@ function FilesPage() {
   // Actions
   const createFolder = async () => {
     if (!activeWorkspaceId || !newFolderName.trim()) return;
+    const siblingFolders = folders.filter((f) => f.parent_id === currentFolderId);
+    const siblingItems = items.filter((it) => it.folder_id === currentFolderId);
+    const slot = nextFreeSlot(siblingFolders, siblingItems);
     const { error } = await supabase.from("files_folders").insert({
       workspace_id: activeWorkspaceId, name: newFolderName.trim(),
       parent_id: currentFolderId, color: newFolderColor,
       company: newFolderCompany || null, created_by: user?.id,
-      pos_x: Math.round(32 + Math.random() * 200), pos_y: Math.round(32 + Math.random() * 120),
+      pos_x: slot.x, pos_y: slot.y,
     } as any);
     if (error) { toast.error(error.message); return; }
     toast.success("Pasta criada");
@@ -175,16 +238,21 @@ function FilesPage() {
     if (!fl || !activeWorkspaceId) return;
     setUploading(true);
     try {
+      const siblingFolders = folders.filter((f) => f.parent_id === currentFolderId);
+      const siblingItems = items.filter((it) => it.folder_id === currentFolderId);
+      const pending: { id: string; pos_x: number; pos_y: number }[] = [];
       for (const file of Array.from(fl)) {
         const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `${activeWorkspaceId}/${crypto.randomUUID()}_${safe}`;
         const up = await supabase.storage.from("files").upload(path, file, { upsert: false, contentType: file.type || undefined });
         if (up.error) { toast.error(up.error.message); continue; }
+        const slot = nextFreeSlot(siblingFolders, [...siblingItems, ...pending]);
+        pending.push({ id: path, pos_x: slot.x, pos_y: slot.y });
         const { error } = await supabase.from("files_items").insert({
           workspace_id: activeWorkspaceId, folder_id: currentFolderId,
           name: file.name, storage_path: path, mime_type: file.type || null,
           size_bytes: file.size, created_by: user?.id,
-          pos_x: Math.round(32 + Math.random() * 200), pos_y: Math.round(32 + Math.random() * 120),
+          pos_x: slot.x, pos_y: slot.y,
         } as any);
         if (error) toast.error(error.message);
       }
@@ -307,11 +375,19 @@ function FilesPage() {
       }
       return;
     }
-    // Persist position
+    // Snap to nearest free slot (no overlap allowed)
     const cur = d.kind === "folder" ? folders.find((f) => f.id === d.id) : items.find((i) => i.id === d.id);
     if (!cur) return;
+    const siblingFolders = folders.filter((f) => f.parent_id === currentFolderId && f.id !== d.id);
+    const siblingItems = items.filter((it) => it.folder_id === currentFolderId && it.id !== d.id);
+    const snap = nearestFreeSlot(cur.pos_x, cur.pos_y, siblingFolders, siblingItems);
+    if (d.kind === "folder") {
+      setFolders((arr) => arr.map((f) => (f.id === d.id ? { ...f, pos_x: snap.x, pos_y: snap.y } : f)));
+    } else {
+      setItems((arr) => arr.map((it) => (it.id === d.id ? { ...it, pos_x: snap.x, pos_y: snap.y } : it)));
+    }
     const tbl = d.kind === "folder" ? "files_folders" : "files_items";
-    await supabase.from(tbl).update({ pos_x: cur.pos_x, pos_y: cur.pos_y } as any).eq("id", d.id);
+    await supabase.from(tbl).update({ pos_x: snap.x, pos_y: snap.y } as any).eq("id", d.id);
   };
 
   const openContext = (e: React.MouseEvent, kind: "folder" | "item", id: string) => {
