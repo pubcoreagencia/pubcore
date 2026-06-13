@@ -187,7 +187,7 @@ function DiscographyPage() {
   } | null>(null);
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-background">
+    <div className="flex h-[calc(100dvh-120px)] md:h-[100dvh] flex-col bg-background">
       {/* Header / tabs */}
       <header className="shrink-0 border-b border-border px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
@@ -518,7 +518,7 @@ function TrackDetail({
   };
 
   return (
-    <aside className="hidden lg:flex w-[420px] xl:w-[480px] shrink-0 flex-col border-l border-border bg-surface/30 overflow-hidden">
+    <aside className="fixed inset-0 z-40 flex flex-col bg-background lg:static lg:z-auto lg:w-[420px] xl:w-[480px] lg:shrink-0 lg:border-l lg:border-border lg:bg-surface/30 overflow-hidden">
       <div className="p-4 border-b border-border flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -716,7 +716,7 @@ function BottomPlayer({
   };
 
   return (
-    <div className="shrink-0 border-t border-border bg-card/95 backdrop-blur px-3 sm:px-4 py-2.5 flex items-center gap-3">
+    <div className="shrink-0 border-t border-border bg-card/95 backdrop-blur px-3 sm:px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
       <audio
         ref={audioRef}
         src={src}
@@ -726,18 +726,18 @@ function BottomPlayer({
         onLoadedMetadata={(e) => setDuration((e.target as HTMLAudioElement).duration || 0)}
         onEnded={() => setPlaying(false)}
       />
-      <div className="min-w-0 flex-1 sm:max-w-[28%]">
+      <div className="min-w-0 flex-1 sm:max-w-[28%] order-1">
         <div className="text-xs font-medium truncate">{state.trackName} <span className="text-muted-foreground">· {state.label}</span></div>
         <div className="text-[10px] text-muted-foreground truncate">{state.artist ?? "—"}</div>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 order-2 shrink-0">
         <button onClick={() => skip(-10)} className="h-8 w-8 rounded-md hover:bg-surface flex items-center justify-center text-foreground/80" title="-10s"><SkipBack className="h-4 w-4" /></button>
         <button onClick={togglePlay} className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:scale-105 transition flex items-center justify-center">
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
         </button>
         <button onClick={() => skip(10)} className="h-8 w-8 rounded-md hover:bg-surface flex items-center justify-center text-foreground/80" title="+10s"><SkipForward className="h-4 w-4" /></button>
       </div>
-      <div className="flex-1 hidden sm:flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2 min-w-0 order-3 w-full sm:w-auto sm:flex-1">
         <span className="text-[10px] font-mono text-muted-foreground w-10 text-right">{formatTime(current)}</span>
         <div
           className="flex-1 h-1.5 bg-surface rounded-full overflow-hidden cursor-pointer"
@@ -750,6 +750,7 @@ function BottomPlayer({
         </div>
         <span className="text-[10px] font-mono text-muted-foreground w-10">{formatTime(duration)}</span>
       </div>
+
       <div className="hidden md:flex items-center gap-1.5">
         <button onClick={() => setMuted((m) => !m)} className="text-muted-foreground hover:text-foreground">{muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</button>
         <input
