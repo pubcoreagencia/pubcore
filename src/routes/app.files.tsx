@@ -250,20 +250,21 @@ function FilesPage() {
   const organizeAuto = async () => {
     const COL = 140, ROW = 140, CW = 7;
     let i = 0;
-    const updates: Promise<any>[] = [];
+    const updates: any[] = [];
     for (const f of visibleFolders) {
       const x = 16 + (i % CW) * COL, y = 16 + Math.floor(i / CW) * ROW;
-      updates.push(supabase.from("files_folders").update({ pos_x: x, pos_y: y } as any).eq("id", f.id));
+      updates.push(supabase.from("files_folders").update({ pos_x: x, pos_y: y } as any).eq("id", f.id).then(() => {}));
       i++;
     }
     for (const it of visibleItems) {
       const x = 16 + (i % CW) * COL, y = 16 + Math.floor(i / CW) * ROW;
-      updates.push(supabase.from("files_items").update({ pos_x: x, pos_y: y } as any).eq("id", it.id));
+      updates.push(supabase.from("files_items").update({ pos_x: x, pos_y: y } as any).eq("id", it.id).then(() => {}));
       i++;
     }
     await Promise.all(updates);
     toast.success("Itens organizados");
   };
+
 
   // Free mode dragging
   const startDrag = (e: React.PointerEvent, kind: "folder" | "item", id: string, curX: number, curY: number) => {

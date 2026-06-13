@@ -22,7 +22,9 @@ export const navGroups: NavGroup[] = [
       { to: "/app/kanban", label: "Kanban", icon: KanbanSquare },
       { to: "/app/calendar", label: "Calendário", icon: Calendar },
       { to: "/app/notes", label: "Notas", icon: StickyNote },
+      { to: "/app/files", label: "Central de Arquivos", icon: FolderOpen },
     ],
+
   },
   {
     label: "Gestão",
