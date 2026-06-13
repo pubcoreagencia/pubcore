@@ -375,11 +375,19 @@ function FilesPage() {
       }
       return;
     }
-    // Persist position
+    // Snap to nearest free slot (no overlap allowed)
     const cur = d.kind === "folder" ? folders.find((f) => f.id === d.id) : items.find((i) => i.id === d.id);
     if (!cur) return;
+    const siblingFolders = folders.filter((f) => f.parent_id === currentFolderId && f.id !== d.id);
+    const siblingItems = items.filter((it) => it.folder_id === currentFolderId && it.id !== d.id);
+    const snap = nearestFreeSlot(cur.pos_x, cur.pos_y, siblingFolders, siblingItems);
+    if (d.kind === "folder") {
+      setFolders((arr) => arr.map((f) => (f.id === d.id ? { ...f, pos_x: snap.x, pos_y: snap.y } : f)));
+    } else {
+      setItems((arr) => arr.map((it) => (it.id === d.id ? { ...it, pos_x: snap.x, pos_y: snap.y } : it)));
+    }
     const tbl = d.kind === "folder" ? "files_folders" : "files_items";
-    await supabase.from(tbl).update({ pos_x: cur.pos_x, pos_y: cur.pos_y } as any).eq("id", d.id);
+    await supabase.from(tbl).update({ pos_x: snap.x, pos_y: snap.y } as any).eq("id", d.id);
   };
 
   const openContext = (e: React.MouseEvent, kind: "folder" | "item", id: string) => {
