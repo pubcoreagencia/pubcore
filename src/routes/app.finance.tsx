@@ -110,7 +110,7 @@ function useFinanceData() {
     if (!activeWorkspaceId) return;
     setLoading(true);
     refresh();
-    const upsert = <T extends { id: string }>(setter: React.Dispatch<React.SetStateAction<T[]>>) =>
+    const upsert = <T extends { id: string }>(setter: Dispatch<SetStateAction<T[]>>) =>
       (payload: { eventType: string; new: unknown; old: unknown }) => {
         if (payload.eventType === "DELETE") {
           const old = payload.old as { id: string };
