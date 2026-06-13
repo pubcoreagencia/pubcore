@@ -34,6 +34,8 @@ interface Company {
   notes: string | null;
   position: number;
   archived_at: string | null;
+  parent_company_id: string | null;
+  description: string | null;
 }
 
 type ImpactReport = Record<string, number>;
