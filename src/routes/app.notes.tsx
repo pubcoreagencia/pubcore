@@ -151,7 +151,19 @@ function NotesPage() {
 
     const ch = supabase
       .channel(`notes-mod:${activeWorkspaceId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `workspace_id=eq.${activeWorkspaceId}` }, loadNotes)
+      .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `workspace_id=eq.${activeWorkspaceId}` }, (payload) => {
+        if (payload.eventType === "DELETE") {
+          const old = payload.old as { id: string };
+          setNotes((ns) => ns.filter((n) => n.id !== old.id));
+        } else {
+          const n = payload.new as Note;
+          setNotes((ns) => {
+            const idx = ns.findIndex((x) => x.id === n.id);
+            if (idx === -1) return [n, ...ns];
+            const copy = ns.slice(); copy[idx] = { ...copy[idx], ...n }; return copy;
+          });
+        }
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "note_categories", filter: `workspace_id=eq.${activeWorkspaceId}` }, loadCats)
       .subscribe();
     return () => { cancelled = true; supabase.removeChannel(ch); };

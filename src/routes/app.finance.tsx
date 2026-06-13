@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
@@ -110,10 +110,24 @@ function useFinanceData() {
     if (!activeWorkspaceId) return;
     setLoading(true);
     refresh();
+    const upsert = <T extends { id: string }>(setter: Dispatch<SetStateAction<T[]>>) =>
+      (payload: { eventType: string; new: unknown; old: unknown }) => {
+        if (payload.eventType === "DELETE") {
+          const old = payload.old as { id: string };
+          setter((xs) => xs.filter((x) => x.id !== old.id));
+        } else {
+          const n = payload.new as T;
+          setter((xs) => {
+            const idx = xs.findIndex((x) => x.id === n.id);
+            if (idx === -1) return [n, ...xs];
+            const copy = xs.slice(); copy[idx] = { ...copy[idx], ...n }; return copy;
+          });
+        }
+      };
     const ch = supabase.channel(`finance:${activeWorkspaceId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "finance_transactions", filter: `workspace_id=eq.${activeWorkspaceId}` }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "finance_costs", filter: `workspace_id=eq.${activeWorkspaceId}` }, refresh)
-      .on("postgres_changes", { event: "*", schema: "public", table: "finance_products", filter: `workspace_id=eq.${activeWorkspaceId}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "finance_transactions", filter: `workspace_id=eq.${activeWorkspaceId}` }, upsert(setTx))
+      .on("postgres_changes", { event: "*", schema: "public", table: "finance_costs", filter: `workspace_id=eq.${activeWorkspaceId}` }, upsert(setCosts))
+      .on("postgres_changes", { event: "*", schema: "public", table: "finance_products", filter: `workspace_id=eq.${activeWorkspaceId}` }, upsert(setProducts))
       .subscribe();
     return () => { supabase.removeChannel(ch); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
