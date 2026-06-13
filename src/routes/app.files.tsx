@@ -279,8 +279,8 @@ function FilesPage() {
     if (!d) return;
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const x = Math.max(0, e.clientX - rect.left - d.offX);
-    const y = Math.max(0, e.clientY - rect.top - d.offY);
+    const x = Math.max(0, Math.round(e.clientX - rect.left - d.offX));
+    const y = Math.max(0, Math.round(e.clientY - rect.top - d.offY));
     d.moved = true;
     if (d.kind === "folder") {
       setFolders((cur) => cur.map((f) => (f.id === d.id ? { ...f, pos_x: x, pos_y: y } : f)));
