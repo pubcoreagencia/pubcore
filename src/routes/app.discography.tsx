@@ -187,7 +187,7 @@ function DiscographyPage() {
   } | null>(null);
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-background">
+    <div className="flex h-[calc(100dvh-120px)] md:h-[100dvh] flex-col bg-background">
       {/* Header / tabs */}
       <header className="shrink-0 border-b border-border px-3 sm:px-6 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
