@@ -220,11 +220,14 @@ function FilesPage() {
   // Actions
   const createFolder = async () => {
     if (!activeWorkspaceId || !newFolderName.trim()) return;
+    const siblingFolders = folders.filter((f) => f.parent_id === currentFolderId);
+    const siblingItems = items.filter((it) => it.folder_id === currentFolderId);
+    const slot = nextFreeSlot(siblingFolders, siblingItems);
     const { error } = await supabase.from("files_folders").insert({
       workspace_id: activeWorkspaceId, name: newFolderName.trim(),
       parent_id: currentFolderId, color: newFolderColor,
       company: newFolderCompany || null, created_by: user?.id,
-      pos_x: Math.round(32 + Math.random() * 200), pos_y: Math.round(32 + Math.random() * 120),
+      pos_x: slot.x, pos_y: slot.y,
     } as any);
     if (error) { toast.error(error.message); return; }
     toast.success("Pasta criada");
