@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Play, Loader2, RotateCw, Repeat } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
@@ -7,9 +7,9 @@ import { type Company } from "@/lib/mock-data";
 import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { toast } from "sonner";
 
-const CYCLE_LIMIT_MS = 35 * 60 * 1000; // 35min
 const CYCLE_KEY = "pubcore_ponto_cycle_start_v1";
 const CHECK_MS = 5_000;
+const DEFAULT_LIMIT_MIN = 35;
 
 type CycleState = { sessionId: string; startedAt: number } | null;
 
@@ -32,10 +32,9 @@ function writeCycle(v: CycleState) {
 }
 
 /**
- * Painel de rotação operacional (limite de 35min por subciclo).
- * - A cada 35min em um subponto ativo, abre o seletor de empresa.
- * - Usuário pode trocar de empresa OU estender (reinicia o ciclo).
- * - Não encerra o expediente do dia, apenas força a decisão.
+ * Painel de rotação operacional.
+ * O limite (tempo e ativação) vem 100% das configurações da empresa
+ * (checklist_companies.ponto_daily_limit_minutes / ponto_limit_enabled).
  */
 export function ShiftRotationPanel() {
   const { user } = useAuth();
@@ -50,10 +49,20 @@ export function ShiftRotationPanel() {
   const isLive =
     activeSession?.status === "working" || activeSession?.status === "paused";
 
+  // Configuração dinâmica da empresa ativa (fonte única de verdade)
+  const activeConfig = useMemo(() => {
+    const cc = checklistCompanies.find((x) => x.name === activeCompany);
+    const limitEnabled = cc?.ponto_limit_enabled !== false; // default ON
+    const limitMinutes = Math.max(
+      1,
+      cc?.ponto_daily_limit_minutes ?? DEFAULT_LIMIT_MIN,
+    );
+    return { limitEnabled, limitMinutes, limitMs: limitMinutes * 60 * 1000 };
+  }, [checklistCompanies, activeCompany]);
+
   // Garante registro de início do ciclo para a sessão ativa
   useEffect(() => {
     if (!isLive || !activeSessionId || !activeSession?.startedAt) {
-      // Sessão encerrada ou inexistente: limpa marcação para não vazar para a próxima
       const cur = readCycle();
       if (cur && (!activeSessionId || cur.sessionId !== activeSessionId)) {
         writeCycle(null);
@@ -66,17 +75,23 @@ export function ShiftRotationPanel() {
     }
   }, [isLive, activeSessionId, activeSession?.startedAt]);
 
+  // Se o limite for desativado, cancela qualquer modal pendente imediatamente
+  useEffect(() => {
+    if (!activeConfig.limitEnabled && open) setOpen(false);
+  }, [activeConfig.limitEnabled, open]);
+
   // Verifica periodicamente o limite do ciclo
   useEffect(() => {
     if (!user?.id || !activeWorkspaceId) return;
-    if (!isLive || !activeSessionId) {
+    if (!isLive || !activeSessionId || !activeConfig.limitEnabled) {
       if (open) setOpen(false);
       return;
     }
+    const limitMs = activeConfig.limitMs;
     const check = () => {
       const cur = readCycle();
       if (!cur || cur.sessionId !== activeSessionId) return;
-      if (Date.now() - cur.startedAt >= CYCLE_LIMIT_MS) setOpen(true);
+      if (Date.now() - cur.startedAt >= limitMs) setOpen(true);
     };
     check();
     const id = window.setInterval(check, CHECK_MS);
@@ -88,7 +103,15 @@ export function ShiftRotationPanel() {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("focus", check);
     };
-  }, [user?.id, activeWorkspaceId, isLive, activeSessionId, open]);
+  }, [
+    user?.id,
+    activeWorkspaceId,
+    isLive,
+    activeSessionId,
+    open,
+    activeConfig.limitEnabled,
+    activeConfig.limitMs,
+  ]);
 
   // Lock scroll quando aberto
   useEffect(() => {
@@ -100,17 +123,19 @@ export function ShiftRotationPanel() {
     };
   }, [open]);
 
+  const limitMinutes = activeConfig.limitMinutes;
+
   const handleExtend = useCallback(() => {
     if (!activeSessionId) return;
     setBusy("extend");
     try {
       writeCycle({ sessionId: activeSessionId, startedAt: Date.now() });
-      toast.success(`Expediente em ${activeCompany} estendido por mais 35min`);
+      toast.success(`Expediente em ${activeCompany} estendido por mais ${limitMinutes}min`);
       setOpen(false);
     } finally {
       setBusy(null);
     }
-  }, [activeSessionId, activeCompany]);
+  }, [activeSessionId, activeCompany, limitMinutes]);
 
   const handlePick = useCallback(
     async (c: Company) => {
@@ -122,7 +147,6 @@ export function ShiftRotationPanel() {
       setBusy(c);
       try {
         await startCompany(c, user?.name, user?.email, user?.id);
-        // startCompany cria nova sessionId; o effect de cima cuidará do cycleStart
         toast.success(`Expediente em ${c} iniciado`);
         setOpen(false);
       } catch (e) {
@@ -135,7 +159,7 @@ export function ShiftRotationPanel() {
     [busy, activeCompany, handleExtend, startCompany, user],
   );
 
-  if (!open || !activeCompany) return null;
+  if (!open || !activeCompany || !activeConfig.limitEnabled) return null;
 
   return (
     <div className="fixed inset-0 z-[96] flex items-stretch justify-center overflow-y-auto bg-background/95 backdrop-blur-sm p-0 md:p-6 animate-in fade-in duration-300">
@@ -149,11 +173,11 @@ export function ShiftRotationPanel() {
               Rotação de expediente
             </div>
             <h1 className="mt-2 text-2xl md:text-3xl font-light tracking-tight">
-              35 minutos em {activeCompany}
+              {limitMinutes} minutos em {activeCompany}
             </h1>
             <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
               Escolha o próximo ponto. Você pode trocar de empresa ou estender o expediente atual
-              por mais 35 minutos.
+              por mais {limitMinutes} minutos.
             </p>
           </header>
 
@@ -173,7 +197,7 @@ export function ShiftRotationPanel() {
                       Estender Expediente Atual
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
-                      Continuar em {activeCompany} por mais 35 minutos
+                      Continuar em {activeCompany} por mais {limitMinutes} minutos
                     </div>
                   </div>
                 </div>
@@ -239,8 +263,8 @@ export function ShiftRotationPanel() {
           </div>
 
           <footer className="px-6 md:px-10 py-4 border-t border-border/30 bg-background/30 text-[11px] text-muted-foreground text-center">
-            O limite de 35min é apenas uma rotação operacional — seu expediente do dia continua
-            normalmente.
+            O limite de {limitMinutes}min é apenas uma rotação operacional — seu expediente do dia
+            continua normalmente.
           </footer>
         </div>
       </div>
