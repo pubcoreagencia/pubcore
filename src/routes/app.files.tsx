@@ -332,10 +332,14 @@ function FilesPage() {
           <div className="h-9 w-9 rounded-xl bg-primary/15 border border-primary/20 grid place-items-center">
             <FolderOpen className="h-5 w-5 text-primary" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="font-display text-xl sm:text-2xl text-foreground truncate">Central de Arquivos</h1>
             <p className="text-[11px] sm:text-xs text-muted-foreground truncate">Biblioteca digital da PUB CORE</p>
           </div>
+          <nav className="flex rounded-lg border border-border overflow-hidden text-xs shrink-0">
+            <span className="px-3 py-1.5 bg-primary text-primary-foreground font-medium">Arquivos</span>
+            <a href="/app/discography" className="px-3 py-1.5 hover:bg-surface text-muted-foreground transition">Discografia</a>
+          </nav>
         </div>
 
         {/* Breadcrumb */}
