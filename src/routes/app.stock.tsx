@@ -223,70 +223,26 @@ function useStockData() {
     if (!activeWorkspaceId) return;
     setLoading(true);
     refresh();
-    const ch = supabase
-      .channel(`stock-all:${activeWorkspaceId}`)
-      .on(
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => { timer = null; refresh(); }, 250);
+    };
+    const tables = [
+      "stock_companies", "stock_groups", "stock_categories",
+      "stock_field_defs", "stock_items", "stock_movements",
+    ] as const;
+    let ch = supabase.channel(`stock-all:${activeWorkspaceId}`);
+    for (const table of tables) {
+      ch = ch.on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "stock_companies",
-          filter: `workspace_id=eq.${activeWorkspaceId}`,
-        },
-        () => refresh(),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "stock_groups",
-          filter: `workspace_id=eq.${activeWorkspaceId}`,
-        },
-        () => refresh(),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "stock_categories",
-          filter: `workspace_id=eq.${activeWorkspaceId}`,
-        },
-        () => refresh(),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "stock_field_defs",
-          filter: `workspace_id=eq.${activeWorkspaceId}`,
-        },
-        () => refresh(),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "stock_items",
-          filter: `workspace_id=eq.${activeWorkspaceId}`,
-        },
-        () => refresh(),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "stock_movements",
-          filter: `workspace_id=eq.${activeWorkspaceId}`,
-        },
-        () => refresh(),
-      )
-      .subscribe();
+        { event: "*", schema: "public", table, filter: `workspace_id=eq.${activeWorkspaceId}` },
+        scheduleRefresh,
+      );
+    }
+    ch.subscribe();
     return () => {
+      if (timer) clearTimeout(timer);
       supabase.removeChannel(ch);
     };
   }, [activeWorkspaceId, refresh]);
