@@ -164,7 +164,7 @@ function FilesPage() {
       workspace_id: activeWorkspaceId, name: newFolderName.trim(),
       parent_id: currentFolderId, color: newFolderColor,
       company: newFolderCompany || null, created_by: user?.id,
-      pos_x: 32 + Math.random() * 200, pos_y: 32 + Math.random() * 120,
+      pos_x: Math.round(32 + Math.random() * 200), pos_y: Math.round(32 + Math.random() * 120),
     } as any);
     if (error) { toast.error(error.message); return; }
     toast.success("Pasta criada");
@@ -184,7 +184,7 @@ function FilesPage() {
           workspace_id: activeWorkspaceId, folder_id: currentFolderId,
           name: file.name, storage_path: path, mime_type: file.type || null,
           size_bytes: file.size, created_by: user?.id,
-          pos_x: 32 + Math.random() * 200, pos_y: 32 + Math.random() * 120,
+          pos_x: Math.round(32 + Math.random() * 200), pos_y: Math.round(32 + Math.random() * 120),
         } as any);
         if (error) toast.error(error.message);
       }
@@ -279,8 +279,8 @@ function FilesPage() {
     if (!d) return;
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const x = Math.max(0, e.clientX - rect.left - d.offX);
-    const y = Math.max(0, e.clientY - rect.top - d.offY);
+    const x = Math.max(0, Math.round(e.clientX - rect.left - d.offX));
+    const y = Math.max(0, Math.round(e.clientY - rect.top - d.offY));
     d.moved = true;
     if (d.kind === "folder") {
       setFolders((cur) => cur.map((f) => (f.id === d.id ? { ...f, pos_x: x, pos_y: y } : f)));
