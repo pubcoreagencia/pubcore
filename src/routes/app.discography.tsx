@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Music2, Plus, Upload, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Search, Trash2, Pencil, Disc3, Mic2, MessageCircle, Download, X,
-  FolderOpen, Send, ListMusic,
+  FolderOpen, Send, ListMusic, ChevronUp, ChevronDown, Rewind, FastForward, Heart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
@@ -74,6 +74,21 @@ const QUICK_FILTERS = [
 ];
 
 const AUDIO_MIMES = /^audio\//;
+
+type PlayerItem = {
+  versionId: string;
+  storagePath: string;
+  label: string;
+  trackId: string;
+  trackName: string;
+  artist: string | null;
+  coverPath: string | null;
+};
+
+function isAudioVersion(v: { mime_type: string | null; storage_path: string }) {
+  return AUDIO_MIMES.test(v.mime_type ?? "") ||
+    /\.(mp3|wav|flac|aiff|aif|m4a|ogg|oga|opus|webm)$/i.test(v.storage_path);
+}
 
 function statusMeta(value: string) {
   return STATUS_OPTIONS.find((s) => s.value === value) ?? STATUS_OPTIONS[0];
@@ -182,9 +197,21 @@ function DiscographyPage() {
 
   // ===== Player state (lifted, persists across track-detail close) =====
   const [player, setPlayer] = useState<{
-    trackId: string; versionId: string; url: string; label: string;
-    trackName: string; artist: string | null; coverPath: string | null;
+    items: PlayerItem[]; index: number;
   } | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem("disco:favs") ?? "[]")); }
+    catch { return new Set(); }
+  });
+  const toggleFav = useCallback((id: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem("disco:favs", JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
 
   return (
     <div className="flex h-[calc(100dvh-120px)] md:h-[100dvh] flex-col bg-background">
@@ -310,7 +337,7 @@ function DiscographyPage() {
               <ul className="divide-y divide-border/70">
                 {filteredTracks.map((t) => {
                   const isSel = t.id === selectedTrackId;
-                  const isPlaying = player?.trackId === t.id;
+                  const isPlaying = player?.items[player.index]?.trackId === t.id;
                   const st = statusMeta(t.status);
                   return (
                     <li
@@ -354,12 +381,23 @@ function DiscographyPage() {
             userName={user?.name ?? user?.email ?? null}
             onClose={() => setSelectedTrackId(null)}
             onEdit={() => setEditingTrack(selectedTrack)}
-            onPlay={(v) => setPlayer({
-              trackId: selectedTrack.id, versionId: v.id, url: "",
-              label: v.label, trackName: selectedTrack.name,
-              artist: selectedTrack.artist, coverPath: selectedTrack.cover_path,
-            })}
+            onPlay={(versions, idx) => {
+              const items: PlayerItem[] = versions.filter(isAudioVersion).map((v) => ({
+                versionId: v.id,
+                storagePath: v.storage_path,
+                label: v.label,
+                trackId: selectedTrack.id,
+                trackName: selectedTrack.name,
+                artist: selectedTrack.artist,
+                coverPath: selectedTrack.cover_path,
+              }));
+              if (items.length === 0) return;
+              const clampedIdx = Math.max(0, Math.min(items.length - 1, idx));
+              setPlayer({ items, index: clampedIdx });
+            }}
             currentPlayer={player}
+            isFav={favorites.has(selectedTrack.id)}
+            onToggleFav={() => toggleFav(selectedTrack.id)}
           />
         )}
       </div>
@@ -368,7 +406,14 @@ function DiscographyPage() {
       {player && (
         <BottomPlayer
           state={player}
+          onChangeIndex={(idx) => setPlayer((p) => p ? { ...p, index: Math.max(0, Math.min(p.items.length - 1, idx)) } : p)}
           onClose={() => setPlayer(null)}
+          isFav={favorites.has(player.items[player.index]?.trackId ?? "")}
+          onToggleFav={() => {
+            const id = player.items[player.index]?.trackId;
+            if (id) toggleFav(id);
+          }}
+          onOpenTrack={(trackId) => setSelectedTrackId(trackId)}
         />
       )}
 
@@ -406,6 +451,7 @@ function DiscographyPage() {
 // ============ Track Detail Panel ============
 function TrackDetail({
   track, project, canManage, userId, userName, onClose, onEdit, onPlay, currentPlayer,
+  isFav, onToggleFav,
 }: {
   track: Track;
   project: Project | null;
@@ -414,8 +460,10 @@ function TrackDetail({
   userName: string | null;
   onClose: () => void;
   onEdit: () => void;
-  onPlay: (v: Version) => void;
-  currentPlayer: { trackId: string; versionId: string } | null;
+  onPlay: (versions: Version[], index: number) => void;
+  currentPlayer: { items: PlayerItem[]; index: number } | null;
+  isFav: boolean;
+  onToggleFav: () => void;
 }) {
   const [versions, setVersions] = useState<Version[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -528,6 +576,13 @@ function TrackDetail({
           {track.artist && <div className="text-xs text-muted-foreground truncate flex items-center gap-1"><Mic2 className="h-3 w-3" />{track.artist}</div>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onToggleFav}
+            className={`h-7 w-7 rounded-md hover:bg-surface flex items-center justify-center ${isFav ? "text-rose-500" : "text-muted-foreground hover:text-foreground"}`}
+            title={isFav ? "Remover favorita" : "Favoritar"}
+          >
+            <Heart className={`h-3.5 w-3.5 ${isFav ? "fill-current" : ""}`} />
+          </button>
           {canManage && (
             <button onClick={onEdit} className="h-7 w-7 rounded-md hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground" title="Editar">
               <Pencil className="h-3.5 w-3.5" />
@@ -571,14 +626,14 @@ function TrackDetail({
           ) : (
             <ul className="space-y-1.5">
               {versions.map((v, i) => {
-                const isAudio = AUDIO_MIMES.test(v.mime_type ?? "") || /\.(mp3|wav|flac|aiff|m4a)$/i.test(v.storage_path);
-                const isPlayingThis = currentPlayer?.versionId === v.id;
+                const isAudio = isAudioVersion(v);
+                const isPlayingThis = currentPlayer?.items[currentPlayer.index]?.versionId === v.id;
                 return (
                   <li key={v.id} className={`rounded-lg border ${isPlayingThis ? "border-primary/50 bg-primary/5" : "border-border bg-card"} p-2.5`}>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-mono text-muted-foreground w-5 text-center">v{i + 1}</span>
                       {isAudio ? (
-                        <button onClick={() => onPlay(v)} className="h-7 w-7 rounded-full bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center" title="Reproduzir">
+                        <button onClick={() => onPlay(versions, versions.filter(isAudioVersion).findIndex((x) => x.id === v.id))} className="h-7 w-7 rounded-full bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center" title="Reproduzir">
                           {isPlayingThis ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
                         </button>
                       ) : (
@@ -663,10 +718,14 @@ function TrackDetail({
 
 // ============ Bottom Player ============
 function BottomPlayer({
-  state, onClose,
+  state, onChangeIndex, onClose, isFav, onToggleFav, onOpenTrack,
 }: {
-  state: { trackId: string; versionId: string; url: string; label: string; trackName: string; artist: string | null; coverPath: string | null };
+  state: { items: PlayerItem[]; index: number };
+  onChangeIndex: (idx: number) => void;
   onClose: () => void;
+  isFav: boolean;
+  onToggleFav: () => void;
+  onOpenTrack: (trackId: string) => void;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
@@ -675,24 +734,30 @@ function BottomPlayer({
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [src, setSrc] = useState<string>("");
+  const [expanded, setExpanded] = useState(false);
+
+  const item = state.items[state.index];
+  const hasPrev = state.index > 0;
+  const hasNext = state.index < state.items.length - 1;
 
   // Resolve signed url when version changes
   useEffect(() => {
     let cancelled = false;
+    setSrc("");
+    setCurrent(0);
+    setDuration(0);
+    if (!item) return;
     (async () => {
-      // We don't have the path here, but the version id is enough — fetch the row
-      const { data } = await supabase.from("disco_versions").select("storage_path").eq("id", state.versionId).maybeSingle();
-      const path = (data as { storage_path?: string } | null)?.storage_path;
-      if (!path) return;
-      const url = await signedUrl(path);
+      const url = await signedUrl(item.storagePath);
       if (!cancelled && url) {
         setSrc(url);
-        // Auto-play
         setTimeout(() => audioRef.current?.play().catch(() => {}), 50);
+      } else if (!cancelled) {
+        toast.error("Falha ao carregar áudio");
       }
     })();
     return () => { cancelled = true; };
-  }, [state.versionId]);
+  }, [item?.versionId, item?.storagePath]);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -702,7 +767,7 @@ function BottomPlayer({
 
   const togglePlay = () => {
     const el = audioRef.current; if (!el) return;
-    if (el.paused) el.play(); else el.pause();
+    if (el.paused) el.play().catch(() => {}); else el.pause();
   };
 
   const seek = (pct: number) => {
@@ -715,53 +780,172 @@ function BottomPlayer({
     el.currentTime = Math.max(0, Math.min((el.duration || 0), el.currentTime + sec));
   };
 
+  const goPrev = () => { if (hasPrev) onChangeIndex(state.index - 1); };
+  const goNext = () => { if (hasNext) onChangeIndex(state.index + 1); };
+
+  const downloadCurrent = async () => {
+    if (!item) return;
+    const url = await signedUrl(item.storagePath);
+    if (!url) { toast.error("Falha ao gerar link"); return; }
+    const a = document.createElement("a");
+    a.href = url; a.download = `${item.trackName} - ${item.label}`; a.target = "_blank";
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+
+  if (!item) return null;
+
+  const audioEl = (
+    <audio
+      ref={audioRef}
+      src={src}
+      preload="metadata"
+      onPlay={() => setPlaying(true)}
+      onPause={() => setPlaying(false)}
+      onTimeUpdate={(e) => setCurrent((e.target as HTMLAudioElement).currentTime)}
+      onLoadedMetadata={(e) => setDuration((e.target as HTMLAudioElement).duration || 0)}
+      onEnded={() => { setPlaying(false); if (hasNext) goNext(); }}
+      onError={() => toast.error("Erro ao reproduzir áudio")}
+    />
+  );
+
+  const progressBar = (
+    <div
+      className="flex-1 h-1.5 bg-surface rounded-full overflow-hidden cursor-pointer touch-none"
+      onClick={(e) => {
+        const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+        seek((e.clientX - r.left) / r.width);
+      }}
+    >
+      <div className="h-full bg-primary transition-[width]" style={{ width: duration ? `${(current / duration) * 100}%` : "0%" }} />
+    </div>
+  );
+
   return (
-    <div className="shrink-0 border-t border-border bg-card/95 backdrop-blur px-3 sm:px-4 py-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-      <audio
-        ref={audioRef}
-        src={src}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
-        onTimeUpdate={(e) => setCurrent((e.target as HTMLAudioElement).currentTime)}
-        onLoadedMetadata={(e) => setDuration((e.target as HTMLAudioElement).duration || 0)}
-        onEnded={() => setPlaying(false)}
-      />
-      <div className="min-w-0 flex-1 sm:max-w-[28%] order-1">
-        <div className="text-xs font-medium truncate">{state.trackName} <span className="text-muted-foreground">· {state.label}</span></div>
-        <div className="text-[10px] text-muted-foreground truncate">{state.artist ?? "—"}</div>
-      </div>
-      <div className="flex items-center gap-1 order-2 shrink-0">
-        <button onClick={() => skip(-10)} className="h-8 w-8 rounded-md hover:bg-surface flex items-center justify-center text-foreground/80" title="-10s"><SkipBack className="h-4 w-4" /></button>
-        <button onClick={togglePlay} className="h-9 w-9 rounded-full bg-primary text-primary-foreground hover:scale-105 transition flex items-center justify-center">
-          {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 ml-0.5" />}
-        </button>
-        <button onClick={() => skip(10)} className="h-8 w-8 rounded-md hover:bg-surface flex items-center justify-center text-foreground/80" title="+10s"><SkipForward className="h-4 w-4" /></button>
-      </div>
-      <div className="flex items-center gap-2 min-w-0 order-3 w-full sm:w-auto sm:flex-1">
-        <span className="text-[10px] font-mono text-muted-foreground w-10 text-right">{formatTime(current)}</span>
-        <div
-          className="flex-1 h-1.5 bg-surface rounded-full overflow-hidden cursor-pointer"
-          onClick={(e) => {
-            const r = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-            seek((e.clientX - r.left) / r.width);
-          }}
-        >
-          <div className="h-full bg-primary transition-[width]" style={{ width: duration ? `${(current / duration) * 100}%` : "0%" }} />
+    <>
+      {/* Mini player — fixed, sits above mobile bottom nav */}
+      <div className="fixed inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur px-3 sm:px-4 py-2 sm:py-2.5 bottom-[calc(64px+env(safe-area-inset-bottom))] md:bottom-0">
+        {audioEl}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Cover / track */}
+          <button
+            onClick={() => setExpanded(true)}
+            className="flex items-center gap-2 min-w-0 flex-1 text-left"
+            title="Expandir player"
+          >
+            <div className="h-10 w-10 shrink-0 rounded-md bg-primary/15 text-primary flex items-center justify-center">
+              <Music2 className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="text-xs font-medium truncate">{item.trackName} <span className="text-muted-foreground">· {item.label}</span></div>
+              <div className="text-[10px] text-muted-foreground truncate">{item.artist ?? "—"}</div>
+            </div>
+          </button>
+
+          {/* Controls */}
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
+            <button onClick={goPrev} disabled={!hasPrev} className="hidden sm:flex h-8 w-8 rounded-md hover:bg-surface items-center justify-center text-foreground/80 disabled:opacity-30" title="Anterior"><SkipBack className="h-4 w-4" /></button>
+            <button onClick={() => skip(-10)} className="hidden sm:flex h-8 w-8 rounded-md hover:bg-surface items-center justify-center text-foreground/80" title="-10s"><Rewind className="h-4 w-4" /></button>
+            <button onClick={togglePlay} className="h-10 w-10 rounded-full bg-primary text-primary-foreground hover:scale-105 transition flex items-center justify-center">
+              {playing ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 ml-0.5" />}
+            </button>
+            <button onClick={() => skip(10)} className="hidden sm:flex h-8 w-8 rounded-md hover:bg-surface items-center justify-center text-foreground/80" title="+10s"><FastForward className="h-4 w-4" /></button>
+            <button onClick={goNext} disabled={!hasNext} className="hidden sm:flex h-8 w-8 rounded-md hover:bg-surface items-center justify-center text-foreground/80 disabled:opacity-30" title="Próxima"><SkipForward className="h-4 w-4" /></button>
+          </div>
+
+          {/* Progress + time (desktop inline) */}
+          <div className="hidden md:flex items-center gap-2 min-w-0 flex-1 max-w-md">
+            <span className="text-[10px] font-mono text-muted-foreground w-10 text-right">{formatTime(current)}</span>
+            {progressBar}
+            <span className="text-[10px] font-mono text-muted-foreground w-10">{formatTime(duration)}</span>
+          </div>
+
+          {/* Volume desktop */}
+          <div className="hidden lg:flex items-center gap-1.5">
+            <button onClick={() => setMuted((m) => !m)} className="text-muted-foreground hover:text-foreground">{muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</button>
+            <input
+              type="range" min={0} max={1} step={0.01}
+              value={muted ? 0 : volume}
+              onChange={(e) => { setVolume(Number(e.target.value)); setMuted(false); }}
+              className="w-20 accent-primary"
+            />
+          </div>
+
+          <button onClick={() => setExpanded(true)} className="h-8 w-8 rounded-md hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground" title="Expandir"><ChevronUp className="h-4 w-4" /></button>
+          <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground" title="Fechar player"><X className="h-4 w-4" /></button>
         </div>
-        <span className="text-[10px] font-mono text-muted-foreground w-10">{formatTime(duration)}</span>
+
+        {/* Mobile progress under controls */}
+        <div className="md:hidden flex items-center gap-2 mt-1.5">
+          <span className="text-[10px] font-mono text-muted-foreground w-8 text-right">{formatTime(current)}</span>
+          {progressBar}
+          <span className="text-[10px] font-mono text-muted-foreground w-8">{formatTime(duration)}</span>
+        </div>
       </div>
 
-      <div className="hidden md:flex items-center gap-1.5">
-        <button onClick={() => setMuted((m) => !m)} className="text-muted-foreground hover:text-foreground">{muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</button>
-        <input
-          type="range" min={0} max={1} step={0.01}
-          value={muted ? 0 : volume}
-          onChange={(e) => { setVolume(Number(e.target.value)); setMuted(false); }}
-          className="w-20 accent-primary"
-        />
-      </div>
-      <button onClick={onClose} className="h-8 w-8 rounded-md hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground" title="Fechar player"><X className="h-4 w-4" /></button>
-    </div>
+      {/* Full player modal */}
+      {expanded && (
+        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-200">
+          <div className="flex items-center justify-between p-4 border-b border-border/40">
+            <button onClick={() => setExpanded(false)} className="h-9 w-9 rounded-full hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground" title="Recolher">
+              <ChevronDown className="h-5 w-5" />
+            </button>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Reproduzindo agora</div>
+            <button onClick={onClose} className="h-9 w-9 rounded-full hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground" title="Fechar"><X className="h-5 w-5" /></button>
+          </div>
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-6 gap-6 overflow-y-auto">
+            <div className="relative w-56 h-56 sm:w-72 sm:h-72 rounded-2xl bg-gradient-to-br from-primary/30 via-primary/10 to-surface shadow-2xl flex items-center justify-center">
+              <Disc3 className={`h-28 w-28 text-primary/70 ${playing ? "animate-spin" : ""}`} style={{ animationDuration: "8s" }} />
+            </div>
+            <div className="text-center max-w-md">
+              <div className="font-display text-2xl font-bold truncate">{item.trackName}</div>
+              <div className="text-sm text-muted-foreground mt-1 truncate">{item.artist ?? "—"} · {item.label}</div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 mt-2">
+                Faixa {state.index + 1} de {state.items.length}
+              </div>
+            </div>
+
+            <div className="w-full max-w-md space-y-1.5">
+              {progressBar}
+              <div className="flex justify-between text-[11px] font-mono text-muted-foreground">
+                <span>{formatTime(current)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button onClick={onToggleFav} className={`h-10 w-10 rounded-full hover:bg-surface flex items-center justify-center ${isFav ? "text-rose-500" : "text-muted-foreground"}`} title="Favoritar">
+                <Heart className={`h-5 w-5 ${isFav ? "fill-current" : ""}`} />
+              </button>
+              <button onClick={goPrev} disabled={!hasPrev} className="h-11 w-11 rounded-full hover:bg-surface flex items-center justify-center text-foreground disabled:opacity-30" title="Anterior"><SkipBack className="h-5 w-5" /></button>
+              <button onClick={() => skip(-10)} className="h-10 w-10 rounded-full hover:bg-surface flex items-center justify-center text-foreground/80" title="-10s"><Rewind className="h-5 w-5" /></button>
+              <button onClick={togglePlay} className="h-14 w-14 rounded-full bg-primary text-primary-foreground hover:scale-105 transition flex items-center justify-center shadow-lg">
+                {playing ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 ml-0.5" />}
+              </button>
+              <button onClick={() => skip(10)} className="h-10 w-10 rounded-full hover:bg-surface flex items-center justify-center text-foreground/80" title="+10s"><FastForward className="h-5 w-5" /></button>
+              <button onClick={goNext} disabled={!hasNext} className="h-11 w-11 rounded-full hover:bg-surface flex items-center justify-center text-foreground disabled:opacity-30" title="Próxima"><SkipForward className="h-5 w-5" /></button>
+              <button onClick={downloadCurrent} className="h-10 w-10 rounded-full hover:bg-surface flex items-center justify-center text-muted-foreground" title="Baixar"><Download className="h-5 w-5" /></button>
+            </div>
+
+            <div className="w-full max-w-md flex items-center gap-2">
+              <button onClick={() => setMuted((m) => !m)} className="text-muted-foreground hover:text-foreground">{muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}</button>
+              <input
+                type="range" min={0} max={1} step={0.01}
+                value={muted ? 0 : volume}
+                onChange={(e) => { setVolume(Number(e.target.value)); setMuted(false); }}
+                className="flex-1 accent-primary"
+              />
+            </div>
+
+            <button
+              onClick={() => { onOpenTrack(item.trackId); setExpanded(false); }}
+              className="text-xs text-primary hover:underline"
+            >
+              Abrir detalhes da faixa
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
