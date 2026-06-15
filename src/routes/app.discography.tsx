@@ -451,6 +451,7 @@ function DiscographyPage() {
 // ============ Track Detail Panel ============
 function TrackDetail({
   track, project, canManage, userId, userName, onClose, onEdit, onPlay, currentPlayer,
+  isFav, onToggleFav,
 }: {
   track: Track;
   project: Project | null;
@@ -459,8 +460,10 @@ function TrackDetail({
   userName: string | null;
   onClose: () => void;
   onEdit: () => void;
-  onPlay: (v: Version) => void;
-  currentPlayer: { trackId: string; versionId: string } | null;
+  onPlay: (versions: Version[], index: number) => void;
+  currentPlayer: { items: PlayerItem[]; index: number } | null;
+  isFav: boolean;
+  onToggleFav: () => void;
 }) {
   const [versions, setVersions] = useState<Version[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
