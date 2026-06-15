@@ -75,6 +75,21 @@ const QUICK_FILTERS = [
 
 const AUDIO_MIMES = /^audio\//;
 
+type PlayerItem = {
+  versionId: string;
+  storagePath: string;
+  label: string;
+  trackId: string;
+  trackName: string;
+  artist: string | null;
+  coverPath: string | null;
+};
+
+function isAudioVersion(v: { mime_type: string | null; storage_path: string }) {
+  return AUDIO_MIMES.test(v.mime_type ?? "") ||
+    /\.(mp3|wav|flac|aiff|aif|m4a|ogg|oga|opus|webm)$/i.test(v.storage_path);
+}
+
 function statusMeta(value: string) {
   return STATUS_OPTIONS.find((s) => s.value === value) ?? STATUS_OPTIONS[0];
 }
