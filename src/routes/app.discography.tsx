@@ -894,7 +894,7 @@ function BottomPlayer({
 
       {/* Full player modal */}
       {expanded && (
-        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[70] bg-background/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-200">
           <div className="flex items-center justify-between p-4 border-b border-border/40">
             <button onClick={() => setExpanded(false)} className="h-9 w-9 rounded-full hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground" title="Recolher">
               <ChevronDown className="h-5 w-5" />
