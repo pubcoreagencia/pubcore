@@ -619,14 +619,14 @@ function TrackDetail({
           ) : (
             <ul className="space-y-1.5">
               {versions.map((v, i) => {
-                const isAudio = AUDIO_MIMES.test(v.mime_type ?? "") || /\.(mp3|wav|flac|aiff|m4a)$/i.test(v.storage_path);
-                const isPlayingThis = currentPlayer?.versionId === v.id;
+                const isAudio = isAudioVersion(v);
+                const isPlayingThis = currentPlayer?.items[currentPlayer.index]?.versionId === v.id;
                 return (
                   <li key={v.id} className={`rounded-lg border ${isPlayingThis ? "border-primary/50 bg-primary/5" : "border-border bg-card"} p-2.5`}>
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] font-mono text-muted-foreground w-5 text-center">v{i + 1}</span>
                       {isAudio ? (
-                        <button onClick={() => onPlay(v)} className="h-7 w-7 rounded-full bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center" title="Reproduzir">
+                        <button onClick={() => onPlay(versions, versions.filter(isAudioVersion).findIndex((x) => x.id === v.id))} className="h-7 w-7 rounded-full bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-center" title="Reproduzir">
                           {isPlayingThis ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 ml-0.5" />}
                         </button>
                       ) : (
