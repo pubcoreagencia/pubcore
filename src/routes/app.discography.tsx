@@ -576,6 +576,13 @@ function TrackDetail({
           {track.artist && <div className="text-xs text-muted-foreground truncate flex items-center gap-1"><Mic2 className="h-3 w-3" />{track.artist}</div>}
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onToggleFav}
+            className={`h-7 w-7 rounded-md hover:bg-surface flex items-center justify-center ${isFav ? "text-rose-500" : "text-muted-foreground hover:text-foreground"}`}
+            title={isFav ? "Remover favorita" : "Favoritar"}
+          >
+            <Heart className={`h-3.5 w-3.5 ${isFav ? "fill-current" : ""}`} />
+          </button>
           {canManage && (
             <button onClick={onEdit} className="h-7 w-7 rounded-md hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground" title="Editar">
               <Pencil className="h-3.5 w-3.5" />
