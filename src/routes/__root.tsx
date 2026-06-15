@@ -31,7 +31,7 @@ export const Route = createRootRoute({
 function RootShell({ children }: { children: React.ReactNode }) {
   const themeScript = `(function(){try{var t=localStorage.getItem('pubcore:theme')||'dark';var r=t==='system'?(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'):t;var h=document.documentElement;h.classList.toggle('light',r==='light');h.classList.toggle('dark',r==='dark');h.style.colorScheme=r;}catch(e){}})();`;
   return (
-    <html lang="pt-BR" className="dark">
+    <html lang="pt-BR" className="dark" suppressHydrationWarning>
       <head>
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
