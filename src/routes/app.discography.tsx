@@ -337,7 +337,7 @@ function DiscographyPage() {
               <ul className="divide-y divide-border/70">
                 {filteredTracks.map((t) => {
                   const isSel = t.id === selectedTrackId;
-                  const isPlaying = player?.trackId === t.id;
+                  const isPlaying = player?.items[player.index]?.trackId === t.id;
                   const st = statusMeta(t.status);
                   return (
                     <li
