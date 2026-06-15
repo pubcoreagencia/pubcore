@@ -735,6 +735,7 @@ function BottomPlayer({
   const [muted, setMuted] = useState(false);
   const [src, setSrc] = useState<string>("");
   const [expanded, setExpanded] = useState(true);
+  const wantPlayRef = useRef(true);
 
   const item = state.items[state.index];
   const hasPrev = state.index > 0;
@@ -746,12 +747,12 @@ function BottomPlayer({
     setSrc("");
     setCurrent(0);
     setDuration(0);
+    wantPlayRef.current = true;
     if (!item) return;
     (async () => {
       const url = await signedUrl(item.storagePath);
       if (!cancelled && url) {
         setSrc(url);
-        setTimeout(() => audioRef.current?.play().catch(() => {}), 50);
       } else if (!cancelled) {
         toast.error("Falha ao carregar áudio");
       }
@@ -765,17 +766,24 @@ function BottomPlayer({
     el.volume = muted ? 0 : volume;
   }, [volume, muted]);
 
-  const togglePlay = () => {
+  const tryPlay = useCallback(() => {
     const el = audioRef.current;
     if (!el) return;
-    if (!src) { toast.message("Carregando áudio…"); return; }
+    const p = el.play();
+    if (p && typeof p.catch === "function") {
+      p.catch((err) => { console.warn("audio play blocked", err); });
+    }
+  }, []);
+
+  const togglePlay = () => {
+    const el = audioRef.current;
+    if (!el) { wantPlayRef.current = true; return; }
     if (el.paused || el.ended) {
-      const p = el.play();
-      if (p && typeof p.catch === "function") p.catch((err) => {
-        console.warn("audio play blocked", err);
-        toast.error("Toque novamente para reproduzir");
-      });
+      wantPlayRef.current = true;
+      if (!src) { toast.message("Carregando áudio…"); return; }
+      tryPlay();
     } else {
+      wantPlayRef.current = false;
       el.pause();
     }
   };
@@ -808,11 +816,13 @@ function BottomPlayer({
     <audio
       ref={audioRef}
       src={src}
-      preload="metadata"
+      preload="auto"
+      playsInline
       onPlay={() => setPlaying(true)}
       onPause={() => setPlaying(false)}
       onTimeUpdate={(e) => setCurrent((e.target as HTMLAudioElement).currentTime)}
       onLoadedMetadata={(e) => setDuration((e.target as HTMLAudioElement).duration || 0)}
+      onCanPlay={() => { if (wantPlayRef.current) tryPlay(); }}
       onEnded={() => { setPlaying(false); if (hasNext) goNext(); }}
       onError={() => toast.error("Erro ao reproduzir áudio")}
     />
