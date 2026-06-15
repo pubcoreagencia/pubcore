@@ -823,15 +823,7 @@ function BottomPlayer({
   return (
     <>
       {/* Mini player — fixed, sits above mobile bottom nav */}
-      <div
-        className="fixed inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur px-3 sm:px-4 py-2 sm:py-2.5"
-        style={{
-          // mobile: bottom nav is ~64px + safe area
-          bottom: "calc(64px + env(safe-area-inset-bottom))",
-        }}
-      >
-        <style>{`@media (min-width: 768px){.disco-mini{bottom:0 !important;}}`}</style>
-        <div className="disco-mini contents" />
+      <div className="fixed inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur px-3 sm:px-4 py-2 sm:py-2.5 bottom-[calc(64px+env(safe-area-inset-bottom))] md:bottom-0">
         {audioEl}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Cover / track */}
