@@ -766,8 +766,18 @@ function BottomPlayer({
   }, [volume, muted]);
 
   const togglePlay = () => {
-    const el = audioRef.current; if (!el) return;
-    if (el.paused) el.play().catch(() => {}); else el.pause();
+    const el = audioRef.current;
+    if (!el) return;
+    if (!src) { toast.message("Carregando áudio…"); return; }
+    if (el.paused || el.ended) {
+      const p = el.play();
+      if (p && typeof p.catch === "function") p.catch((err) => {
+        console.warn("audio play blocked", err);
+        toast.error("Toque novamente para reproduzir");
+      });
+    } else {
+      el.pause();
+    }
   };
 
   const seek = (pct: number) => {
