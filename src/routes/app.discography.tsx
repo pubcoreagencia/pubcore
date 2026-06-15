@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Music2, Plus, Upload, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Search, Trash2, Pencil, Disc3, Mic2, MessageCircle, Download, X,
-  FolderOpen, Send, ListMusic,
+  FolderOpen, Send, ListMusic, ChevronUp, ChevronDown, Rewind, FastForward, Heart,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
