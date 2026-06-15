@@ -381,12 +381,23 @@ function DiscographyPage() {
             userName={user?.name ?? user?.email ?? null}
             onClose={() => setSelectedTrackId(null)}
             onEdit={() => setEditingTrack(selectedTrack)}
-            onPlay={(v) => setPlayer({
-              trackId: selectedTrack.id, versionId: v.id, url: "",
-              label: v.label, trackName: selectedTrack.name,
-              artist: selectedTrack.artist, coverPath: selectedTrack.cover_path,
-            })}
+            onPlay={(versions, idx) => {
+              const items: PlayerItem[] = versions.filter(isAudioVersion).map((v) => ({
+                versionId: v.id,
+                storagePath: v.storage_path,
+                label: v.label,
+                trackId: selectedTrack.id,
+                trackName: selectedTrack.name,
+                artist: selectedTrack.artist,
+                coverPath: selectedTrack.cover_path,
+              }));
+              if (items.length === 0) return;
+              const clampedIdx = Math.max(0, Math.min(items.length - 1, idx));
+              setPlayer({ items, index: clampedIdx });
+            }}
             currentPlayer={player}
+            isFav={favorites.has(selectedTrack.id)}
+            onToggleFav={() => toggleFav(selectedTrack.id)}
           />
         )}
       </div>
@@ -395,7 +406,14 @@ function DiscographyPage() {
       {player && (
         <BottomPlayer
           state={player}
+          onChangeIndex={(idx) => setPlayer((p) => p ? { ...p, index: Math.max(0, Math.min(p.items.length - 1, idx)) } : p)}
           onClose={() => setPlayer(null)}
+          isFav={favorites.has(player.items[player.index]?.trackId ?? "")}
+          onToggleFav={() => {
+            const id = player.items[player.index]?.trackId;
+            if (id) toggleFav(id);
+          }}
+          onOpenTrack={(trackId) => setSelectedTrackId(trackId)}
         />
       )}
 
