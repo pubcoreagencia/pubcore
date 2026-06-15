@@ -182,9 +182,21 @@ function DiscographyPage() {
 
   // ===== Player state (lifted, persists across track-detail close) =====
   const [player, setPlayer] = useState<{
-    trackId: string; versionId: string; url: string; label: string;
-    trackName: string; artist: string | null; coverPath: string | null;
+    items: PlayerItem[]; index: number;
   } | null>(null);
+  const [favorites, setFavorites] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem("disco:favs") ?? "[]")); }
+    catch { return new Set(); }
+  });
+  const toggleFav = useCallback((id: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      try { localStorage.setItem("disco:favs", JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
 
   return (
     <div className="flex h-[calc(100dvh-120px)] md:h-[100dvh] flex-col bg-background">
