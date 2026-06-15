@@ -734,7 +734,7 @@ function BottomPlayer({
   const [volume, setVolume] = useState(1);
   const [muted, setMuted] = useState(false);
   const [src, setSrc] = useState<string>("");
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
 
   const item = state.items[state.index];
   const hasPrev = state.index > 0;
