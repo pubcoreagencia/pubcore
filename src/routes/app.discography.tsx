@@ -766,8 +766,18 @@ function BottomPlayer({
   }, [volume, muted]);
 
   const togglePlay = () => {
-    const el = audioRef.current; if (!el) return;
-    if (el.paused) el.play().catch(() => {}); else el.pause();
+    const el = audioRef.current;
+    if (!el) return;
+    if (!src) { toast.message("Carregando áudio…"); return; }
+    if (el.paused || el.ended) {
+      const p = el.play();
+      if (p && typeof p.catch === "function") p.catch((err) => {
+        console.warn("audio play blocked", err);
+        toast.error("Toque novamente para reproduzir");
+      });
+    } else {
+      el.pause();
+    }
   };
 
   const seek = (pct: number) => {
@@ -823,7 +833,7 @@ function BottomPlayer({
   return (
     <>
       {/* Mini player — fixed, sits above mobile bottom nav */}
-      <div className="fixed inset-x-0 z-30 border-t border-border bg-card/95 backdrop-blur px-3 sm:px-4 py-2 sm:py-2.5 bottom-[calc(64px+env(safe-area-inset-bottom))] md:bottom-0">
+      <div className="fixed inset-x-0 z-[60] border-t border-border bg-card/95 backdrop-blur px-3 sm:px-4 py-2 sm:py-2.5 bottom-[calc(64px+env(safe-area-inset-bottom))] md:bottom-0">
         {audioEl}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Cover / track */}
@@ -884,7 +894,7 @@ function BottomPlayer({
 
       {/* Full player modal */}
       {expanded && (
-        <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[70] bg-background/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-200">
           <div className="flex items-center justify-between p-4 border-b border-border/40">
             <button onClick={() => setExpanded(false)} className="h-9 w-9 rounded-full hover:bg-surface flex items-center justify-center text-muted-foreground hover:text-foreground" title="Recolher">
               <ChevronDown className="h-5 w-5" />
