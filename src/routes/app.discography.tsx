@@ -748,6 +748,7 @@ function BottomPlayer({
     setCurrent(0);
     setDuration(0);
     wantPlayRef.current = true;
+    setExpanded(true);
     if (!item) return;
     (async () => {
       const url = await signedUrl(item.storagePath);
