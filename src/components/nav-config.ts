@@ -1,6 +1,7 @@
 import {
   LayoutDashboard, ListChecks, Calendar, Users2, Settings,
   StickyNote, Wallet, Boxes, Calculator, MapPin, KanbanSquare, Building2, FolderOpen,
+  TrendingUp,
 } from "lucide-react";
 
 
@@ -23,6 +24,7 @@ export const navGroups: NavGroup[] = [
       { to: "/app/calendar", label: "Calendário", icon: Calendar },
       { to: "/app/notes", label: "Notas", icon: StickyNote },
       { to: "/app/files", label: "Central de Arquivos", icon: FolderOpen },
+      { to: "/app/trends", label: "Painel de Tendências", icon: TrendingUp },
     ],
 
   },
