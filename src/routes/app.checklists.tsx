@@ -851,9 +851,6 @@ function HistoryTab() {
                     )}
                     <div className="flex flex-wrap items-center gap-1 ml-auto">
                       {companies.map((c) => <CompanyTag key={c} company={c} />)}
-                      {s.edited_at && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded border border-warning/30 bg-warning/10 text-warning">editado</span>
-                      )}
                       <button
                         onClick={() => setEditing(s as EditablePontoSession)}
                         className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-surface hover:bg-surface-elevated text-xs ml-1"
@@ -1274,9 +1271,6 @@ function PontoTab() {
                             {s.company && <CompanyTag company={s.company as Company} />}
                             <span className="font-mono tabular-nums text-muted-foreground">{start} → {end}</span>
                             <span className="font-mono tabular-nums">{fmtTime(s.total_ms ?? 0)}</span>
-                            {s.edited_at && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded border border-warning/30 bg-warning/10 text-warning">editado</span>
-                            )}
                             {s.description && (
                               <span className="text-muted-foreground truncate max-w-[260px]">— {s.description}</span>
                             )}
