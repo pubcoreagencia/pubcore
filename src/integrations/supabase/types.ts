@@ -1863,6 +1863,195 @@ export type Database = {
         }
         Relationships: []
       }
+      trends_hype: {
+        Row: {
+          category: string | null
+          company: string | null
+          created_at: string
+          description: string | null
+          external_url: string | null
+          growth: number | null
+          id: string
+          notes: string | null
+          owner_email: string
+          period: string | null
+          priority: string
+          region: string | null
+          related_terms: Json
+          source: string | null
+          status: string
+          term: string
+          updated_at: string
+          user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          category?: string | null
+          company?: string | null
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          growth?: number | null
+          id?: string
+          notes?: string | null
+          owner_email?: string
+          period?: string | null
+          priority?: string
+          region?: string | null
+          related_terms?: Json
+          source?: string | null
+          status?: string
+          term: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          category?: string | null
+          company?: string | null
+          created_at?: string
+          description?: string | null
+          external_url?: string | null
+          growth?: number | null
+          id?: string
+          notes?: string | null
+          owner_email?: string
+          period?: string | null
+          priority?: string
+          region?: string | null
+          related_terms?: Json
+          source?: string | null
+          status?: string
+          term?: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      trends_opportunities: {
+        Row: {
+          assignee: string | null
+          company: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          owner_email: string
+          priority: string
+          reason: string | null
+          source_id: string | null
+          source_kind: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          assignee?: string | null
+          company?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          owner_email?: string
+          priority?: string
+          reason?: string | null
+          source_id?: string | null
+          source_kind?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          assignee?: string | null
+          company?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          owner_email?: string
+          priority?: string
+          reason?: string | null
+          source_id?: string | null
+          source_kind?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
+      trends_seasonalities: {
+        Row: {
+          assignee: string | null
+          category: string
+          checklist: Json
+          company: string | null
+          created_at: string
+          description: string | null
+          event_date: string | null
+          id: string
+          ideas: Json
+          name: string
+          notes: string | null
+          opportunity: string | null
+          owner_email: string
+          priority: string
+          recurring_day: number | null
+          recurring_month: number | null
+          status: string
+          updated_at: string
+          user_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          assignee?: string | null
+          category?: string
+          checklist?: Json
+          company?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          ideas?: Json
+          name: string
+          notes?: string | null
+          opportunity?: string | null
+          owner_email?: string
+          priority?: string
+          recurring_day?: number | null
+          recurring_month?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          assignee?: string | null
+          category?: string
+          checklist?: Json
+          company?: string | null
+          created_at?: string
+          description?: string | null
+          event_date?: string | null
+          id?: string
+          ideas?: Json
+          name?: string
+          notes?: string | null
+          opportunity?: string | null
+          owner_email?: string
+          priority?: string
+          recurring_day?: number | null
+          recurring_month?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2027,6 +2216,10 @@ export type Database = {
       rename_checklist_company: {
         Args: { _new_name: string; _old_name: string; _workspace_id: string }
         Returns: undefined
+      }
+      seed_trends_seasonalities: {
+        Args: { _workspace_id: string }
+        Returns: number
       }
       set_account_status: {
         Args: { _status: string; _user_id: string }
