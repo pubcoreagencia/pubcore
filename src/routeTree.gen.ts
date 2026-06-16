@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppTrendsRouteImport } from './routes/app.trends'
 import { Route as AppStockRouteImport } from './routes/app.stock'
 import { Route as AppStickyNotesRouteImport } from './routes/app.sticky-notes'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
@@ -55,6 +56,11 @@ const IndexRoute = IndexRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTrendsRoute = AppTrendsRouteImport.update({
+  id: '/trends',
+  path: '/trends',
   getParentRoute: () => AppRoute,
 } as any)
 const AppStockRoute = AppStockRouteImport.update({
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/app/settings': typeof AppSettingsRoute
   '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
+  '/app/trends': typeof AppTrendsRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -188,6 +195,7 @@ export interface FileRoutesByTo {
   '/app/settings': typeof AppSettingsRoute
   '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
+  '/app/trends': typeof AppTrendsRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -213,6 +221,7 @@ export interface FileRoutesById {
   '/app/settings': typeof AppSettingsRoute
   '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
+  '/app/trends': typeof AppTrendsRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/sticky-notes'
     | '/app/stock'
+    | '/app/trends'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/sticky-notes'
     | '/app/stock'
+    | '/app/trends'
     | '/app'
   id:
     | '__root__'
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/app/settings'
     | '/app/sticky-notes'
     | '/app/stock'
+    | '/app/trends'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -331,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/trends': {
+      id: '/app/trends'
+      path: '/trends'
+      fullPath: '/app/trends'
+      preLoaderRoute: typeof AppTrendsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/stock': {
@@ -473,6 +492,7 @@ interface AppRouteChildren {
   AppSettingsRoute: typeof AppSettingsRoute
   AppStickyNotesRoute: typeof AppStickyNotesRoute
   AppStockRoute: typeof AppStockRoute
+  AppTrendsRoute: typeof AppTrendsRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -494,6 +514,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsRoute: AppSettingsRoute,
   AppStickyNotesRoute: AppStickyNotesRoute,
   AppStockRoute: AppStockRoute,
+  AppTrendsRoute: AppTrendsRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
