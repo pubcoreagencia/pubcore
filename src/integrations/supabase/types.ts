@@ -1319,6 +1319,192 @@ export type Database = {
         }
         Relationships: []
       }
+      pfin_accounts: {
+        Row: {
+          archived: boolean
+          closing_day: number | null
+          color: string | null
+          created_at: string
+          credit_limit: number | null
+          due_day: number | null
+          icon: string | null
+          id: string
+          initial_balance: number
+          kind: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          archived?: boolean
+          closing_day?: number | null
+          color?: string | null
+          created_at?: string
+          credit_limit?: number | null
+          due_day?: number | null
+          icon?: string | null
+          id?: string
+          initial_balance?: number
+          kind?: string
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          archived?: boolean
+          closing_day?: number | null
+          color?: string | null
+          created_at?: string
+          credit_limit?: number | null
+          due_day?: number | null
+          icon?: string | null
+          id?: string
+          initial_balance?: number
+          kind?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pfin_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          name: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pfin_goals: {
+        Row: {
+          color: string | null
+          created_at: string
+          current_amount: number
+          deadline: string | null
+          id: string
+          name: string
+          notes: string | null
+          target_amount: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          current_amount?: number
+          deadline?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          target_amount?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          current_amount?: number
+          deadline?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          target_amount?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pfin_transactions: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category_id: string | null
+          created_at: string
+          date: string
+          description: string
+          id: string
+          notes: string | null
+          payment_method: string | null
+          recurrence: string | null
+          status: string
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          category_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          recurrence?: string | null
+          status?: string
+          type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          notes?: string | null
+          payment_method?: string | null
+          recurrence?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pfin_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "pfin_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pfin_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "pfin_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ponto_session_edits: {
         Row: {
           created_at: string
@@ -2209,6 +2395,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      pfin_seed_default_categories: { Args: never; Returns: number }
       remove_member: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: undefined
