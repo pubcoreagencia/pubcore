@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, ListChecks, Calendar, Users2, Settings,
   StickyNote, Wallet, Boxes, Calculator, MapPin, KanbanSquare, Building2, FolderOpen,
-  TrendingUp,
+  TrendingUp, PiggyBank,
 } from "lucide-react";
 
 
@@ -34,6 +34,7 @@ export const navGroups: NavGroup[] = [
       { to: "/app/companies", label: "Empresas", icon: Building2 },
       { to: "/app/crm", label: "CRM", icon: Users2 },
       { to: "/app/finance", label: "Finanças", icon: Wallet },
+      { to: "/app/personal-finance", label: "Finanças Pessoais", icon: PiggyBank },
       { to: "/app/stock", label: "Estoque", icon: Boxes },
       { to: "/app/calculator", label: "Calculadora de Custos", icon: Calculator },
 
