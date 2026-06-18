@@ -18,6 +18,7 @@ import { Route as AppTrendsRouteImport } from './routes/app.trends'
 import { Route as AppStockRouteImport } from './routes/app.stock'
 import { Route as AppStickyNotesRouteImport } from './routes/app.sticky-notes'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppPersonalFinanceRouteImport } from './routes/app.personal-finance'
 import { Route as AppNotesRouteImport } from './routes/app.notes'
 import { Route as AppKanbanRouteImport } from './routes/app.kanban'
 import { Route as AppGratitudeRouteImport } from './routes/app.gratitude'
@@ -76,6 +77,11 @@ const AppStickyNotesRoute = AppStickyNotesRouteImport.update({
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPersonalFinanceRoute = AppPersonalFinanceRouteImport.update({
+  id: '/personal-finance',
+  path: '/personal-finance',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNotesRoute = AppNotesRouteImport.update({
@@ -168,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
+  '/app/personal-finance': typeof AppPersonalFinanceRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
+  '/app/personal-finance': typeof AppPersonalFinanceRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
@@ -218,6 +226,7 @@ export interface FileRoutesById {
   '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
+  '/app/personal-finance': typeof AppPersonalFinanceRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
@@ -245,6 +254,7 @@ export interface FileRouteTypes {
     | '/app/gratitude'
     | '/app/kanban'
     | '/app/notes'
+    | '/app/personal-finance'
     | '/app/settings'
     | '/app/sticky-notes'
     | '/app/stock'
@@ -269,6 +279,7 @@ export interface FileRouteTypes {
     | '/app/gratitude'
     | '/app/kanban'
     | '/app/notes'
+    | '/app/personal-finance'
     | '/app/settings'
     | '/app/sticky-notes'
     | '/app/stock'
@@ -294,6 +305,7 @@ export interface FileRouteTypes {
     | '/app/gratitude'
     | '/app/kanban'
     | '/app/notes'
+    | '/app/personal-finance'
     | '/app/settings'
     | '/app/sticky-notes'
     | '/app/stock'
@@ -371,6 +383,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/app/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/personal-finance': {
+      id: '/app/personal-finance'
+      path: '/personal-finance'
+      fullPath: '/app/personal-finance'
+      preLoaderRoute: typeof AppPersonalFinanceRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/notes': {
@@ -489,6 +508,7 @@ interface AppRouteChildren {
   AppGratitudeRoute: typeof AppGratitudeRoute
   AppKanbanRoute: typeof AppKanbanRoute
   AppNotesRoute: typeof AppNotesRoute
+  AppPersonalFinanceRoute: typeof AppPersonalFinanceRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppStickyNotesRoute: typeof AppStickyNotesRoute
   AppStockRoute: typeof AppStockRoute
@@ -511,6 +531,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppGratitudeRoute: AppGratitudeRoute,
   AppKanbanRoute: AppKanbanRoute,
   AppNotesRoute: AppNotesRoute,
+  AppPersonalFinanceRoute: AppPersonalFinanceRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppStickyNotesRoute: AppStickyNotesRoute,
   AppStockRoute: AppStockRoute,
