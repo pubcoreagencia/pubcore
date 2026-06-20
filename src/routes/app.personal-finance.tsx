@@ -225,6 +225,13 @@ function PersonalFinancePage() {
         </div>
       </header>
 
+      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-xs md:text-sm text-muted-foreground flex items-start gap-2">
+        <PiggyBank className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
+        <span>
+          <strong className="text-foreground">Espaço privado.</strong> Suas Finanças Pessoais são vinculadas apenas à sua conta — não mudam ao trocar de workspace e nenhum outro usuário (nem o Master) consegue visualizá-las.
+        </span>
+      </div>
+
       <Tabs defaultValue="dashboard" className="w-full">
         <TabsList className="grid w-full grid-cols-2 md:grid-cols-5 mb-4">
           <TabsTrigger value="dashboard">Painel</TabsTrigger>
