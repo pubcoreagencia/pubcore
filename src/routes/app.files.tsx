@@ -309,6 +309,66 @@ function FilesPage() {
     window.open(data.signedUrl, "_blank");
   };
 
+  const [zipping, setZipping] = useState(false);
+  const downloadFolder = async (folderId: string | null, rootName: string) => {
+    if (zipping) return;
+    setZipping(true);
+    const toastId = toast.loading(`Compactando "${rootName}"…`);
+    try {
+      // Build recursive folder tree from already-loaded folders + items.
+      // Files outside the current workspace are not loaded, so this stays scoped.
+      const childrenOf = (pid: string | null) => folders.filter((f) => f.parent_id === pid);
+      const itemsOf = (fid: string | null) => items.filter((it) => it.folder_id === fid);
+
+      // Collect (item, pathInZip)
+      const collected: { it: Item; path: string }[] = [];
+      const walk = (fid: string | null, prefix: string) => {
+        for (const it of itemsOf(fid)) collected.push({ it, path: `${prefix}${it.name}` });
+        for (const sub of childrenOf(fid)) walk(sub.id, `${prefix}${sub.name}/`);
+      };
+      walk(folderId, "");
+
+      if (collected.length === 0) {
+        toast.dismiss(toastId);
+        toast.info("Pasta vazia — nada para baixar");
+        return;
+      }
+
+      const { default: JSZip } = await import("jszip");
+      const zip = new JSZip();
+
+      let done = 0;
+      const concurrency = 4;
+      let idx = 0;
+      const worker = async () => {
+        while (idx < collected.length) {
+          const my = idx++;
+          const { it, path } = collected[my];
+          const { data, error } = await supabase.storage.from("files").download(it.storage_path);
+          if (error || !data) { console.warn("skip", path, error); continue; }
+          zip.file(path, data);
+          done++;
+          toast.loading(`Compactando "${rootName}" (${done}/${collected.length})…`, { id: toastId });
+        }
+      };
+      await Promise.all(Array.from({ length: concurrency }, worker));
+
+      const blob = await zip.generateAsync({ type: "blob" }, (m) => {
+        toast.loading(`Gerando ZIP… ${Math.round(m.percent)}%`, { id: toastId });
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `${rootName || "arquivos"}.zip`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      toast.success(`"${rootName}.zip" pronto`, { id: toastId });
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao compactar", { id: toastId });
+    } finally {
+      setZipping(false);
+    }
+  };
+
   const copyInternalLink = (kind: "folder" | "item", id: string) => {
     const url = `${window.location.origin}/app/files?${kind === "folder" ? "folder" : "item"}=${id}`;
     navigator.clipboard.writeText(url);
@@ -458,6 +518,12 @@ function FilesPage() {
 
           <div className="flex-1" />
 
+          <Button variant="outline" size="sm" onClick={() => {
+            const cur = folders.find((f) => f.id === currentFolderId);
+            downloadFolder(currentFolderId, cur?.name || "raiz");
+          }} disabled={zipping} className="h-9 gap-1.5">
+            <Download className="h-3.5 w-3.5" /> {zipping ? "Compactando…" : "Baixar pasta"}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setNewFolderOpen(true)} className="h-9 gap-1.5">
             <FolderPlus className="h-3.5 w-3.5" /> Nova pasta
           </Button>
@@ -601,11 +667,16 @@ function FilesPage() {
             if (o) setDetailsTarget(o as any);
             setContextMenu(null);
           }}
-          onDownload={contextMenu.kind === "item" ? () => {
-            const it = items.find((i) => i.id === contextMenu.id);
-            if (it) downloadItem(it);
+          onDownload={() => {
+            if (contextMenu.kind === "item") {
+              const it = items.find((i) => i.id === contextMenu.id);
+              if (it) downloadItem(it);
+            } else {
+              const f = folders.find((x) => x.id === contextMenu.id);
+              if (f) downloadFolder(f.id, f.name);
+            }
             setContextMenu(null);
-          } : undefined}
+          }}
         />
       )}
 
