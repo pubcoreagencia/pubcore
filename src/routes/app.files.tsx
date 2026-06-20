@@ -518,6 +518,12 @@ function FilesPage() {
 
           <div className="flex-1" />
 
+          <Button variant="outline" size="sm" onClick={() => {
+            const cur = folders.find((f) => f.id === currentFolderId);
+            downloadFolder(currentFolderId, cur?.name || "raiz");
+          }} disabled={zipping} className="h-9 gap-1.5">
+            <Download className="h-3.5 w-3.5" /> {zipping ? "Compactando…" : "Baixar pasta"}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setNewFolderOpen(true)} className="h-9 gap-1.5">
             <FolderPlus className="h-3.5 w-3.5" /> Nova pasta
           </Button>
