@@ -67,7 +67,7 @@ export function MobileNav() {
           </div>
         </Link>
         <div className="flex items-center gap-2 min-w-0">
-          {isMaster && (
+          {isMaster && !path.startsWith("/app/personal-finance") && (
             <div className="max-w-[40vw]"><WorkspaceSwitcher /></div>
           )}
           <button
