@@ -661,11 +661,16 @@ function FilesPage() {
             if (o) setDetailsTarget(o as any);
             setContextMenu(null);
           }}
-          onDownload={contextMenu.kind === "item" ? () => {
-            const it = items.find((i) => i.id === contextMenu.id);
-            if (it) downloadItem(it);
+          onDownload={() => {
+            if (contextMenu.kind === "item") {
+              const it = items.find((i) => i.id === contextMenu.id);
+              if (it) downloadItem(it);
+            } else {
+              const f = folders.find((x) => x.id === contextMenu.id);
+              if (f) downloadFolder(f.id, f.name);
+            }
             setContextMenu(null);
-          } : undefined}
+          }}
         />
       )}
 
