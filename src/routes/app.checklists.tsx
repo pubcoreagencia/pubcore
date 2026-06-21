@@ -946,7 +946,7 @@ interface DaySessionRow {
 function PontoTab() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
-  const { companies: checklistCompanies, colorOf, setPontoLimit } = useChecklistCompanies();
+  const { mainCompanies: checklistCompanies, colorOf, setPontoLimit } = useChecklistCompanies();
   const [editingLimitId, setEditingLimitId] = useState<string | null>(null);
   const [limitDraftMin, setLimitDraftMin] = useState<string>("");
   const [limitDraftEnabled, setLimitDraftEnabled] = useState<boolean>(true);
