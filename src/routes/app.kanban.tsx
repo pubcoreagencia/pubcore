@@ -13,6 +13,7 @@ import { logActivity } from "@/lib/activity-log";
 import { KanbanAttachments } from "@/components/KanbanAttachments";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { FlowCanvas } from "@/components/kanban/FlowCanvas";
+import { ShareButton } from "@/components/ShareButton";
 import type { SaveStatus } from "@/hooks/use-autosave";
 
 export const Route = createFileRoute("/app/kanban")({ component: KanbanRoute });
