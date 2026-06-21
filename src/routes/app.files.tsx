@@ -692,7 +692,7 @@ function FilesPage() {
       {shareTarget && (
         <ShareDialog
           open
-          onOpenChange={(o) => { if (!o) setShareTarget(null); }}
+          onOpenChange={(o: boolean) => { if (!o) setShareTarget(null); }}
           itemType={shareTarget.kind === "folder" ? "folder" : "file"}
           itemId={shareTarget.id}
           itemTitle={shareTarget.name}
