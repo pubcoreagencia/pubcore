@@ -12,6 +12,7 @@ export interface ChecklistCompany {
   name: string;
   color: string | null;
   position: number;
+  parent_company_id?: string | null;
   ponto_daily_limit_minutes?: number | null;
   ponto_limit_enabled?: boolean | null;
 }
