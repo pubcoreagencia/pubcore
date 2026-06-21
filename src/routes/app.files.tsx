@@ -142,6 +142,7 @@ function FilesPage() {
   const [moveTarget, setMoveTarget] = useState<{ kind: "folder" | "item"; id: string; name: string } | null>(null);
   const [detailsTarget, setDetailsTarget] = useState<Folder | Item | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; kind: "folder" | "item"; id: string } | null>(null);
+  const [shareTarget, setShareTarget] = useState<{ kind: "folder" | "item"; id: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
