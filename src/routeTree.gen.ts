@@ -17,6 +17,7 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppTrendsRouteImport } from './routes/app.trends'
 import { Route as AppStockRouteImport } from './routes/app.stock'
 import { Route as AppStickyNotesRouteImport } from './routes/app.sticky-notes'
+import { Route as AppSharedRouteImport } from './routes/app.shared'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppPersonalFinanceRouteImport } from './routes/app.personal-finance'
 import { Route as AppNotesRouteImport } from './routes/app.notes'
@@ -72,6 +73,11 @@ const AppStockRoute = AppStockRouteImport.update({
 const AppStickyNotesRoute = AppStickyNotesRouteImport.update({
   id: '/sticky-notes',
   path: '/sticky-notes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSharedRoute = AppSharedRouteImport.update({
+  id: '/shared',
+  path: '/shared',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsRoute = AppSettingsRouteImport.update({
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/app/notes': typeof AppNotesRoute
   '/app/personal-finance': typeof AppPersonalFinanceRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/shared': typeof AppSharedRoute
   '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
   '/app/trends': typeof AppTrendsRoute
@@ -201,6 +208,7 @@ export interface FileRoutesByTo {
   '/app/notes': typeof AppNotesRoute
   '/app/personal-finance': typeof AppPersonalFinanceRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/shared': typeof AppSharedRoute
   '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
   '/app/trends': typeof AppTrendsRoute
@@ -228,6 +236,7 @@ export interface FileRoutesById {
   '/app/notes': typeof AppNotesRoute
   '/app/personal-finance': typeof AppPersonalFinanceRoute
   '/app/settings': typeof AppSettingsRoute
+  '/app/shared': typeof AppSharedRoute
   '/app/sticky-notes': typeof AppStickyNotesRoute
   '/app/stock': typeof AppStockRoute
   '/app/trends': typeof AppTrendsRoute
@@ -256,6 +265,7 @@ export interface FileRouteTypes {
     | '/app/notes'
     | '/app/personal-finance'
     | '/app/settings'
+    | '/app/shared'
     | '/app/sticky-notes'
     | '/app/stock'
     | '/app/trends'
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/app/notes'
     | '/app/personal-finance'
     | '/app/settings'
+    | '/app/shared'
     | '/app/sticky-notes'
     | '/app/stock'
     | '/app/trends'
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/app/notes'
     | '/app/personal-finance'
     | '/app/settings'
+    | '/app/shared'
     | '/app/sticky-notes'
     | '/app/stock'
     | '/app/trends'
@@ -376,6 +388,13 @@ declare module '@tanstack/react-router' {
       path: '/sticky-notes'
       fullPath: '/app/sticky-notes'
       preLoaderRoute: typeof AppStickyNotesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/shared': {
+      id: '/app/shared'
+      path: '/shared'
+      fullPath: '/app/shared'
+      preLoaderRoute: typeof AppSharedRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/settings': {
@@ -510,6 +529,7 @@ interface AppRouteChildren {
   AppNotesRoute: typeof AppNotesRoute
   AppPersonalFinanceRoute: typeof AppPersonalFinanceRoute
   AppSettingsRoute: typeof AppSettingsRoute
+  AppSharedRoute: typeof AppSharedRoute
   AppStickyNotesRoute: typeof AppStickyNotesRoute
   AppStockRoute: typeof AppStockRoute
   AppTrendsRoute: typeof AppTrendsRoute
@@ -533,6 +553,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppNotesRoute: AppNotesRoute,
   AppPersonalFinanceRoute: AppPersonalFinanceRoute,
   AppSettingsRoute: AppSettingsRoute,
+  AppSharedRoute: AppSharedRoute,
   AppStickyNotesRoute: AppStickyNotesRoute,
   AppStockRoute: AppStockRoute,
   AppTrendsRoute: AppTrendsRoute,

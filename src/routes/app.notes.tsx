@@ -13,6 +13,7 @@ import { type Company } from "@/lib/mock-data";
 import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
 import { logActivity } from "@/lib/activity-log";
+import { ShareButton } from "@/components/ShareButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -827,6 +828,7 @@ function Editor({
           <button onClick={() => onFav(!note.favorite)} className="p-2 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors" title="Favoritar">
             <Star className={`h-4 w-4 ${note.favorite ? "fill-warning text-warning" : ""}`} />
           </button>
+          <ShareButton itemType="note" itemId={note.id} itemTitle={note.title || "(sem título)"} className="p-2 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary transition-colors" />
           <button onClick={onDelete} className="p-2 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Excluir">
             <Trash2 className="h-4 w-4" />
           </button>

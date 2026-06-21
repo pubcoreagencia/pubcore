@@ -4,7 +4,7 @@ import {
   Folder, FolderOpen, FolderPlus, Upload, Search, Star, StarOff, Download,
   Trash2, Pencil, Move, ChevronRight, Home, LayoutGrid, List as ListIcon,
   MousePointer2, Wand2, Link as LinkIcon, FileText, FileImage, FileVideo,
-  FileArchive, FileSpreadsheet, File as FileIcon, MoreVertical, X,
+  FileArchive, FileSpreadsheet, File as FileIcon, MoreVertical, X, Share2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ShareDialog } from "@/components/ShareDialog";
 
 export const Route = createFileRoute("/app/files")({
   component: FilesPage,
@@ -142,6 +143,7 @@ function FilesPage() {
   const [moveTarget, setMoveTarget] = useState<{ kind: "folder" | "item"; id: string; name: string } | null>(null);
   const [detailsTarget, setDetailsTarget] = useState<Folder | Item | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; kind: "folder" | "item"; id: string } | null>(null);
+  const [shareTarget, setShareTarget] = useState<{ kind: "folder" | "item"; id: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -677,8 +679,26 @@ function FilesPage() {
             }
             setContextMenu(null);
           }}
+          onShare={() => {
+            const name = contextMenu.kind === "folder"
+              ? folders.find((f) => f.id === contextMenu.id)?.name
+              : items.find((i) => i.id === contextMenu.id)?.name;
+            setShareTarget({ kind: contextMenu.kind, id: contextMenu.id, name: name || "" });
+            setContextMenu(null);
+          }}
         />
       )}
+
+      {shareTarget && (
+        <ShareDialog
+          open
+          onOpenChange={(o: boolean) => { if (!o) setShareTarget(null); }}
+          itemType={shareTarget.kind === "folder" ? "folder" : "file"}
+          itemId={shareTarget.id}
+          itemTitle={shareTarget.name}
+        />
+      )}
+
 
       {/* New folder */}
       <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
@@ -886,12 +906,13 @@ function ListRow({ kind, name, icon, size, type, company, date, favorite, onOpen
 
 function ContextMenu({
   x, y, kind, folder, item,
-  onOpen, onRename, onMove, onDelete, onFavorite, onCopyLink, onDetails, onDownload,
+  onOpen, onRename, onMove, onDelete, onFavorite, onCopyLink, onDetails, onDownload, onShare,
 }: {
   x: number; y: number; kind: "folder" | "item"; id: string;
   folder?: Folder; item?: Item;
   onOpen: () => void; onRename: () => void; onMove: () => void; onDelete: () => void;
   onFavorite: () => void; onCopyLink: () => void; onDetails: () => void; onDownload?: () => void;
+  onShare?: () => void;
 }) {
   const isFav = (folder?.favorite ?? item?.favorite) || false;
   const style: React.CSSProperties = {
@@ -905,6 +926,7 @@ function ContextMenu({
       {onDownload && <MenuBtn icon={Download} label="Baixar" onClick={onDownload} />}
       <MenuBtn icon={Pencil} label="Renomear" onClick={onRename} />
       <MenuBtn icon={Move} label="Mover" onClick={onMove} />
+      {onShare && <MenuBtn icon={Share2} label="Compartilhar" onClick={onShare} />}
       <MenuBtn icon={isFav ? StarOff : Star} label={isFav ? "Desfavoritar" : "Favoritar"} onClick={onFavorite} />
       <MenuBtn icon={LinkIcon} label="Copiar link interno" onClick={onCopyLink} />
       <MenuBtn icon={FileText} label="Ver detalhes" onClick={onDetails} />

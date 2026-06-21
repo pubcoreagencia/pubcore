@@ -13,6 +13,7 @@ import { logActivity } from "@/lib/activity-log";
 import { KanbanAttachments } from "@/components/KanbanAttachments";
 import { SaveIndicator } from "@/components/SaveIndicator";
 import { FlowCanvas } from "@/components/kanban/FlowCanvas";
+import { ShareButton } from "@/components/ShareButton";
 import type { SaveStatus } from "@/hooks/use-autosave";
 
 export const Route = createFileRoute("/app/kanban")({ component: KanbanRoute });
@@ -728,6 +729,7 @@ function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {}) {
                   >
                     <Pencil className="h-3 w-3" />
                   </button>
+                  <ShareButton itemType="kanban_funnel" itemId={f.id} itemTitle={f.name} className="text-muted-foreground hover:text-primary p-0.5 inline-flex" />
                   <button
                     onClick={(e) => { e.stopPropagation(); deleteFunnel(f.id); }}
                     className="text-muted-foreground hover:text-destructive p-0.5"
@@ -1096,6 +1098,7 @@ function CardDialog({
             className="flex-1 min-w-0 bg-transparent text-lg sm:text-xl font-display font-bold outline-none"
           />
           <SaveIndicator status={saveStatus} />
+          <ShareButton itemType="kanban_card" itemId={card.id} itemTitle={title || "(card sem título)"} />
           <button onClick={() => { void flush(); onClose(); }} className="text-muted-foreground hover:text-foreground p-1 flex-shrink-0">
             <X className="h-5 w-5" />
           </button>
