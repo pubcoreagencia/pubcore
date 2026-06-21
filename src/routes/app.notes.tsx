@@ -13,6 +13,7 @@ import { type Company } from "@/lib/mock-data";
 import { useChecklistCompanies } from "@/lib/checklist-companies";
 import { CompanyTag } from "@/components/CompanyTag";
 import { logActivity } from "@/lib/activity-log";
+import { ShareButton } from "@/components/ShareButton";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
