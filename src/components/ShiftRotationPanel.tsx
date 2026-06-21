@@ -42,7 +42,7 @@ export function ShiftRotationPanel() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const { activeCompany, sessions, startCompany } = usePonto();
-  const { companies: checklistCompanies, colorOf } = useChecklistCompanies();
+  const { mainCompanies: checklistCompanies, colorOf } = useChecklistCompanies();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<Company | "extend" | null>(null);
 
