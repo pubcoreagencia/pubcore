@@ -157,6 +157,7 @@ function CalendarPage() {
                   <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded border ${TYPE_COLOR[e.type]} truncate`}>{e.type}</span>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <span className="text-xs font-mono text-muted-foreground">{e.event_date.slice(8,10)} · {e.event_time?.slice(0,5)}</span>
+                    <ShareButton itemType="calendar_event" itemId={e.id} itemTitle={e.title} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-primary p-1 -m-1 inline-flex" />
                     <button onClick={() => remove(e.id)} className="opacity-100 md:opacity-0 md:group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 -m-1"><Trash2 className="h-3 w-3" /></button>
                   </div>
                 </div>
