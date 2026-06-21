@@ -19,6 +19,7 @@ export interface ChecklistCompany {
 
 interface Ctx {
   companies: ChecklistCompany[];
+  mainCompanies: ChecklistCompany[];
   loading: boolean;
   canManage: boolean;
   create: (name: string, color?: string) => Promise<ChecklistCompany | null>;
