@@ -28,6 +28,7 @@ import { useChecklist, type UserTask } from "@/lib/checklist-store";
 import { useWorkspace } from "@/lib/workspace";
 import { useChecklistCompanies, type ChecklistCompany } from "@/lib/checklist-companies";
 import { EditPontoSessionDialog, type EditablePontoSession } from "@/components/EditPontoSessionDialog";
+import { ShareButton } from "@/components/ShareButton";
 
 
 export const Route = createFileRoute("/app/checklists")({
