@@ -1710,6 +1710,136 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_item_activity: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          shared_item_id: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          shared_item_id: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          shared_item_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_item_activity_shared_item_id_fkey"
+            columns: ["shared_item_id"]
+            isOneToOne: false
+            referencedRelation: "shared_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_item_comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          shared_item_id: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          shared_item_id: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          shared_item_id?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_item_comments_shared_item_id_fkey"
+            columns: ["shared_item_id"]
+            isOneToOne: false
+            referencedRelation: "shared_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string
+          item_title: string | null
+          item_type: Database["public"]["Enums"]["shared_item_type"]
+          message: string | null
+          permission_level: Database["public"]["Enums"]["shared_permission"]
+          shared_by_user_id: string
+          source_workspace_id: string
+          status: Database["public"]["Enums"]["shared_status"]
+          target_workspace_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id: string
+          item_title?: string | null
+          item_type: Database["public"]["Enums"]["shared_item_type"]
+          message?: string | null
+          permission_level?: Database["public"]["Enums"]["shared_permission"]
+          shared_by_user_id: string
+          source_workspace_id: string
+          status?: Database["public"]["Enums"]["shared_status"]
+          target_workspace_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string
+          item_title?: string | null
+          item_type?: Database["public"]["Enums"]["shared_item_type"]
+          message?: string | null
+          permission_level?: Database["public"]["Enums"]["shared_permission"]
+          shared_by_user_id?: string
+          source_workspace_id?: string
+          status?: Database["public"]["Enums"]["shared_status"]
+          target_workspace_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_items_source_workspace_id_fkey"
+            columns: ["source_workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_items_target_workspace_id_fkey"
+            columns: ["target_workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sticky_notes: {
         Row: {
           color: string
@@ -2347,6 +2477,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_shared_access: {
+        Args: {
+          _item_id: string
+          _item_type: Database["public"]["Enums"]["shared_item_type"]
+          _min_permission?: Database["public"]["Enums"]["shared_permission"]
+        }
+        Returns: boolean
+      }
       invite_member_by_email: {
         Args: {
           _email: string
@@ -2431,6 +2569,16 @@ export type Database = {
     }
     Enums: {
       app_role: "master" | "user"
+      shared_item_type:
+        | "checklist_task"
+        | "kanban_card"
+        | "kanban_funnel"
+        | "file"
+        | "folder"
+        | "note"
+        | "calendar_event"
+      shared_permission: "view" | "comment" | "edit" | "duplicate"
+      shared_status: "active" | "revoked"
       workspace_role: "admin" | "member"
     }
     CompositeTypes: {
@@ -2560,6 +2708,17 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["master", "user"],
+      shared_item_type: [
+        "checklist_task",
+        "kanban_card",
+        "kanban_funnel",
+        "file",
+        "folder",
+        "note",
+        "calendar_event",
+      ],
+      shared_permission: ["view", "comment", "edit", "duplicate"],
+      shared_status: ["active", "revoked"],
       workspace_role: ["admin", "member"],
     },
   },
