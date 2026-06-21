@@ -159,10 +159,15 @@ export function ChecklistCompaniesProvider({ children }: { children: ReactNode }
   }, []);
 
 
+  const mainCompanies = useMemo(
+    () => companies.filter((c) => !c.parent_company_id),
+    [companies]
+  );
+
   const value: Ctx = useMemo(() => ({
-    companies, loading, canManage: isWorkspaceAdmin,
+    companies, mainCompanies, loading, canManage: isWorkspaceAdmin,
     create, rename, recolor, remove, reorder, setPontoLimit, colorOf,
-  }), [companies, loading, isWorkspaceAdmin, create, rename, recolor, remove, reorder, setPontoLimit, colorOf]);
+  }), [companies, mainCompanies, loading, isWorkspaceAdmin, create, rename, recolor, remove, reorder, setPontoLimit, colorOf]);
 
 
   return <CompaniesCtx.Provider value={value}>{children}</CompaniesCtx.Provider>;
