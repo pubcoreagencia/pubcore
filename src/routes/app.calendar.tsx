@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
 import { toast } from "sonner";
 import { logActivity } from "@/lib/activity-log";
+import { ShareButton } from "@/components/ShareButton";
 
 export const Route = createFileRoute("/app/calendar")({ component: CalendarPage });
 
