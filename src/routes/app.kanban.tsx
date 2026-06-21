@@ -729,6 +729,7 @@ function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {}) {
                   >
                     <Pencil className="h-3 w-3" />
                   </button>
+                  <ShareButton itemType="kanban_funnel" itemId={f.id} itemTitle={f.name} className="text-muted-foreground hover:text-primary p-0.5 inline-flex" />
                   <button
                     onClick={(e) => { e.stopPropagation(); deleteFunnel(f.id); }}
                     className="text-muted-foreground hover:text-destructive p-0.5"
