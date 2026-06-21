@@ -12,12 +12,14 @@ export interface ChecklistCompany {
   name: string;
   color: string | null;
   position: number;
+  parent_company_id?: string | null;
   ponto_daily_limit_minutes?: number | null;
   ponto_limit_enabled?: boolean | null;
 }
 
 interface Ctx {
   companies: ChecklistCompany[];
+  mainCompanies: ChecklistCompany[];
   loading: boolean;
   canManage: boolean;
   create: (name: string, color?: string) => Promise<ChecklistCompany | null>;
@@ -157,10 +159,15 @@ export function ChecklistCompaniesProvider({ children }: { children: ReactNode }
   }, []);
 
 
+  const mainCompanies = useMemo(
+    () => companies.filter((c) => !c.parent_company_id),
+    [companies]
+  );
+
   const value: Ctx = useMemo(() => ({
-    companies, loading, canManage: isWorkspaceAdmin,
+    companies, mainCompanies, loading, canManage: isWorkspaceAdmin,
     create, rename, recolor, remove, reorder, setPontoLimit, colorOf,
-  }), [companies, loading, isWorkspaceAdmin, create, rename, recolor, remove, reorder, setPontoLimit, colorOf]);
+  }), [companies, mainCompanies, loading, isWorkspaceAdmin, create, rename, recolor, remove, reorder, setPontoLimit, colorOf]);
 
 
   return <CompaniesCtx.Provider value={value}>{children}</CompaniesCtx.Provider>;
