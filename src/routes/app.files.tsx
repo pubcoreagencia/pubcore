@@ -678,8 +678,26 @@ function FilesPage() {
             }
             setContextMenu(null);
           }}
+          onShare={() => {
+            const name = contextMenu.kind === "folder"
+              ? folders.find((f) => f.id === contextMenu.id)?.name
+              : items.find((i) => i.id === contextMenu.id)?.name;
+            setShareTarget({ kind: contextMenu.kind, id: contextMenu.id, name: name || "" });
+            setContextMenu(null);
+          }}
         />
       )}
+
+      {shareTarget && (
+        <ShareDialog
+          open
+          onOpenChange={(o) => { if (!o) setShareTarget(null); }}
+          itemType={shareTarget.kind === "folder" ? "folder" : "file"}
+          itemId={shareTarget.id}
+          itemTitle={shareTarget.name}
+        />
+      )}
+
 
       {/* New folder */}
       <Dialog open={newFolderOpen} onOpenChange={setNewFolderOpen}>
