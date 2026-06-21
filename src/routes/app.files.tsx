@@ -4,7 +4,7 @@ import {
   Folder, FolderOpen, FolderPlus, Upload, Search, Star, StarOff, Download,
   Trash2, Pencil, Move, ChevronRight, Home, LayoutGrid, List as ListIcon,
   MousePointer2, Wand2, Link as LinkIcon, FileText, FileImage, FileVideo,
-  FileArchive, FileSpreadsheet, File as FileIcon, MoreVertical, X,
+  FileArchive, FileSpreadsheet, File as FileIcon, MoreVertical, X, Share2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
