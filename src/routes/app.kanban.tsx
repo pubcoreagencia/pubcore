@@ -1096,6 +1096,7 @@ function CardDialog({
             className="flex-1 min-w-0 bg-transparent text-lg sm:text-xl font-display font-bold outline-none"
           />
           <SaveIndicator status={saveStatus} />
+          <ShareButton itemType="kanban_card" itemId={card.id} itemTitle={title || "(card sem título)"} />
           <button onClick={() => { void flush(); onClose(); }} className="text-muted-foreground hover:text-foreground p-1 flex-shrink-0">
             <X className="h-5 w-5" />
           </button>
