@@ -886,12 +886,13 @@ function ListRow({ kind, name, icon, size, type, company, date, favorite, onOpen
 
 function ContextMenu({
   x, y, kind, folder, item,
-  onOpen, onRename, onMove, onDelete, onFavorite, onCopyLink, onDetails, onDownload,
+  onOpen, onRename, onMove, onDelete, onFavorite, onCopyLink, onDetails, onDownload, onShare,
 }: {
   x: number; y: number; kind: "folder" | "item"; id: string;
   folder?: Folder; item?: Item;
   onOpen: () => void; onRename: () => void; onMove: () => void; onDelete: () => void;
   onFavorite: () => void; onCopyLink: () => void; onDetails: () => void; onDownload?: () => void;
+  onShare?: () => void;
 }) {
   const isFav = (folder?.favorite ?? item?.favorite) || false;
   const style: React.CSSProperties = {
@@ -905,6 +906,7 @@ function ContextMenu({
       {onDownload && <MenuBtn icon={Download} label="Baixar" onClick={onDownload} />}
       <MenuBtn icon={Pencil} label="Renomear" onClick={onRename} />
       <MenuBtn icon={Move} label="Mover" onClick={onMove} />
+      {onShare && <MenuBtn icon={Share2} label="Compartilhar" onClick={onShare} />}
       <MenuBtn icon={isFav ? StarOff : Star} label={isFav ? "Desfavoritar" : "Favoritar"} onClick={onFavorite} />
       <MenuBtn icon={LinkIcon} label="Copiar link interno" onClick={onCopyLink} />
       <MenuBtn icon={FileText} label="Ver detalhes" onClick={onDetails} />
