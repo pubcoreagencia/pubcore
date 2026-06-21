@@ -582,6 +582,8 @@ function TaskRow({
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
+            <ShareButton itemType="checklist_task" itemId={task.id} itemTitle={task.text} />
+
             <button
               onClick={() => remove(company, task.id)}
               className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10"
