@@ -667,6 +667,17 @@ function Select({
   );
 }
 
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border/60 bg-surface/40 px-2.5 py-1.5">
+      <div className="text-[9px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="font-mono text-sm tabular-nums">{value}</div>
+    </div>
+  );
+}
+
+
+
 /* =================== TAB: HISTÓRICO =================== */
 
 type TimelineEvent = {
@@ -686,6 +697,9 @@ function HistoryTab() {
   const [userFilter, setUserFilter] = useState<string>("Todos");
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<EditablePontoSession | null>(null);
+  const [openSessions, setOpenSessions] = useState<Set<string>>(new Set());
+  const toggleSession = (id: string) =>
+    setOpenSessions((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const PAGE_SIZE = 10;
 
 
@@ -828,39 +842,122 @@ function HistoryTab() {
           </div>
         ) : (
           <>
-            <ul className="divide-y divide-border rounded-lg border border-border bg-surface/40 overflow-hidden">
+            <ul className="space-y-2">
               {pageSessions.map((s) => {
-                const tasks = periodTasks.filter((t) => t.session_id === s.id);
+                const tasks = periodTasks
+                  .filter((t) => t.session_id === s.id)
+                  .sort((a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime());
                 const companies = Array.from(new Set(tasks.map((t) => t.company))) as Company[];
+                const pauses = Array.isArray(s.pauses) ? (s.pauses as Array<{ start?: number; end?: number }>) : [];
+                const productivity = (s.total_ms ?? 0) > 0 ? Math.round(((s.productive_ms ?? 0) / (s.total_ms ?? 1)) * 100) : 0;
+                const isOpen = openSessions.has(s.id);
+                // Tasks per company (time approximation: count only)
+                const tasksByCo = new Map<string, number>();
+                for (const t of tasks) tasksByCo.set(t.company, (tasksByCo.get(t.company) ?? 0) + 1);
                 return (
-                  <li key={s.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm">
-                    <div className="min-w-[140px]">
-                      <div className="text-xs text-muted-foreground">{fmtDate(s.started_at)}</div>
-                      <div className="font-mono text-xs">{fmtClock(s.started_at)} → {fmtClock(s.ended_at)}</div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Timer className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="font-mono text-xs tabular-nums">{fmtTime(s.total_ms ?? 0)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                      <span className="text-xs">{tasks.length} tarefas</span>
-                    </div>
-                    {s.user_name && (
-                      <div className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">{s.user_name}</span>
+                  <li key={s.id} className="rounded-lg border border-border bg-surface/40 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => toggleSession(s.id)}
+                      className="w-full flex flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-surface/60 transition"
+                    >
+                      <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                      <div className="min-w-[140px]">
+                        <div className="text-xs text-muted-foreground">{fmtDate(s.started_at)}</div>
+                        <div className="font-mono text-xs">{fmtClock(s.started_at)} → {fmtClock(s.ended_at)}</div>
+                      </div>
+                      <div className="flex items-center gap-1.5" title="Tempo total">
+                        <Timer className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-mono text-xs tabular-nums">{fmtTime(s.total_ms ?? 0)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5" title="Tarefas concluídas">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                        <span className="text-xs">{tasks.length}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5" title="Produtividade">
+                        <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                        <span className="font-mono text-xs tabular-nums">{productivity}%</span>
+                      </div>
+                      {s.user_name && (
+                        <div className="flex items-center gap-1.5">
+                          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">{s.user_name}</span>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-1 ml-auto">
+                        {(s.company ? [s.company as Company] : companies).map((c) => <CompanyTag key={c} company={c} />)}
+                      </div>
+                    </button>
+                    {isOpen && (
+                      <div className="border-t border-border/50 bg-background/40 p-4 space-y-4 text-xs">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          <Stat label="Tempo ativo" value={fmtTime(s.productive_ms ?? 0)} />
+                          <Stat label="Tempo pausado" value={fmtTime(s.pause_ms ?? 0)} />
+                          <Stat label="Pausas" value={String(pauses.length)} />
+                          <Stat label="Produtividade" value={`${productivity}%`} />
+                        </div>
+                        {tasksByCo.size > 0 && (
+                          <div>
+                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Por ponto</div>
+                            <div className="flex flex-wrap gap-2">
+                              {Array.from(tasksByCo.entries()).map(([co, n]) => (
+                                <span key={co} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1">
+                                  <CompanyTag company={co as Company} /> <span className="font-mono">{n} tarefa{n !== 1 ? "s" : ""}</span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {tasks.length > 0 && (
+                          <div>
+                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Tarefas concluídas ({tasks.length})</div>
+                            <ul className="rounded-md border border-border/50 divide-y divide-border/40 max-h-60 overflow-y-auto">
+                              {tasks.map((t) => (
+                                <li key={t.id} className="flex flex-wrap items-center gap-2 px-3 py-1.5">
+                                  <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
+                                  <span className="text-foreground flex-1 min-w-0 truncate">{t.title}</span>
+                                  <CompanyTag company={t.company as Company} />
+                                  <span className="font-mono text-muted-foreground">{fmtClock(t.completed_at)}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {pauses.length > 0 && (
+                          <div>
+                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Pausas registradas</div>
+                            <ul className="space-y-1">
+                              {pauses.map((p, idx) => {
+                                const dur = (p.end ?? Date.now()) - (p.start ?? 0);
+                                return (
+                                  <li key={idx} className="flex items-center gap-2 font-mono text-muted-foreground">
+                                    <Pause className="h-3 w-3" />
+                                    {p.start ? new Date(p.start).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                                    {" → "}
+                                    {p.end ? new Date(p.end).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "em curso"}
+                                    <span className="ml-auto">{fmtTime(Math.max(0, dur))}</span>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          </div>
+                        )}
+                        {(s.description || s.notes) && (
+                          <div className="text-muted-foreground">
+                            <div className="text-[10px] uppercase tracking-widest mb-1">Resumo</div>
+                            <p className="whitespace-pre-wrap text-foreground/80">{s.description || s.notes}</p>
+                          </div>
+                        )}
+                        <div className="flex justify-end">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditing(s as EditablePontoSession); }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-surface hover:bg-surface-elevated"
+                          >
+                            <Pencil className="h-3 w-3" /> Editar expediente
+                          </button>
+                        </div>
                       </div>
                     )}
-                    <div className="flex flex-wrap items-center gap-1 ml-auto">
-                      {companies.map((c) => <CompanyTag key={c} company={c} />)}
-                      <button
-                        onClick={() => setEditing(s as EditablePontoSession)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-surface hover:bg-surface-elevated text-xs ml-1"
-                      >
-                        <Pencil className="h-3 w-3" /> Editar
-                      </button>
-                    </div>
                   </li>
                 );
               })}
@@ -1353,6 +1450,34 @@ function MetricsTab() {
 
   const activeCompanies = byCompany.filter((b) => b.completed > 0).length;
 
+  // Hours by day / week / month (always computed from all sessions, independent of period filter)
+  const now = new Date();
+  const startToday = new Date(now); startToday.setHours(0,0,0,0);
+  const startWeek = new Date(startToday); startWeek.setDate(startToday.getDate() - 6);
+  const startMonth = new Date(startToday); startMonth.setDate(startToday.getDate() - 29);
+  const sumMs = (from: Date) => sessions
+    .filter((s) => new Date(s.started_at).getTime() >= from.getTime())
+    .reduce((a, s) => a + (s.total_ms ?? 0), 0);
+  const msToday = sumMs(startToday);
+  const msWeek = sumMs(startWeek);
+  const msMonth = sumMs(startMonth);
+
+  // Time per company (productive_ms) in the active period
+  const timeByCompany = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of periodSessions) {
+      if (!s.company) continue;
+      m.set(s.company, (m.get(s.company) ?? 0) + (s.productive_ms ?? 0));
+    }
+    return Array.from(m.entries())
+      .map(([company, ms]) => ({ company, ms, hours: +(ms / 3600000).toFixed(2) }))
+      .sort((a, b) => b.ms - a.ms);
+  }, [periodSessions]);
+
+  const topCompany = timeByCompany[0];
+  const topUser = byUser[0];
+  const avgSessionMs = periodSessions.length > 0 ? Math.round(totalMs / periodSessions.length) : 0;
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl border border-border bg-card shadow-card">
@@ -1378,6 +1503,56 @@ function MetricsTab() {
         <StatCard label="Tempo médio / tarefa" value={fmtTime(avgPerTaskMs)} icon={Timer} accent="info" hint="por execução" />
         <StatCard label="Empresas ativas" value={checklistCompanies.length > 0 ? `${activeCompanies}/${checklistCompanies.length}` : String(activeCompanies)} icon={Users} accent="warning" hint="com produção" />
       </div>
+
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Horas hoje" value={fmtTime(msToday)} icon={Timer} accent="primary" hint="trabalho total" />
+        <StatCard label="Últimos 7 dias" value={fmtTime(msWeek)} icon={Activity} accent="info" hint="semana" />
+        <StatCard label="Últimos 30 dias" value={fmtTime(msMonth)} icon={BarChart3} accent="success" hint="mês" />
+        <StatCard label="Tempo médio / expediente" value={fmtTime(avgSessionMs)} icon={Timer} accent="warning" hint={`${periodSessions.length} expedientes`} />
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Empresa mais trabalhada</div>
+          {topCompany ? (
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <CompanyTag company={topCompany.company as Company} />
+              <span className="font-mono text-sm tabular-nums">{fmtTime(topCompany.ms)}</span>
+            </div>
+          ) : <div className="text-xs text-muted-foreground mt-2">Sem dados no período.</div>}
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Usuário mais ativo</div>
+          {topUser ? (
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold truncate">{topUser.user}</span>
+              <span className="font-mono text-sm tabular-nums">{topUser.count} tarefas</span>
+            </div>
+          ) : <div className="text-xs text-muted-foreground mt-2">Sem dados no período.</div>}
+        </div>
+      </div>
+
+      {timeByCompany.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+          <h3 className="font-display font-semibold mb-4">Tempo por empresa (período)</h3>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={timeByCompany} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} unit="h" />
+                <YAxis dataKey="company" type="category" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} width={100} />
+                <Tooltip
+                  contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }}
+                  formatter={(v: number) => [`${v.toFixed(2)} h`, "Tempo ativo"]}
+                />
+                <Bar dataKey="hours" fill="oklch(0.78 0.16 65)" radius={[0, 4, 4, 0]} name="Horas" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+
 
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5 shadow-card">
