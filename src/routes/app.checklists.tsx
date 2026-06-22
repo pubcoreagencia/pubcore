@@ -667,6 +667,14 @@ function Select({
   );
 }
 
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border/60 bg-surface/40 px-2.5 py-1.5">
+      <div className="text-[9px] uppercase tracking-widest text-muted-foreground">{label}</div>
+      <div className="font-mono text-sm tabular-nums">{value}</div>
+    </div>
+  );
+
 /* =================== TAB: HISTÓRICO =================== */
 
 type TimelineEvent = {
