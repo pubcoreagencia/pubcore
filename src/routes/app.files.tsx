@@ -426,7 +426,15 @@ function FilesPage() {
   const endDrag = async (e: React.PointerEvent) => {
     const d = dragState.current;
     dragState.current = null;
-    if (!d || !d.moved) return;
+    if (!d) return;
+    if (!d.moved) {
+      // Pure click — let onClick handle open. Don't suppress.
+      suppressClickRef.current = false;
+      return;
+    }
+    // A drag actually happened — suppress the synthetic click that follows.
+    suppressClickRef.current = true;
+    setTimeout(() => { suppressClickRef.current = false; }, 250);
     // Check drop on a folder
     const drop = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
     const folderEl = drop?.closest("[data-folder-drop]") as HTMLElement | null;
