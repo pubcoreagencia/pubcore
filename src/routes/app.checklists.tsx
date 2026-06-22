@@ -1504,6 +1504,56 @@ function MetricsTab() {
         <StatCard label="Empresas ativas" value={checklistCompanies.length > 0 ? `${activeCompanies}/${checklistCompanies.length}` : String(activeCompanies)} icon={Users} accent="warning" hint="com produção" />
       </div>
 
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard label="Horas hoje" value={fmtTime(msToday)} icon={Timer} accent="primary" hint="trabalho total" />
+        <StatCard label="Últimos 7 dias" value={fmtTime(msWeek)} icon={Activity} accent="info" hint="semana" />
+        <StatCard label="Últimos 30 dias" value={fmtTime(msMonth)} icon={BarChart3} accent="success" hint="mês" />
+        <StatCard label="Tempo médio / expediente" value={fmtTime(avgSessionMs)} icon={Timer} accent="warning" hint={`${periodSessions.length} expedientes`} />
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Empresa mais trabalhada</div>
+          {topCompany ? (
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <CompanyTag company={topCompany.company as Company} />
+              <span className="font-mono text-sm tabular-nums">{fmtTime(topCompany.ms)}</span>
+            </div>
+          ) : <div className="text-xs text-muted-foreground mt-2">Sem dados no período.</div>}
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Usuário mais ativo</div>
+          {topUser ? (
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold truncate">{topUser.user}</span>
+              <span className="font-mono text-sm tabular-nums">{topUser.count} tarefas</span>
+            </div>
+          ) : <div className="text-xs text-muted-foreground mt-2">Sem dados no período.</div>}
+        </div>
+      </div>
+
+      {timeByCompany.length > 0 && (
+        <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+          <h3 className="font-display font-semibold mb-4">Tempo por empresa (período)</h3>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={timeByCompany} layout="vertical" margin={{ left: 20 }}>
+                <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} unit="h" />
+                <YAxis dataKey="company" type="category" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} width={100} />
+                <Tooltip
+                  contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }}
+                  formatter={(v: number) => [`${v.toFixed(2)} h`, "Tempo ativo"]}
+                />
+                <Bar dataKey="hours" fill="oklch(0.78 0.16 65)" radius={[0, 4, 4, 0]} name="Horas" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+
+
       <div className="grid lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5 shadow-card">
           <h3 className="font-display font-semibold mb-4">Produtividade ao longo do período</h3>
