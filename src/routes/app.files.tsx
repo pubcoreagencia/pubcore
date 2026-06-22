@@ -830,7 +830,6 @@ function ViewBtn({ active, onClick, icon: Icon, label }: { active: boolean; onCl
 function FolderCard({ f, mode, ...rest }: {
   f: Folder; mode: "free" | "grid";
   onPointerDown?: (e: React.PointerEvent) => void;
-  onDoubleClick?: () => void;
   onClick?: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
 }) {
