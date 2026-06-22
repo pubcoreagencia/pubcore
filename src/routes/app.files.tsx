@@ -568,7 +568,7 @@ function FilesPage() {
               <FolderCard
                 key={f.id} f={f} mode="free"
                 onPointerDown={(e) => startDrag(e, "folder", f.id, f.pos_x, f.pos_y)}
-                onDoubleClick={() => setCurrentFolderId(f.id)}
+                onClick={() => tryOpen(() => setCurrentFolderId(f.id))}
                 onContextMenu={(e) => openContext(e, "folder", f.id)}
               />
             ))}
@@ -576,7 +576,7 @@ function FilesPage() {
               <ItemCard
                 key={it.id} it={it} mode="free"
                 onPointerDown={(e) => startDrag(e, "item", it.id, it.pos_x, it.pos_y)}
-                onDoubleClick={() => downloadItem(it)}
+                onClick={() => tryOpen(() => downloadItem(it))}
                 onContextMenu={(e) => openContext(e, "item", it.id)}
               />
             ))}
@@ -586,7 +586,6 @@ function FilesPage() {
             {visibleFolders.map((f) => (
               <FolderCard
                 key={f.id} f={f} mode="grid"
-                onDoubleClick={() => setCurrentFolderId(f.id)}
                 onClick={() => setCurrentFolderId(f.id)}
                 onContextMenu={(e) => openContext(e, "folder", f.id)}
               />
@@ -594,7 +593,7 @@ function FilesPage() {
             {visibleItems.map((it) => (
               <ItemCard
                 key={it.id} it={it} mode="grid"
-                onDoubleClick={() => downloadItem(it)}
+                onClick={() => downloadItem(it)}
                 onContextMenu={(e) => openContext(e, "item", it.id)}
               />
             ))}
