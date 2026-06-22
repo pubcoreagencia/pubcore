@@ -857,7 +857,7 @@ function FolderCard({ f, mode, ...rest }: {
 function ItemCard({ it, mode, ...rest }: {
   it: Item; mode: "free" | "grid";
   onPointerDown?: (e: React.PointerEvent) => void;
-  onDoubleClick?: () => void;
+  onClick?: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
 }) {
   const Ico = fileIconFor(it.mime_type, it.name);
