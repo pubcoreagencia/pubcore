@@ -674,6 +674,9 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="font-mono text-sm tabular-nums">{value}</div>
     </div>
   );
+}
+
+
 
 /* =================== TAB: HISTÓRICO =================== */
 
