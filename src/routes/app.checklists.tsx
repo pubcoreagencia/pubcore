@@ -686,6 +686,9 @@ function HistoryTab() {
   const [userFilter, setUserFilter] = useState<string>("Todos");
   const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<EditablePontoSession | null>(null);
+  const [openSessions, setOpenSessions] = useState<Set<string>>(new Set());
+  const toggleSession = (id: string) =>
+    setOpenSessions((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const PAGE_SIZE = 10;
 
 
