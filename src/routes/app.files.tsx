@@ -149,6 +149,11 @@ function FilesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const dragState = useRef<{ id: string; kind: "folder" | "item"; offX: number; offY: number; moved: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
+  const tryOpen = useCallback((fn: () => void) => {
+    if (suppressClickRef.current) { suppressClickRef.current = false; return; }
+    fn();
+  }, []);
 
   useEffect(() => {
     window.localStorage.setItem(VIEW_KEY, view);
