@@ -1450,6 +1450,34 @@ function MetricsTab() {
 
   const activeCompanies = byCompany.filter((b) => b.completed > 0).length;
 
+  // Hours by day / week / month (always computed from all sessions, independent of period filter)
+  const now = new Date();
+  const startToday = new Date(now); startToday.setHours(0,0,0,0);
+  const startWeek = new Date(startToday); startWeek.setDate(startToday.getDate() - 6);
+  const startMonth = new Date(startToday); startMonth.setDate(startToday.getDate() - 29);
+  const sumMs = (from: Date) => sessions
+    .filter((s) => new Date(s.started_at).getTime() >= from.getTime())
+    .reduce((a, s) => a + (s.total_ms ?? 0), 0);
+  const msToday = sumMs(startToday);
+  const msWeek = sumMs(startWeek);
+  const msMonth = sumMs(startMonth);
+
+  // Time per company (productive_ms) in the active period
+  const timeByCompany = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of periodSessions) {
+      if (!s.company) continue;
+      m.set(s.company, (m.get(s.company) ?? 0) + (s.productive_ms ?? 0));
+    }
+    return Array.from(m.entries())
+      .map(([company, ms]) => ({ company, ms, hours: +(ms / 3600000).toFixed(2) }))
+      .sort((a, b) => b.ms - a.ms);
+  }, [periodSessions]);
+
+  const topCompany = timeByCompany[0];
+  const topUser = byUser[0];
+  const avgSessionMs = periodSessions.length > 0 ? Math.round(totalMs / periodSessions.length) : 0;
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 sm:p-4 rounded-xl border border-border bg-card shadow-card">
