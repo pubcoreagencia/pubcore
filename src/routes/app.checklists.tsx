@@ -1077,47 +1077,133 @@ function PontoTab() {
     startCompany(company, user?.name, user?.email, user?.id);
   };
 
+  // Local-timezone YYYY-MM-DD — never use toISOString() here, that returns UTC
+  // and pushes evening sessions in BRT (UTC-3) onto the next day, which caused
+  // ~11+ shifts/day to appear on the next day in the history.
+  const localDay = (iso: string) => {
+    const d = new Date(iso);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
   const [history, setHistory] = useState<DaySessionRow[]>([]);
+  const [dayTasks, setDayTasks] = useState<Array<{ id: string; session_id: string | null; company: string | null; title: string; completed_at: string; user_name: string | null }>>([]);
+  const [dayCompletions, setDayCompletions] = useState<Array<{ id: string; company: string | null; task_title: string; completed_on: string; completed_at: string; user_name: string | null }>>([]);
   useEffect(() => {
-    if (!user?.id || !activeWorkspaceId) { setHistory([]); return; }
+    if (!user?.id || !activeWorkspaceId) { setHistory([]); setDayTasks([]); setDayCompletions([]); return; }
     let cancelled = false;
     const load = async () => {
-      const { data, error } = await supabase
-        .from("ponto_sessions")
-        .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company, workspace_id, pauses, notes, description, edited_at")
-        .eq("workspace_id", activeWorkspaceId)
-        .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
-        .eq("status", "ended")
-        .order("started_at", { ascending: false })
-        .limit(200);
-      if (error) console.error("[ponto] history error", error);
-      if (!cancelled) setHistory((data ?? []) as DaySessionRow[]);
+      const [hRes, tRes, cRes] = await Promise.all([
+        supabase
+          .from("ponto_sessions")
+          .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company, workspace_id, pauses, notes, description, edited_at")
+          .eq("workspace_id", activeWorkspaceId)
+          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
+          .eq("status", "ended")
+          .order("started_at", { ascending: false })
+          .limit(2000),
+        supabase
+          .from("ponto_session_tasks")
+          .select("id, session_id, company, title, completed_at, user_name")
+          .eq("workspace_id", activeWorkspaceId)
+          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
+          .order("completed_at", { ascending: false })
+          .limit(5000),
+        supabase
+          .from("checklist_daily_completions")
+          .select("id, company, task_title, completed_on, completed_at, user_name")
+          .eq("workspace_id", activeWorkspaceId)
+          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
+          .order("completed_at", { ascending: false })
+          .limit(5000),
+      ]);
+      if (hRes.error) console.error("[ponto] history error", hRes.error);
+      if (tRes.error) console.error("[ponto] session tasks error", tRes.error);
+      if (cRes.error) console.error("[ponto] daily completions error", cRes.error);
+      if (cancelled) return;
+      setHistory((hRes.data ?? []) as DaySessionRow[]);
+      setDayTasks((tRes.data ?? []) as typeof dayTasks);
+      setDayCompletions((cRes.data ?? []) as typeof dayCompletions);
     };
     load();
     const offEvt = onPontoEvent((e) => { if (e.type === "ended" && e.ownerEmail === user.email) load(); });
     const ch = supabase
-      .channel(`ponto_sessions_history_v3:${activeWorkspaceId}:${user.id}`)
+      .channel(`ponto_sessions_history_v4:${activeWorkspaceId}:${user.id}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "ponto_sessions", filter: `workspace_id=eq.${activeWorkspaceId}` },
+        () => load()
+      )
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "ponto_session_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` },
+        () => load()
+      )
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "checklist_daily_completions", filter: `workspace_id=eq.${activeWorkspaceId}` },
         () => load()
       )
       .subscribe();
     return () => { cancelled = true; offEvt(); supabase.removeChannel(ch); };
   }, [user?.id, user?.email, activeWorkspaceId]);
 
-  // Resumo consolidado por dia + sessões individuais (subpontos por empresa)
-  const grouped = useMemo(() => {
-    const byDay = new Map<string, { day: string; total: number; productive: number; sessions: DaySessionRow[] }>();
+  // Resumo consolidado por dia (data operacional local) + sessões + tarefas
+  type DayGroup = {
+    day: string;
+    total: number;
+    productive: number;
+    sessions: DaySessionRow[];
+    byCompany: Map<string, { ms: number; productive: number; count: number }>;
+    tasks: Array<{ id: string; company: string | null; title: string; completed_at: string; user_name: string | null; source: "session" | "daily" }>;
+    firstStart: string | null;
+    lastEnd: string | null;
+  };
+  const grouped = useMemo<DayGroup[]>(() => {
+    const byDay = new Map<string, DayGroup>();
+    const ensure = (day: string): DayGroup => {
+      let entry = byDay.get(day);
+      if (!entry) {
+        entry = { day, total: 0, productive: 0, sessions: [], byCompany: new Map(), tasks: [], firstStart: null, lastEnd: null };
+        byDay.set(day, entry);
+      }
+      return entry;
+    };
     for (const s of history) {
-      const day = new Date(s.started_at).toISOString().slice(0, 10);
-      const entry = byDay.get(day) ?? { day, total: 0, productive: 0, sessions: [] };
-      entry.total += s.total_ms ?? 0;
-      entry.productive += s.productive_ms ?? 0;
-      entry.sessions.push(s);
-      byDay.set(day, entry);
+      const day = localDay(s.started_at);
+      const e = ensure(day);
+      e.total += s.total_ms ?? 0;
+      e.productive += s.productive_ms ?? 0;
+      e.sessions.push(s);
+      if (!e.firstStart || s.started_at < e.firstStart) e.firstStart = s.started_at;
+      if (s.ended_at && (!e.lastEnd || s.ended_at > e.lastEnd)) e.lastEnd = s.ended_at;
+      const co = s.company ?? "—";
+      const bc = e.byCompany.get(co) ?? { ms: 0, productive: 0, count: 0 };
+      bc.ms += s.total_ms ?? 0;
+      bc.productive += s.productive_ms ?? 0;
+      bc.count += 1;
+      e.byCompany.set(co, bc);
+    }
+    const seen = new Set<string>();
+    for (const t of dayTasks) {
+      const day = localDay(t.completed_at);
+      const e = ensure(day);
+      const key = `s:${t.id}`;
+      seen.add(`${day}|${t.company ?? ""}|${t.title}`);
+      e.tasks.push({ id: key, company: t.company, title: t.title, completed_at: t.completed_at, user_name: t.user_name, source: "session" });
+    }
+    for (const c of dayCompletions) {
+      const day = c.completed_on || localDay(c.completed_at);
+      const dedup = `${day}|${c.company ?? ""}|${c.task_title}`;
+      if (seen.has(dedup)) continue;
+      const e = ensure(day);
+      e.tasks.push({ id: `d:${c.id}`, company: c.company, title: c.task_title, completed_at: c.completed_at, user_name: c.user_name, source: "daily" });
+    }
+    for (const e of byDay.values()) {
+      e.sessions.sort((a, b) => (a.started_at < b.started_at ? -1 : 1));
+      e.tasks.sort((a, b) => (a.completed_at < b.completed_at ? -1 : 1));
     }
     return Array.from(byDay.values()).sort((a, b) => (a.day < b.day ? 1 : -1));
-  }, [history]);
+  }, [history, dayTasks, dayCompletions]);
 
   const [openDays, setOpenDays] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<EditablePontoSession | null>(null);
@@ -1133,6 +1219,8 @@ function PontoTab() {
     const d = new Date(day + "T00:00:00");
     return d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   };
+  const fmtTimeShort = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
 
   return (
     <div className="space-y-5">
