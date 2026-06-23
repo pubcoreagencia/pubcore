@@ -1278,25 +1278,6 @@ function HistoryTab() {
 
 /* =================== TAB: BATER PONTO =================== */
 
-interface DaySessionRow {
-  id: string;
-  started_at: string;
-  ended_at: string | null;
-  status: string;
-  total_ms: number | null;
-  productive_ms: number | null;
-  pause_ms: number | null;
-  user_name: string | null;
-  company: string | null;
-  workspace_id?: string | null;
-  pauses?: unknown;
-  notes?: string | null;
-  description?: string | null;
-  edited_at?: string | null;
-}
-
-
-
 function PontoTab() {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
