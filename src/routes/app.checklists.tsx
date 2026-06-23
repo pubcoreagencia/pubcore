@@ -1124,12 +1124,6 @@ function HistoryTab() {
   const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">("semanal");
   const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
   const [userFilter, setUserFilter] = useState<string>("Todos");
-  const [page, setPage] = useState(1);
-  const [editing, setEditing] = useState<EditablePontoSession | null>(null);
-  const [openSessions, setOpenSessions] = useState<Set<string>>(new Set());
-  const toggleSession = (id: string) =>
-    setOpenSessions((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  const PAGE_SIZE = 10;
 
 
   const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
@@ -1154,17 +1148,6 @@ function HistoryTab() {
     return ["Todos", ...Array.from(s).sort()];
   }, [sessions, sessionTasks]);
 
-  const filteredSessions = useMemo(() => {
-    return periodSessions.filter((s) => {
-      if (userFilter !== "Todos" && (s.user_name ?? "") !== userFilter) return false;
-      if (companyFilter !== "Todas") {
-        const ids = new Set(periodTasks.filter((t) => t.session_id === s.id && t.company === companyFilter).map((t) => t.id));
-        if (ids.size === 0) return false;
-      }
-      return true;
-    });
-  }, [periodSessions, periodTasks, userFilter, companyFilter]);
-
   const filteredTimeline = useMemo<TimelineEvent[]>(() => {
     return periodTasks
       .filter((t) =>
@@ -1184,25 +1167,21 @@ function HistoryTab() {
 
   const series = useMemo(() => buildDailySeries(periodSessions, periodTasks, days), [periodSessions, periodTasks, days]);
 
+  const filteredSessionsCount = useMemo(
+    () => periodSessions.filter((s) => userFilter === "Todos" || (s.user_name ?? "") === userFilter).length,
+    [periodSessions, userFilter]
+  );
+
   const totals = {
     completed: periodTasks.filter((t) =>
       (companyFilter === "Todas" || t.company === companyFilter) &&
       (userFilter === "Todos" || (t.user_name ?? "") === userFilter)
     ).length,
-    sessions: filteredSessions.length,
-    productiveMs: filteredSessions.reduce((a, s) => a + (s.productive_ms ?? 0), 0),
-    totalMs: filteredSessions.reduce((a, s) => a + (s.total_ms ?? 0), 0),
+    sessions: filteredSessionsCount,
+    productiveMs: periodSessions.reduce((a, s) => a + (s.productive_ms ?? 0), 0),
+    totalMs: periodSessions.reduce((a, s) => a + (s.total_ms ?? 0), 0),
   };
 
-  const pageCount = Math.max(1, Math.ceil(filteredSessions.length / PAGE_SIZE));
-  const pageSessions = filteredSessions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  useEffect(() => { setPage(1); }, [period, companyFilter, userFilter]);
-
-  const fmtClock = (ts: string | null) =>
-    ts ? new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
-  const fmtDate = (ts: string) =>
-    new Date(ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" });
 
   return (
     <div className="space-y-5">
