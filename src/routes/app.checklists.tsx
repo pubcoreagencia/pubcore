@@ -1426,6 +1426,7 @@ function PontoTab() {
             {grouped.map((d) => {
               const productivity = d.total > 0 ? Math.round((d.productive / d.total) * 100) : 0;
               const isOpen = openDays.has(d.day);
+              const companies = Array.from(d.byCompany.entries()).sort((a, b) => b[1].ms - a[1].ms);
               return (
                 <li key={d.day} className="text-sm">
                   <button
@@ -1434,9 +1435,20 @@ function PontoTab() {
                     className="w-full flex flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-surface/50 transition"
                   >
                     <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
-                    <div className="min-w-[180px]">
+                    <div className="min-w-[200px]">
                       <div className="text-xs text-muted-foreground capitalize">{fmtDateLabel(d.day)}</div>
-                      <div className="text-[10px] text-muted-foreground">{d.sessions.length} expediente(s)</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {d.sessions.length} ponto(s) • {companies.length} empresa(s) • {d.tasks.length} tarefa(s)
+                        {d.firstStart && <> • {fmtTimeShort(d.firstStart)}→{fmtTimeShort(d.lastEnd)}</>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-w-[40%]">
+                      {companies.slice(0, 4).map(([c]) => (
+                        <CompanyTag key={c} company={c as Company} />
+                      ))}
+                      {companies.length > 4 && (
+                        <span className="text-[10px] text-muted-foreground self-center">+{companies.length - 4}</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 ml-auto">
                       <Timer className="h-3.5 w-3.5 text-primary" />
@@ -1450,28 +1462,66 @@ function PontoTab() {
                     </div>
                   </button>
                   {isOpen && (
-                    <ul className="divide-y divide-border/40 bg-surface/20">
-                      {d.sessions.map((s) => {
-                        const start = new Date(s.started_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-                        const end = s.ended_at ? new Date(s.ended_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
-                        return (
-                          <li key={s.id} className="flex flex-wrap items-center gap-3 px-6 py-2.5 text-xs">
-                            {s.company && <CompanyTag company={s.company as Company} />}
-                            <span className="font-mono tabular-nums text-muted-foreground">{start} → {end}</span>
-                            <span className="font-mono tabular-nums">{fmtTime(s.total_ms ?? 0)}</span>
-                            {s.description && (
-                              <span className="text-muted-foreground truncate max-w-[260px]">— {s.description}</span>
-                            )}
-                            <button
-                              onClick={() => setEditing(s as EditablePontoSession)}
-                              className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-surface hover:bg-surface-elevated text-xs"
-                            >
-                              <Pencil className="h-3 w-3" /> Editar
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    <div className="bg-surface/20 px-4 py-3 space-y-4">
+                      {companies.length > 0 && (
+                        <div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Tempo por empresa</div>
+                          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {companies.map(([c, v]) => (
+                              <li key={c} className="flex items-center gap-2 text-xs">
+                                <CompanyTag company={c as Company} />
+                                <span className="font-mono tabular-nums ml-auto">{fmtTime(v.ms)}</span>
+                                <span className="text-[10px] text-muted-foreground">({v.count}x)</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Pontos do dia</div>
+                        <ul className="divide-y divide-border/40 rounded border border-border/40 bg-card/30">
+                          {d.sessions.map((s) => {
+                            const start = fmtTimeShort(s.started_at);
+                            const end = fmtTimeShort(s.ended_at);
+                            return (
+                              <li key={s.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-xs">
+                                {s.company && <CompanyTag company={s.company as Company} />}
+                                <span className="font-mono tabular-nums text-muted-foreground">{start} → {end}</span>
+                                <span className="font-mono tabular-nums">{fmtTime(s.total_ms ?? 0)}</span>
+                                {s.description && (
+                                  <span className="text-muted-foreground truncate max-w-[260px]">— {s.description}</span>
+                                )}
+                                <button
+                                  onClick={() => setEditing(s as EditablePontoSession)}
+                                  className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-surface hover:bg-surface-elevated text-xs"
+                                >
+                                  <Pencil className="h-3 w-3" /> Editar
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+
+                      {d.tasks.length > 0 && (
+                        <div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">
+                            Tarefas concluídas ({d.tasks.length})
+                          </div>
+                          <ul className="space-y-1">
+                            {d.tasks.map((t) => (
+                              <li key={t.id} className="flex items-center gap-2 text-xs px-2 py-1 rounded bg-card/40">
+                                <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
+                                {t.company && <CompanyTag company={t.company as Company} />}
+                                <span className="truncate">{t.title}</span>
+                                <span className="ml-auto font-mono tabular-nums text-muted-foreground">{fmtTimeShort(t.completed_at)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </li>
               );
