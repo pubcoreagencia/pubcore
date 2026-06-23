@@ -1272,8 +1272,6 @@ function HistoryTab() {
           </ol>
         )}
       </div>
-
-      <EditPontoSessionDialog session={editing} onClose={() => setEditing(null)} />
     </div>
   );
 }
