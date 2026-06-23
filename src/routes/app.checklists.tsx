@@ -1077,47 +1077,133 @@ function PontoTab() {
     startCompany(company, user?.name, user?.email, user?.id);
   };
 
+  // Local-timezone YYYY-MM-DD — never use toISOString() here, that returns UTC
+  // and pushes evening sessions in BRT (UTC-3) onto the next day, which caused
+  // ~11+ shifts/day to appear on the next day in the history.
+  const localDay = (iso: string) => {
+    const d = new Date(iso);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
   const [history, setHistory] = useState<DaySessionRow[]>([]);
+  const [dayTasks, setDayTasks] = useState<Array<{ id: string; session_id: string | null; company: string | null; title: string; completed_at: string; user_name: string | null }>>([]);
+  const [dayCompletions, setDayCompletions] = useState<Array<{ id: string; company: string | null; task_title: string; completed_on: string; completed_at: string; user_name: string | null }>>([]);
   useEffect(() => {
-    if (!user?.id || !activeWorkspaceId) { setHistory([]); return; }
+    if (!user?.id || !activeWorkspaceId) { setHistory([]); setDayTasks([]); setDayCompletions([]); return; }
     let cancelled = false;
     const load = async () => {
-      const { data, error } = await supabase
-        .from("ponto_sessions")
-        .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company, workspace_id, pauses, notes, description, edited_at")
-        .eq("workspace_id", activeWorkspaceId)
-        .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
-        .eq("status", "ended")
-        .order("started_at", { ascending: false })
-        .limit(200);
-      if (error) console.error("[ponto] history error", error);
-      if (!cancelled) setHistory((data ?? []) as DaySessionRow[]);
+      const [hRes, tRes, cRes] = await Promise.all([
+        supabase
+          .from("ponto_sessions")
+          .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company, workspace_id, pauses, notes, description, edited_at")
+          .eq("workspace_id", activeWorkspaceId)
+          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
+          .eq("status", "ended")
+          .order("started_at", { ascending: false })
+          .limit(2000),
+        supabase
+          .from("ponto_session_tasks")
+          .select("id, session_id, company, title, completed_at, user_name")
+          .eq("workspace_id", activeWorkspaceId)
+          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
+          .order("completed_at", { ascending: false })
+          .limit(5000),
+        supabase
+          .from("checklist_daily_completions")
+          .select("id, company, task_title, completed_on, completed_at, user_name")
+          .eq("workspace_id", activeWorkspaceId)
+          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
+          .order("completed_at", { ascending: false })
+          .limit(5000),
+      ]);
+      if (hRes.error) console.error("[ponto] history error", hRes.error);
+      if (tRes.error) console.error("[ponto] session tasks error", tRes.error);
+      if (cRes.error) console.error("[ponto] daily completions error", cRes.error);
+      if (cancelled) return;
+      setHistory((hRes.data ?? []) as DaySessionRow[]);
+      setDayTasks((tRes.data ?? []) as typeof dayTasks);
+      setDayCompletions((cRes.data ?? []) as typeof dayCompletions);
     };
     load();
     const offEvt = onPontoEvent((e) => { if (e.type === "ended" && e.ownerEmail === user.email) load(); });
     const ch = supabase
-      .channel(`ponto_sessions_history_v3:${activeWorkspaceId}:${user.id}`)
+      .channel(`ponto_sessions_history_v4:${activeWorkspaceId}:${user.id}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "ponto_sessions", filter: `workspace_id=eq.${activeWorkspaceId}` },
+        () => load()
+      )
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "ponto_session_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` },
+        () => load()
+      )
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "checklist_daily_completions", filter: `workspace_id=eq.${activeWorkspaceId}` },
         () => load()
       )
       .subscribe();
     return () => { cancelled = true; offEvt(); supabase.removeChannel(ch); };
   }, [user?.id, user?.email, activeWorkspaceId]);
 
-  // Resumo consolidado por dia + sessões individuais (subpontos por empresa)
-  const grouped = useMemo(() => {
-    const byDay = new Map<string, { day: string; total: number; productive: number; sessions: DaySessionRow[] }>();
+  // Resumo consolidado por dia (data operacional local) + sessões + tarefas
+  type DayGroup = {
+    day: string;
+    total: number;
+    productive: number;
+    sessions: DaySessionRow[];
+    byCompany: Map<string, { ms: number; productive: number; count: number }>;
+    tasks: Array<{ id: string; company: string | null; title: string; completed_at: string; user_name: string | null; source: "session" | "daily" }>;
+    firstStart: string | null;
+    lastEnd: string | null;
+  };
+  const grouped = useMemo<DayGroup[]>(() => {
+    const byDay = new Map<string, DayGroup>();
+    const ensure = (day: string): DayGroup => {
+      let entry = byDay.get(day);
+      if (!entry) {
+        entry = { day, total: 0, productive: 0, sessions: [], byCompany: new Map(), tasks: [], firstStart: null, lastEnd: null };
+        byDay.set(day, entry);
+      }
+      return entry;
+    };
     for (const s of history) {
-      const day = new Date(s.started_at).toISOString().slice(0, 10);
-      const entry = byDay.get(day) ?? { day, total: 0, productive: 0, sessions: [] };
-      entry.total += s.total_ms ?? 0;
-      entry.productive += s.productive_ms ?? 0;
-      entry.sessions.push(s);
-      byDay.set(day, entry);
+      const day = localDay(s.started_at);
+      const e = ensure(day);
+      e.total += s.total_ms ?? 0;
+      e.productive += s.productive_ms ?? 0;
+      e.sessions.push(s);
+      if (!e.firstStart || s.started_at < e.firstStart) e.firstStart = s.started_at;
+      if (s.ended_at && (!e.lastEnd || s.ended_at > e.lastEnd)) e.lastEnd = s.ended_at;
+      const co = s.company ?? "—";
+      const bc = e.byCompany.get(co) ?? { ms: 0, productive: 0, count: 0 };
+      bc.ms += s.total_ms ?? 0;
+      bc.productive += s.productive_ms ?? 0;
+      bc.count += 1;
+      e.byCompany.set(co, bc);
+    }
+    const seen = new Set<string>();
+    for (const t of dayTasks) {
+      const day = localDay(t.completed_at);
+      const e = ensure(day);
+      const key = `s:${t.id}`;
+      seen.add(`${day}|${t.company ?? ""}|${t.title}`);
+      e.tasks.push({ id: key, company: t.company, title: t.title, completed_at: t.completed_at, user_name: t.user_name, source: "session" });
+    }
+    for (const c of dayCompletions) {
+      const day = c.completed_on || localDay(c.completed_at);
+      const dedup = `${day}|${c.company ?? ""}|${c.task_title}`;
+      if (seen.has(dedup)) continue;
+      const e = ensure(day);
+      e.tasks.push({ id: `d:${c.id}`, company: c.company, title: c.task_title, completed_at: c.completed_at, user_name: c.user_name, source: "daily" });
+    }
+    for (const e of byDay.values()) {
+      e.sessions.sort((a, b) => (a.started_at < b.started_at ? -1 : 1));
+      e.tasks.sort((a, b) => (a.completed_at < b.completed_at ? -1 : 1));
     }
     return Array.from(byDay.values()).sort((a, b) => (a.day < b.day ? 1 : -1));
-  }, [history]);
+  }, [history, dayTasks, dayCompletions]);
 
   const [openDays, setOpenDays] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<EditablePontoSession | null>(null);
@@ -1133,6 +1219,8 @@ function PontoTab() {
     const d = new Date(day + "T00:00:00");
     return d.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
   };
+  const fmtTimeShort = (iso: string | null) =>
+    iso ? new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
 
   return (
     <div className="space-y-5">
@@ -1338,6 +1426,7 @@ function PontoTab() {
             {grouped.map((d) => {
               const productivity = d.total > 0 ? Math.round((d.productive / d.total) * 100) : 0;
               const isOpen = openDays.has(d.day);
+              const companies = Array.from(d.byCompany.entries()).sort((a, b) => b[1].ms - a[1].ms);
               return (
                 <li key={d.day} className="text-sm">
                   <button
@@ -1346,9 +1435,20 @@ function PontoTab() {
                     className="w-full flex flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-surface/50 transition"
                   >
                     <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
-                    <div className="min-w-[180px]">
+                    <div className="min-w-[200px]">
                       <div className="text-xs text-muted-foreground capitalize">{fmtDateLabel(d.day)}</div>
-                      <div className="text-[10px] text-muted-foreground">{d.sessions.length} expediente(s)</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {d.sessions.length} ponto(s) • {companies.length} empresa(s) • {d.tasks.length} tarefa(s)
+                        {d.firstStart && <> • {fmtTimeShort(d.firstStart)}→{fmtTimeShort(d.lastEnd)}</>}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-1 max-w-[40%]">
+                      {companies.slice(0, 4).map(([c]) => (
+                        <CompanyTag key={c} company={c as Company} />
+                      ))}
+                      {companies.length > 4 && (
+                        <span className="text-[10px] text-muted-foreground self-center">+{companies.length - 4}</span>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 ml-auto">
                       <Timer className="h-3.5 w-3.5 text-primary" />
@@ -1362,28 +1462,66 @@ function PontoTab() {
                     </div>
                   </button>
                   {isOpen && (
-                    <ul className="divide-y divide-border/40 bg-surface/20">
-                      {d.sessions.map((s) => {
-                        const start = new Date(s.started_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-                        const end = s.ended_at ? new Date(s.ended_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
-                        return (
-                          <li key={s.id} className="flex flex-wrap items-center gap-3 px-6 py-2.5 text-xs">
-                            {s.company && <CompanyTag company={s.company as Company} />}
-                            <span className="font-mono tabular-nums text-muted-foreground">{start} → {end}</span>
-                            <span className="font-mono tabular-nums">{fmtTime(s.total_ms ?? 0)}</span>
-                            {s.description && (
-                              <span className="text-muted-foreground truncate max-w-[260px]">— {s.description}</span>
-                            )}
-                            <button
-                              onClick={() => setEditing(s as EditablePontoSession)}
-                              className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-surface hover:bg-surface-elevated text-xs"
-                            >
-                              <Pencil className="h-3 w-3" /> Editar
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    <div className="bg-surface/20 px-4 py-3 space-y-4">
+                      {companies.length > 0 && (
+                        <div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Tempo por empresa</div>
+                          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {companies.map(([c, v]) => (
+                              <li key={c} className="flex items-center gap-2 text-xs">
+                                <CompanyTag company={c as Company} />
+                                <span className="font-mono tabular-nums ml-auto">{fmtTime(v.ms)}</span>
+                                <span className="text-[10px] text-muted-foreground">({v.count}x)</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Pontos do dia</div>
+                        <ul className="divide-y divide-border/40 rounded border border-border/40 bg-card/30">
+                          {d.sessions.map((s) => {
+                            const start = fmtTimeShort(s.started_at);
+                            const end = fmtTimeShort(s.ended_at);
+                            return (
+                              <li key={s.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-xs">
+                                {s.company && <CompanyTag company={s.company as Company} />}
+                                <span className="font-mono tabular-nums text-muted-foreground">{start} → {end}</span>
+                                <span className="font-mono tabular-nums">{fmtTime(s.total_ms ?? 0)}</span>
+                                {s.description && (
+                                  <span className="text-muted-foreground truncate max-w-[260px]">— {s.description}</span>
+                                )}
+                                <button
+                                  onClick={() => setEditing(s as EditablePontoSession)}
+                                  className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-surface hover:bg-surface-elevated text-xs"
+                                >
+                                  <Pencil className="h-3 w-3" /> Editar
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+
+                      {d.tasks.length > 0 && (
+                        <div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">
+                            Tarefas concluídas ({d.tasks.length})
+                          </div>
+                          <ul className="space-y-1">
+                            {d.tasks.map((t) => (
+                              <li key={t.id} className="flex items-center gap-2 text-xs px-2 py-1 rounded bg-card/40">
+                                <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
+                                {t.company && <CompanyTag company={t.company as Company} />}
+                                <span className="truncate">{t.title}</span>
+                                <span className="ml-auto font-mono tabular-nums text-muted-foreground">{fmtTimeShort(t.completed_at)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </li>
               );
