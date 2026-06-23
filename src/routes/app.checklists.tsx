@@ -676,6 +676,435 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+/* =================== Shared cards (swappable between Bater Ponto and Histórico) =================== */
+
+interface DaySessionRowLite {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+  status: string;
+  total_ms: number | null;
+  productive_ms: number | null;
+  pause_ms: number | null;
+  user_name: string | null;
+  company: string | null;
+  workspace_id?: string | null;
+  pauses?: unknown;
+  notes?: string | null;
+  description?: string | null;
+  edited_at?: string | null;
+}
+
+function localDayStr(iso: string) {
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function DailyHistoryCard() {
+  const { user } = useAuth();
+  const { activeWorkspaceId } = useWorkspace();
+  const [history, setHistory] = useState<DaySessionRowLite[]>([]);
+  const [dayTasks, setDayTasks] = useState<Array<{ id: string; session_id: string | null; company: string | null; title: string; completed_at: string; user_name: string | null }>>([]);
+  const [dayCompletions, setDayCompletions] = useState<Array<{ id: string; company: string | null; task_title: string; completed_on: string; completed_at: string; user_name: string | null }>>([]);
+  const [openDays, setOpenDays] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState<EditablePontoSession | null>(null);
+
+  useEffect(() => {
+    if (!user?.id || !activeWorkspaceId) { setHistory([]); setDayTasks([]); setDayCompletions([]); return; }
+    let cancelled = false;
+    const load = async () => {
+      const [hRes, tRes, cRes] = await Promise.all([
+        supabase
+          .from("ponto_sessions")
+          .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company, workspace_id, pauses, notes, description, edited_at")
+          .eq("workspace_id", activeWorkspaceId)
+          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
+          .eq("status", "ended")
+          .order("started_at", { ascending: false })
+          .limit(2000),
+        supabase
+          .from("ponto_session_tasks")
+          .select("id, session_id, company, title, completed_at, user_name")
+          .eq("workspace_id", activeWorkspaceId)
+          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
+          .order("completed_at", { ascending: false })
+          .limit(5000),
+        supabase
+          .from("checklist_daily_completions")
+          .select("id, company, task_title, completed_on, completed_at, user_name")
+          .eq("workspace_id", activeWorkspaceId)
+          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
+          .order("completed_at", { ascending: false })
+          .limit(5000),
+      ]);
+      if (hRes.error) console.error("[ponto] history error", hRes.error);
+      if (tRes.error) console.error("[ponto] session tasks error", tRes.error);
+      if (cRes.error) console.error("[ponto] daily completions error", cRes.error);
+      if (cancelled) return;
+      setHistory((hRes.data ?? []) as DaySessionRowLite[]);
+      setDayTasks((tRes.data ?? []) as typeof dayTasks);
+      setDayCompletions((cRes.data ?? []) as typeof dayCompletions);
+    };
+    load();
+    const offEvt = onPontoEvent((e) => { if (e.type === "ended" && e.ownerEmail === user.email) load(); });
+    const ch = supabase
+      .channel(`daily_history_card:${activeWorkspaceId}:${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ponto_sessions", filter: `workspace_id=eq.${activeWorkspaceId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "ponto_session_tasks", filter: `workspace_id=eq.${activeWorkspaceId}` }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "checklist_daily_completions", filter: `workspace_id=eq.${activeWorkspaceId}` }, () => load())
+      .subscribe();
+    return () => { cancelled = true; offEvt(); supabase.removeChannel(ch); };
+  }, [user?.id, user?.email, activeWorkspaceId]);
+
+  type DayGroup = {
+    day: string;
+    total: number;
+    productive: number;
+    sessions: DaySessionRowLite[];
+    byCompany: Map<string, { ms: number; productive: number; count: number }>;
+    tasks: Array<{ id: string; company: string | null; title: string; completed_at: string; user_name: string | null; source: "session" | "daily" }>;
+    firstStart: string | null;
+    lastEnd: string | null;
+  };
+  const grouped = useMemo<DayGroup[]>(() => {
+    const byDay = new Map<string, DayGroup>();
+    const ensure = (day: string): DayGroup => {
+      let entry = byDay.get(day);
+      if (!entry) {
+        entry = { day, total: 0, productive: 0, sessions: [], byCompany: new Map(), tasks: [], firstStart: null, lastEnd: null };
+        byDay.set(day, entry);
+      }
+      return entry;
+    };
+    for (const s of history) {
+      const day = localDayStr(s.started_at);
+      const e = ensure(day);
+      e.total += s.total_ms ?? 0;
+      e.productive += s.productive_ms ?? 0;
+      e.sessions.push(s);
+      if (!e.firstStart || s.started_at < e.firstStart) e.firstStart = s.started_at;
+      if (s.ended_at && (!e.lastEnd || s.ended_at > e.lastEnd)) e.lastEnd = s.ended_at;
+      const co = s.company ?? "—";
+      const bc = e.byCompany.get(co) ?? { ms: 0, productive: 0, count: 0 };
+      bc.ms += s.total_ms ?? 0;
+      bc.productive += s.productive_ms ?? 0;
+      bc.count += 1;
+      e.byCompany.set(co, bc);
+    }
+    const seen = new Set<string>();
+    for (const t of dayTasks) {
+      const day = localDayStr(t.completed_at);
+      const e = ensure(day);
+      seen.add(`${day}|${t.company ?? ""}|${t.title}`);
+      e.tasks.push({ id: `s:${t.id}`, company: t.company, title: t.title, completed_at: t.completed_at, user_name: t.user_name, source: "session" });
+    }
+    for (const c of dayCompletions) {
+      const day = c.completed_on || localDayStr(c.completed_at);
+      const dedup = `${day}|${c.company ?? ""}|${c.task_title}`;
+      if (seen.has(dedup)) continue;
+      const e = ensure(day);
+      e.tasks.push({ id: `d:${c.id}`, company: c.company, title: c.task_title, completed_at: c.completed_at, user_name: c.user_name, source: "daily" });
+    }
+    for (const e of byDay.values()) {
+      e.sessions.sort((a, b) => (a.started_at < b.started_at ? -1 : 1));
+      e.tasks.sort((a, b) => (a.completed_at < b.completed_at ? -1 : 1));
+    }
+    return Array.from(byDay.values()).sort((a, b) => (a.day < b.day ? 1 : -1));
+  }, [history, dayTasks, dayCompletions]);
+
+  const toggleDay = (day: string) => {
+    setOpenDays((prev) => { const n = new Set(prev); if (n.has(day)) n.delete(day); else n.add(day); return n; });
+  };
+  const fmtDateLabel = (day: string) => new Date(day + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  const fmtTimeShort = (iso: string | null) => iso ? new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+      <div className="flex items-center justify-between mb-4 gap-3">
+        <h3 className="font-display font-semibold flex items-center gap-2">
+          <History className="h-4 w-4 text-primary" /> Histórico diário
+        </h3>
+        <span className="text-xs text-muted-foreground">{grouped.length} dias</span>
+      </div>
+      {grouped.length === 0 ? (
+        <div className="text-sm text-muted-foreground py-8 text-center">Nenhum expediente encerrado ainda.</div>
+      ) : (
+        <ul className="divide-y divide-border/60 rounded-lg border border-border/60 bg-surface/30 overflow-hidden">
+          {grouped.map((d) => {
+            const productivity = d.total > 0 ? Math.round((d.productive / d.total) * 100) : 0;
+            const isOpen = openDays.has(d.day);
+            const companies = Array.from(d.byCompany.entries()).sort((a, b) => b[1].ms - a[1].ms);
+            return (
+              <li key={d.day} className="text-sm">
+                <button type="button" onClick={() => toggleDay(d.day)} className="w-full flex flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-surface/50 transition">
+                  <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                  <div className="min-w-[200px]">
+                    <div className="text-xs text-muted-foreground capitalize">{fmtDateLabel(d.day)}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {d.sessions.length} ponto(s) • {companies.length} empresa(s) • {d.tasks.length} tarefa(s)
+                      {d.firstStart && <> • {fmtTimeShort(d.firstStart)}→{fmtTimeShort(d.lastEnd)}</>}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 max-w-[40%]">
+                    {companies.slice(0, 4).map(([c]) => (<CompanyTag key={c} company={c as Company} />))}
+                    {companies.length > 4 && (<span className="text-[10px] text-muted-foreground self-center">+{companies.length - 4}</span>)}
+                  </div>
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <Timer className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-mono text-sm font-semibold tabular-nums">{fmtTime(d.total)}</span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">trabalhado</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <TrendingUp className="h-3.5 w-3.5 text-success" />
+                    <span className="font-mono text-xs tabular-nums">{productivity}%</span>
+                    <span className="text-[10px] uppercase tracking-widest text-muted-foreground ml-1">prod</span>
+                  </div>
+                </button>
+                {isOpen && (
+                  <div className="bg-surface/20 px-4 py-3 space-y-4">
+                    {companies.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Tempo por empresa</div>
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                          {companies.map(([c, v]) => (
+                            <li key={c} className="flex items-center gap-2 text-xs">
+                              <CompanyTag company={c as Company} />
+                              <span className="font-mono tabular-nums ml-auto">{fmtTime(v.ms)}</span>
+                              <span className="text-[10px] text-muted-foreground">({v.count}x)</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Pontos do dia</div>
+                      <ul className="divide-y divide-border/40 rounded border border-border/40 bg-card/30">
+                        {d.sessions.map((s) => (
+                          <li key={s.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-xs">
+                            {s.company && <CompanyTag company={s.company as Company} />}
+                            <span className="font-mono tabular-nums text-muted-foreground">{fmtTimeShort(s.started_at)} → {fmtTimeShort(s.ended_at)}</span>
+                            <span className="font-mono tabular-nums">{fmtTime(s.total_ms ?? 0)}</span>
+                            {s.description && (<span className="text-muted-foreground truncate max-w-[260px]">— {s.description}</span>)}
+                            <button onClick={() => setEditing(s as EditablePontoSession)} className="ml-auto inline-flex items-center gap-1 px-2 py-1 rounded-md border border-border bg-surface hover:bg-surface-elevated text-xs">
+                              <Pencil className="h-3 w-3" /> Editar
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    {d.tasks.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Tarefas concluídas ({d.tasks.length})</div>
+                        <ul className="space-y-1">
+                          {d.tasks.map((t) => (
+                            <li key={t.id} className="flex items-center gap-2 text-xs px-2 py-1 rounded bg-card/40">
+                              <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
+                              {t.company && <CompanyTag company={t.company as Company} />}
+                              <span className="truncate">{t.title}</span>
+                              <span className="ml-auto font-mono tabular-nums text-muted-foreground">{fmtTimeShort(t.completed_at)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <EditPontoSessionDialog session={editing} onClose={() => setEditing(null)} />
+    </div>
+  );
+}
+
+function EndedSessionsCard() {
+  const { sessions, sessionTasks } = useOperationalData();
+  const { companies: checklistCompanies } = useChecklistCompanies();
+  const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">("semanal");
+  const [companyFilter, setCompanyFilter] = useState<Company | "Todas">("Todas");
+  const [userFilter, setUserFilter] = useState<string>("Todos");
+  const [page, setPage] = useState(1);
+  const [editing, setEditing] = useState<EditablePontoSession | null>(null);
+  const [openSessions, setOpenSessions] = useState<Set<string>>(new Set());
+  const toggleSession = (id: string) =>
+    setOpenSessions((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const PAGE_SIZE = 10;
+
+  const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
+  const cutoff = useMemo(() => {
+    const d = new Date(); d.setHours(0,0,0,0);
+    return d.getTime() - (days - 1) * 86400000;
+  }, [days]);
+
+  const periodSessions = useMemo(
+    () => sessions.filter((s) => s.status === "ended" && new Date(s.started_at).getTime() >= cutoff),
+    [sessions, cutoff]
+  );
+  const periodTasks = useMemo(
+    () => sessionTasks.filter((t) => new Date(t.completed_at).getTime() >= cutoff),
+    [sessionTasks, cutoff]
+  );
+
+  const userOptions = useMemo(() => {
+    const s = new Set<string>();
+    for (const x of sessions) if (x.user_name) s.add(x.user_name);
+    for (const x of sessionTasks) if (x.user_name) s.add(x.user_name);
+    return ["Todos", ...Array.from(s).sort()];
+  }, [sessions, sessionTasks]);
+
+  const filteredSessions = useMemo(() => periodSessions.filter((s) => {
+    if (userFilter !== "Todos" && (s.user_name ?? "") !== userFilter) return false;
+    if (companyFilter !== "Todas") {
+      const ids = new Set(periodTasks.filter((t) => t.session_id === s.id && t.company === companyFilter).map((t) => t.id));
+      if (ids.size === 0 && s.company !== companyFilter) return false;
+    }
+    return true;
+  }), [periodSessions, periodTasks, userFilter, companyFilter]);
+
+  useEffect(() => { setPage(1); }, [period, companyFilter, userFilter]);
+  const pageCount = Math.max(1, Math.ceil(filteredSessions.length / PAGE_SIZE));
+  const pageSessions = filteredSessions.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const fmtClock = (ts: string | null) => ts ? new Date(ts).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—";
+  const fmtDate = (ts: string) => new Date(ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" });
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <h3 className="font-display font-semibold flex items-center gap-2 mr-auto">
+          <History className="h-4 w-4 text-primary" /> Expedientes encerrados
+        </h3>
+        <div className="flex gap-1 p-1 rounded-lg bg-surface">
+          {(["diario", "semanal", "mensal"] as const).map((p) => (
+            <button key={p} onClick={() => setPeriod(p)}
+              className={`px-2.5 py-1 text-[11px] font-medium rounded-md capitalize transition ${period === p ? "bg-card text-foreground shadow-card" : "text-muted-foreground hover:text-foreground"}`}>
+              {p}
+            </button>
+          ))}
+        </div>
+        <Select label="Empresa" value={companyFilter} onChange={(v) => setCompanyFilter(v as Company | "Todas")} options={["Todas", ...checklistCompanies.map((c) => c.name)]} />
+        <Select label="Usuário" value={userFilter} onChange={setUserFilter} options={userOptions} />
+        <span className="text-xs text-muted-foreground">{filteredSessions.length} no total</span>
+      </div>
+      {filteredSessions.length === 0 ? (
+        <div className="text-sm text-muted-foreground py-10 text-center">Nenhum expediente encerrado neste filtro.</div>
+      ) : (
+        <>
+          <ul className="space-y-2">
+            {pageSessions.map((s) => {
+              const tasks = periodTasks.filter((t) => t.session_id === s.id).sort((a, b) => new Date(a.completed_at).getTime() - new Date(b.completed_at).getTime());
+              const companies = Array.from(new Set(tasks.map((t) => t.company))) as Company[];
+              const pauses = Array.isArray(s.pauses) ? (s.pauses as Array<{ start?: number; end?: number }>) : [];
+              const productivity = (s.total_ms ?? 0) > 0 ? Math.round(((s.productive_ms ?? 0) / (s.total_ms ?? 1)) * 100) : 0;
+              const isOpen = openSessions.has(s.id);
+              const tasksByCo = new Map<string, number>();
+              for (const t of tasks) tasksByCo.set(t.company, (tasksByCo.get(t.company) ?? 0) + 1);
+              return (
+                <li key={s.id} className="rounded-lg border border-border bg-surface/40 overflow-hidden">
+                  <button type="button" onClick={() => toggleSession(s.id)} className="w-full flex flex-wrap items-center gap-3 px-4 py-3 text-left hover:bg-surface/60 transition">
+                    <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-90" : ""}`} />
+                    <div className="min-w-[140px]">
+                      <div className="text-xs text-muted-foreground">{fmtDate(s.started_at)}</div>
+                      <div className="font-mono text-xs">{fmtClock(s.started_at)} → {fmtClock(s.ended_at)}</div>
+                    </div>
+                    <div className="flex items-center gap-1.5"><Timer className="h-3.5 w-3.5 text-muted-foreground" /><span className="font-mono text-xs tabular-nums">{fmtTime(s.total_ms ?? 0)}</span></div>
+                    <div className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-success" /><span className="text-xs">{tasks.length}</span></div>
+                    <div className="flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5 text-primary" /><span className="font-mono text-xs tabular-nums">{productivity}%</span></div>
+                    {s.user_name && (<div className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-xs text-muted-foreground">{s.user_name}</span></div>)}
+                    <div className="flex flex-wrap items-center gap-1 ml-auto">
+                      {(s.company ? [s.company as Company] : companies).map((c) => <CompanyTag key={c} company={c} />)}
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="border-t border-border/50 bg-background/40 p-4 space-y-4 text-xs">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <Stat label="Tempo ativo" value={fmtTime(s.productive_ms ?? 0)} />
+                        <Stat label="Tempo pausado" value={fmtTime(s.pause_ms ?? 0)} />
+                        <Stat label="Pausas" value={String(pauses.length)} />
+                        <Stat label="Produtividade" value={`${productivity}%`} />
+                      </div>
+                      {tasksByCo.size > 0 && (
+                        <div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Por ponto</div>
+                          <div className="flex flex-wrap gap-2">
+                            {Array.from(tasksByCo.entries()).map(([co, n]) => (
+                              <span key={co} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface px-2 py-1">
+                                <CompanyTag company={co as Company} /> <span className="font-mono">{n} tarefa{n !== 1 ? "s" : ""}</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {tasks.length > 0 && (
+                        <div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Tarefas concluídas ({tasks.length})</div>
+                          <ul className="rounded-md border border-border/50 divide-y divide-border/40 max-h-60 overflow-y-auto">
+                            {tasks.map((t) => (
+                              <li key={t.id} className="flex flex-wrap items-center gap-2 px-3 py-1.5">
+                                <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
+                                <span className="text-foreground flex-1 min-w-0 truncate">{t.title}</span>
+                                <CompanyTag company={t.company as Company} />
+                                <span className="font-mono text-muted-foreground">{fmtClock(t.completed_at)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {pauses.length > 0 && (
+                        <div>
+                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1.5">Pausas registradas</div>
+                          <ul className="space-y-1">
+                            {pauses.map((p, idx) => {
+                              const dur = (p.end ?? Date.now()) - (p.start ?? 0);
+                              return (
+                                <li key={idx} className="flex items-center gap-2 font-mono text-muted-foreground">
+                                  <Pause className="h-3 w-3" />
+                                  {p.start ? new Date(p.start).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                                  {" → "}
+                                  {p.end ? new Date(p.end).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "em curso"}
+                                  <span className="ml-auto">{fmtTime(Math.max(0, dur))}</span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </div>
+                      )}
+                      {(s.description || s.notes) && (
+                        <div className="text-muted-foreground">
+                          <div className="text-[10px] uppercase tracking-widest mb-1">Resumo</div>
+                          <p className="whitespace-pre-wrap text-foreground/80">{s.description || s.notes}</p>
+                        </div>
+                      )}
+                      <div className="flex justify-end">
+                        <button onClick={(e) => { e.stopPropagation(); setEditing(s as EditablePontoSession); }} className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-border bg-surface hover:bg-surface-elevated">
+                          <Pencil className="h-3 w-3" /> Editar expediente
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {pageCount > 1 && (
+            <div className="flex items-center justify-between mt-3 text-xs">
+              <span className="text-muted-foreground">Página {page} de {pageCount}</span>
+              <div className="flex gap-1">
+                <button disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))} className="px-3 py-1.5 rounded-md border border-border bg-surface text-xs disabled:opacity-40 hover:bg-surface-elevated">Anterior</button>
+                <button disabled={page >= pageCount} onClick={() => setPage((p) => Math.min(pageCount, p + 1))} className="px-3 py-1.5 rounded-md border border-border bg-surface text-xs disabled:opacity-40 hover:bg-surface-elevated">Próxima</button>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+      <EditPontoSessionDialog session={editing} onClose={() => setEditing(null)} />
+    </div>
+  );
+}
 
 
 /* =================== TAB: HISTÓRICO =================== */
