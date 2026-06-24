@@ -44,7 +44,7 @@ const TABS: { id: Tab; label: string; icon: typeof ListTodo }[] = [
   { id: "metricas", label: "Métricas", icon: BarChart3 },
 ];
 
-function ChecklistsPage() {
+export function ChecklistsPage() {
   const [tab, setTab] = useState<Tab>("diario");
   const { totals } = useChecklist();
   const completionPct = totals.pct;
