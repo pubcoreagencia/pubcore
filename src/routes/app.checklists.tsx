@@ -32,6 +32,7 @@ import { ShareButton } from "@/components/ShareButton";
 
 
 export const Route = createFileRoute("/app/checklists")({
+  beforeLoad: () => { throw redirect({ to: "/app/operacao" }); },
   component: ChecklistsPage,
 });
 
