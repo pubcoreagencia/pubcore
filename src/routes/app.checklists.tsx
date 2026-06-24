@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -32,6 +32,7 @@ import { ShareButton } from "@/components/ShareButton";
 
 
 export const Route = createFileRoute("/app/checklists")({
+  beforeLoad: () => { throw redirect({ to: "/app/operacao" }); },
   component: ChecklistsPage,
 });
 
@@ -44,7 +45,7 @@ const TABS: { id: Tab; label: string; icon: typeof ListTodo }[] = [
   { id: "metricas", label: "Métricas", icon: BarChart3 },
 ];
 
-function ChecklistsPage() {
+export function ChecklistsPage() {
   const [tab, setTab] = useState<Tab>("diario");
   const { totals } = useChecklist();
   const completionPct = totals.pct;

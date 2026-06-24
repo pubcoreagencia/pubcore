@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useEffect, useRef, useState, useCallback, type PointerEvent } from "react";
 import { Plus, Trash2, Pencil, X, GripVertical, CalendarDays, User, FileText, ListChecks, Layers, Paperclip, LayoutGrid, GitBranch } from "lucide-react";
 import { type Company } from "@/lib/mock-data";
@@ -16,7 +16,10 @@ import { FlowCanvas } from "@/components/kanban/FlowCanvas";
 import { ShareButton } from "@/components/ShareButton";
 import type { SaveStatus } from "@/hooks/use-autosave";
 
-export const Route = createFileRoute("/app/kanban")({ component: KanbanRoute });
+export const Route = createFileRoute("/app/kanban")({
+  beforeLoad: () => { throw redirect({ to: "/app/operacao" }); },
+  component: KanbanRoute,
+});
 
 function KanbanRoute() { return <KanbanBoardView />; }
 
@@ -87,7 +90,7 @@ function isDoneColumnName(name: string) {
   return /conclu/i.test(name) || /done/i.test(name);
 }
 
-function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {}) {
+export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useAuth();
   const { activeWorkspaceId } = useWorkspace();
   const userId = user?.id;

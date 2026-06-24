@@ -20,6 +20,7 @@ import { Route as AppStickyNotesRouteImport } from './routes/app.sticky-notes'
 import { Route as AppSharedRouteImport } from './routes/app.shared'
 import { Route as AppSettingsRouteImport } from './routes/app.settings'
 import { Route as AppPersonalFinanceRouteImport } from './routes/app.personal-finance'
+import { Route as AppOperacaoRouteImport } from './routes/app.operacao'
 import { Route as AppNotesRouteImport } from './routes/app.notes'
 import { Route as AppKanbanRouteImport } from './routes/app.kanban'
 import { Route as AppGratitudeRouteImport } from './routes/app.gratitude'
@@ -88,6 +89,11 @@ const AppSettingsRoute = AppSettingsRouteImport.update({
 const AppPersonalFinanceRoute = AppPersonalFinanceRouteImport.update({
   id: '/personal-finance',
   path: '/personal-finance',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOperacaoRoute = AppOperacaoRouteImport.update({
+  id: '/operacao',
+  path: '/operacao',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNotesRoute = AppNotesRouteImport.update({
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
+  '/app/operacao': typeof AppOperacaoRoute
   '/app/personal-finance': typeof AppPersonalFinanceRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/shared': typeof AppSharedRoute
@@ -206,6 +213,7 @@ export interface FileRoutesByTo {
   '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
+  '/app/operacao': typeof AppOperacaoRoute
   '/app/personal-finance': typeof AppPersonalFinanceRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/shared': typeof AppSharedRoute
@@ -234,6 +242,7 @@ export interface FileRoutesById {
   '/app/gratitude': typeof AppGratitudeRoute
   '/app/kanban': typeof AppKanbanRoute
   '/app/notes': typeof AppNotesRoute
+  '/app/operacao': typeof AppOperacaoRoute
   '/app/personal-finance': typeof AppPersonalFinanceRoute
   '/app/settings': typeof AppSettingsRoute
   '/app/shared': typeof AppSharedRoute
@@ -263,6 +272,7 @@ export interface FileRouteTypes {
     | '/app/gratitude'
     | '/app/kanban'
     | '/app/notes'
+    | '/app/operacao'
     | '/app/personal-finance'
     | '/app/settings'
     | '/app/shared'
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
     | '/app/gratitude'
     | '/app/kanban'
     | '/app/notes'
+    | '/app/operacao'
     | '/app/personal-finance'
     | '/app/settings'
     | '/app/shared'
@@ -316,6 +327,7 @@ export interface FileRouteTypes {
     | '/app/gratitude'
     | '/app/kanban'
     | '/app/notes'
+    | '/app/operacao'
     | '/app/personal-finance'
     | '/app/settings'
     | '/app/shared'
@@ -409,6 +421,13 @@ declare module '@tanstack/react-router' {
       path: '/personal-finance'
       fullPath: '/app/personal-finance'
       preLoaderRoute: typeof AppPersonalFinanceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/operacao': {
+      id: '/app/operacao'
+      path: '/operacao'
+      fullPath: '/app/operacao'
+      preLoaderRoute: typeof AppOperacaoRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/notes': {
@@ -527,6 +546,7 @@ interface AppRouteChildren {
   AppGratitudeRoute: typeof AppGratitudeRoute
   AppKanbanRoute: typeof AppKanbanRoute
   AppNotesRoute: typeof AppNotesRoute
+  AppOperacaoRoute: typeof AppOperacaoRoute
   AppPersonalFinanceRoute: typeof AppPersonalFinanceRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppSharedRoute: typeof AppSharedRoute
@@ -551,6 +571,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppGratitudeRoute: AppGratitudeRoute,
   AppKanbanRoute: AppKanbanRoute,
   AppNotesRoute: AppNotesRoute,
+  AppOperacaoRoute: AppOperacaoRoute,
   AppPersonalFinanceRoute: AppPersonalFinanceRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppSharedRoute: AppSharedRoute,

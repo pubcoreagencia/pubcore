@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
-  LayoutDashboard, KanbanSquare, ListChecks, Calendar, StickyNote, Wallet, Boxes,
+  LayoutDashboard, KanbanSquare, Calendar, StickyNote, Wallet, Boxes,
   Users2, Calculator, Settings, LogOut, FolderOpen, TrendingUp, PiggyBank,
 } from "lucide-react";
 
@@ -14,8 +14,7 @@ type Tab = { to: string; label: string; icon: typeof LayoutDashboard; exact?: bo
 
 const TABS: Tab[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/app/checklists", label: "Tarefas", icon: ListChecks },
-  { to: "/app/kanban", label: "Kanban", icon: KanbanSquare },
+  { to: "/app/operacao", label: "Operação", icon: KanbanSquare },
   { to: "/app/notes", label: "Notas", icon: StickyNote },
   { to: "/app/finance", label: "Finanças", icon: Wallet },
   { to: "/app/personal-finance", label: "Pessoal", icon: PiggyBank },
