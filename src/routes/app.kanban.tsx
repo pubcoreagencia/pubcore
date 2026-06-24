@@ -16,7 +16,10 @@ import { FlowCanvas } from "@/components/kanban/FlowCanvas";
 import { ShareButton } from "@/components/ShareButton";
 import type { SaveStatus } from "@/hooks/use-autosave";
 
-export const Route = createFileRoute("/app/kanban")({ component: KanbanRoute });
+export const Route = createFileRoute("/app/kanban")({
+  beforeLoad: () => { throw redirect({ to: "/app/operacao" }); },
+  component: KanbanRoute,
+});
 
 function KanbanRoute() { return <KanbanBoardView />; }
 
