@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import {
-  LayoutDashboard, KanbanSquare, ListChecks, Calendar, StickyNote, Wallet, Boxes,
+  LayoutDashboard, KanbanSquare, Calendar, StickyNote, Wallet, Boxes,
   Users2, Calculator, Settings, LogOut, FolderOpen, TrendingUp, PiggyBank,
 } from "lucide-react";
 
