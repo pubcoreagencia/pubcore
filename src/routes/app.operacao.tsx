@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Maximize2, Minimize2, KanbanSquare, ListChecks, ChevronDown, ChevronUp } from "lucide-react";
+import { Maximize2, Minimize2, KanbanSquare, ListChecks, ChevronDown, ChevronUp, FileText } from "lucide-react";
 import { KanbanBoardView } from "./app.kanban";
 import { ChecklistsPage } from "./app.checklists";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
+import { DailyReportDialog } from "@/components/DailyReportDialog";
 
 export const Route = createFileRoute("/app/operacao")({
   component: OperacaoPage,
@@ -28,6 +29,7 @@ function OperacaoPage() {
   const [stats, setStats] = useState<{ funnels: number; cards: number; lastFunnel: string | null }>({
     funnels: 0, cards: 0, lastFunnel: null,
   });
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, mode); } catch { /* noop */ }
@@ -67,7 +69,15 @@ function OperacaoPage() {
             Kanban e Checklists juntos. Expanda, minimize ou mantenha em modo normal conforme seu foco.
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0 flex-wrap">
+          <button
+            onClick={() => setReportOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 text-primary px-3 py-2 text-xs sm:text-sm font-semibold hover:bg-primary/20 hover:shadow-glow transition"
+            title="Gerar Relatório do Dia"
+          >
+            <FileText className="h-4 w-4" />
+            <span>Gerar Relatório do Dia</span>
+          </button>
           {mode !== "minimized" && (
             <button
               onClick={() => setMode("minimized")}
@@ -152,6 +162,8 @@ function OperacaoPage() {
           </div>
         </section>
       )}
+
+      <DailyReportDialog open={reportOpen} onOpenChange={setReportOpen} />
     </div>
   );
 }
