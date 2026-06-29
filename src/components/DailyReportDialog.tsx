@@ -165,8 +165,8 @@ export function DailyReportDialog({ open, onOpenChange }: Props) {
       }
 
       // Parent card names map for internal tasks
-      const parentColumnIds = Array.from(new Set((ktDoneRes.data ?? []).map((t: any) => t.column_id).filter(Boolean)));
-      let columnFunnelMap = new Map<string, string>(); // column -> funnel name
+      const parentColumnIds = Array.from(new Set((ktDoneRes.data ?? []).map((t: any) => t.column_id).filter(Boolean))) as string[];
+      let columnFunnelMap = new Map<string, string>(); // column -> column name
       if (parentColumnIds.length) {
         const cr = await supabase.from("kanban_columns").select("id, name").in("id", parentColumnIds);
         for (const c of (cr.data ?? []) as { id: string; name: string }[]) columnFunnelMap.set(c.id, c.name);
