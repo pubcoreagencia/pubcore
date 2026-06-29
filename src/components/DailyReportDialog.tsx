@@ -157,7 +157,7 @@ export function DailyReportDialog({ open, onOpenChange }: Props) {
         ...(kCreatedRes.data ?? []).map((c: any) => c.funnel_id),
         ...(kUpdatedRes.data ?? []).map((c: any) => c.funnel_id),
         ...(ktDoneRes.data ?? []).map((c: any) => c.funnel_id),
-      ].filter(Boolean)));
+      ].filter(Boolean))) as string[];
       let funnelMap = new Map<string, string>();
       if (funnelIds.length) {
         const fr = await supabase.from("kanban_funnels").select("id, name").in("id", funnelIds);
