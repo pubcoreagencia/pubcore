@@ -162,6 +162,8 @@ function OperacaoPage() {
           </div>
         </section>
       )}
+
+      <DailyReportDialog open={reportOpen} onOpenChange={setReportOpen} />
     </div>
   );
 }
