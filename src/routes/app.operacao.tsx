@@ -69,7 +69,15 @@ function OperacaoPage() {
             Kanban e Checklists juntos. Expanda, minimize ou mantenha em modo normal conforme seu foco.
           </p>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-shrink-0 flex-wrap">
+          <button
+            onClick={() => setReportOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 text-primary px-3 py-2 text-xs sm:text-sm font-semibold hover:bg-primary/20 hover:shadow-glow transition"
+            title="Gerar Relatório do Dia"
+          >
+            <FileText className="h-4 w-4" />
+            <span>Gerar Relatório do Dia</span>
+          </button>
           {mode !== "minimized" && (
             <button
               onClick={() => setMode("minimized")}
