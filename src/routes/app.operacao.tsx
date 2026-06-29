@@ -29,6 +29,7 @@ function OperacaoPage() {
   const [stats, setStats] = useState<{ funnels: number; cards: number; lastFunnel: string | null }>({
     funnels: 0, cards: 0, lastFunnel: null,
   });
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, mode); } catch { /* noop */ }
