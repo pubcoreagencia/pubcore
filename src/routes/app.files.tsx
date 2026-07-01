@@ -513,8 +513,55 @@ function FilesPage() {
     return () => window.removeEventListener("click", close);
   }, []);
 
+  const isFileDrag = (e: React.DragEvent) => {
+    const types = e.dataTransfer?.types;
+    if (!types) return false;
+    for (let i = 0; i < types.length; i++) if (types[i] === "Files") return true;
+    return false;
+  };
+  const onPageDragEnter = (e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    dragCounterRef.current++;
+    setDragOverPage(true);
+  };
+  const onPageDragOver = (e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    const el = (e.target as HTMLElement)?.closest?.("[data-folder-drop]") as HTMLElement | null;
+    const id = el?.getAttribute("data-folder-drop") || null;
+    if (id !== overFolderId) setOverFolderId(id);
+  };
+  const onPageDragLeave = (e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+    if (dragCounterRef.current === 0) { setDragOverPage(false); setOverFolderId(null); }
+  };
+  const onPageDrop = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.files?.length) return;
+    e.preventDefault();
+    const target = overFolderId;
+    dragCounterRef.current = 0;
+    setDragOverPage(false);
+    setOverFolderId(null);
+    uploadFiles(e.dataTransfer.files, target !== null ? target : currentFolderId);
+  };
+
+  const dropDestinationName = (() => {
+    if (overFolderId) return folders.find((f) => f.id === overFolderId)?.name || "pasta";
+    const cur = folders.find((f) => f.id === currentFolderId);
+    return cur ? cur.name : "Raiz";
+  })();
+
   return (
-    <div className="flex flex-col h-[calc(100dvh-7.5rem)] md:h-screen w-full min-w-0">
+    <div
+      className="flex flex-col h-[calc(100dvh-7.5rem)] md:h-screen w-full min-w-0 relative"
+      onDragEnter={onPageDragEnter}
+      onDragOver={onPageDragOver}
+      onDragLeave={onPageDragLeave}
+      onDrop={onPageDrop}
+    >
       {/* Header */}
       <div className="px-3 sm:px-6 pt-3 sm:pt-6 pb-2 border-b border-border/50">
         <div className="flex items-center gap-2 mb-3">
