@@ -145,6 +145,12 @@ function FilesPage() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; kind: "folder" | "item"; id: string } | null>(null);
   const [shareTarget, setShareTarget] = useState<{ kind: "folder" | "item"; id: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<
+    { key: string; name: string; size: number; status: "uploading" | "done" | "error"; pct: number; error?: string }[]
+  >([]);
+  const [dragOverPage, setDragOverPage] = useState(false);
+  const [overFolderId, setOverFolderId] = useState<string | null>(null);
+  const dragCounterRef = useRef(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
