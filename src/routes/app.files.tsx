@@ -145,6 +145,12 @@ function FilesPage() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; kind: "folder" | "item"; id: string } | null>(null);
   const [shareTarget, setShareTarget] = useState<{ kind: "folder" | "item"; id: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<
+    { key: string; name: string; size: number; status: "uploading" | "done" | "error"; pct: number; error?: string }[]
+  >([]);
+  const [dragOverPage, setDragOverPage] = useState(false);
+  const [overFolderId, setOverFolderId] = useState<string | null>(null);
+  const dragCounterRef = useRef(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -241,32 +247,72 @@ function FilesPage() {
     setNewFolderOpen(false); setNewFolderName(""); setNewFolderCompany(""); setNewFolderColor(FOLDER_COLORS[3]);
   };
 
-  const uploadFiles = async (fl: FileList | null) => {
+  const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500 MB per file
+
+  const uploadFiles = async (fl: FileList | File[] | null, targetFolderIdArg?: string | null) => {
     if (!fl || !activeWorkspaceId) return;
+    const list = Array.from(fl as ArrayLike<File>);
+    if (!list.length) return;
+    const destFolderId = targetFolderIdArg !== undefined ? targetFolderIdArg : currentFolderId;
     setUploading(true);
+    type ProgressEntry = { key: string; name: string; size: number; status: "uploading" | "done" | "error"; pct: number; error?: string };
+    const entries: ProgressEntry[] = list.map((f) => ({
+      key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${f.name}`,
+      name: f.name, size: f.size, status: "uploading", pct: 5,
+    }));
+    setUploadProgress((cur) => [...cur, ...entries]);
+    const updateEntry = (key: string, patch: Partial<ProgressEntry>) =>
+      setUploadProgress((cur) => cur.map((e) => (e.key === key ? { ...e, ...patch } : e)));
     try {
-      const siblingFolders = folders.filter((f) => f.parent_id === currentFolderId);
-      const siblingItems = items.filter((it) => it.folder_id === currentFolderId);
+      const siblingFolders = folders.filter((f) => f.parent_id === destFolderId);
+      const siblingItems = items.filter((it) => it.folder_id === destFolderId);
       const pending: { id: string; pos_x: number; pos_y: number }[] = [];
-      for (const file of Array.from(fl)) {
+      for (let i = 0; i < list.length; i++) {
+        const file = list[i];
+        const entry = entries[i];
+        if (file.size > MAX_UPLOAD_SIZE) {
+          updateEntry(entry.key, { status: "error", pct: 100, error: "Arquivo excede 500 MB" });
+          toast.error(`${file.name}: excede 500 MB`);
+          continue;
+        }
         const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `${activeWorkspaceId}/${crypto.randomUUID()}_${safe}`;
+        updateEntry(entry.key, { pct: 25 });
         const up = await supabase.storage.from("files").upload(path, file, { upsert: false, contentType: file.type || undefined });
-        if (up.error) { toast.error(up.error.message); continue; }
+        if (up.error) {
+          updateEntry(entry.key, { status: "error", pct: 100, error: up.error.message });
+          toast.error(`${file.name}: ${up.error.message}`);
+          continue;
+        }
+        updateEntry(entry.key, { pct: 75 });
         const slot = nextFreeSlot(siblingFolders, [...siblingItems, ...pending]);
         pending.push({ id: path, pos_x: slot.x, pos_y: slot.y });
         const { error } = await supabase.from("files_items").insert({
-          workspace_id: activeWorkspaceId, folder_id: currentFolderId,
+          workspace_id: activeWorkspaceId, folder_id: destFolderId,
           name: file.name, storage_path: path, mime_type: file.type || null,
           size_bytes: file.size, created_by: user?.id,
           pos_x: slot.x, pos_y: slot.y,
         } as any);
-        if (error) toast.error(error.message);
+        if (error) {
+          await supabase.storage.from("files").remove([path]).catch(() => {});
+          updateEntry(entry.key, { status: "error", pct: 100, error: error.message });
+          toast.error(`${file.name}: ${error.message}`);
+        } else {
+          updateEntry(entry.key, { status: "done", pct: 100 });
+        }
       }
-      toast.success("Upload concluído");
+      const okCount = entries.filter((e) => {
+        const cur = (uploadProgress.find((x) => x.key === e.key) ?? e);
+        return cur.status !== "error";
+      }).length;
+      if (okCount > 0) toast.success(list.length === 1 ? "Arquivo enviado" : `${list.length} arquivos enviados`);
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      const doneKeys = entries.map((e) => e.key);
+      setTimeout(() => {
+        setUploadProgress((cur) => cur.filter((e) => !doneKeys.includes(e.key)));
+      }, 4000);
     }
   };
 
@@ -467,8 +513,55 @@ function FilesPage() {
     return () => window.removeEventListener("click", close);
   }, []);
 
+  const isFileDrag = (e: React.DragEvent) => {
+    const types = e.dataTransfer?.types;
+    if (!types) return false;
+    for (let i = 0; i < types.length; i++) if (types[i] === "Files") return true;
+    return false;
+  };
+  const onPageDragEnter = (e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    dragCounterRef.current++;
+    setDragOverPage(true);
+  };
+  const onPageDragOver = (e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    const el = (e.target as HTMLElement)?.closest?.("[data-folder-drop]") as HTMLElement | null;
+    const id = el?.getAttribute("data-folder-drop") || null;
+    if (id !== overFolderId) setOverFolderId(id);
+  };
+  const onPageDragLeave = (e: React.DragEvent) => {
+    if (!isFileDrag(e)) return;
+    dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+    if (dragCounterRef.current === 0) { setDragOverPage(false); setOverFolderId(null); }
+  };
+  const onPageDrop = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.files?.length) return;
+    e.preventDefault();
+    const target = overFolderId;
+    dragCounterRef.current = 0;
+    setDragOverPage(false);
+    setOverFolderId(null);
+    uploadFiles(e.dataTransfer.files, target !== null ? target : currentFolderId);
+  };
+
+  const dropDestinationName = (() => {
+    if (overFolderId) return folders.find((f) => f.id === overFolderId)?.name || "pasta";
+    const cur = folders.find((f) => f.id === currentFolderId);
+    return cur ? cur.name : "Raiz";
+  })();
+
   return (
-    <div className="flex flex-col h-[calc(100dvh-7.5rem)] md:h-screen w-full min-w-0">
+    <div
+      className="flex flex-col h-[calc(100dvh-7.5rem)] md:h-screen w-full min-w-0 relative"
+      onDragEnter={onPageDragEnter}
+      onDragOver={onPageDragOver}
+      onDragLeave={onPageDragLeave}
+      onDrop={onPageDrop}
+    >
       {/* Header */}
       <div className="px-3 sm:px-6 pt-3 sm:pt-6 pb-2 border-b border-border/50">
         <div className="flex items-center gap-2 mb-3">
@@ -793,6 +886,62 @@ function FilesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Drop overlay */}
+      {dragOverPage && (
+        <div className="pointer-events-none absolute inset-0 z-40 grid place-items-center bg-primary/10 backdrop-blur-sm border-4 border-dashed border-primary/60 rounded-xl">
+          <div className="pointer-events-none flex flex-col items-center gap-2 rounded-2xl bg-card/90 border border-primary/40 px-6 py-5 shadow-glow">
+            <Upload className="h-8 w-8 text-primary" />
+            <div className="text-sm font-semibold">Solte os arquivos aqui para enviar</div>
+            <div className="text-xs text-muted-foreground">
+              Destino: <span className="text-foreground font-medium">{dropDestinationName}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload progress panel */}
+      {uploadProgress.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-50 w-[320px] max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card/95 backdrop-blur shadow-card overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/60">
+            <div className="text-xs font-semibold">Uploads</div>
+            <button
+              onClick={() => setUploadProgress((cur) => cur.filter((e) => e.status === "uploading"))}
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Limpar concluídos
+            </button>
+          </div>
+          <div className="max-h-64 overflow-y-auto divide-y divide-border/40">
+            {uploadProgress.map((e) => (
+              <div key={e.key} className="p-2.5">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="text-xs truncate flex-1">{e.name}</div>
+                  <div className={`text-[10px] font-semibold ${
+                    e.status === "done" ? "text-emerald-500" :
+                    e.status === "error" ? "text-destructive" : "text-primary"
+                  }`}>
+                    {e.status === "done" ? "Concluído" : e.status === "error" ? "Erro" : `${e.pct}%`}
+                  </div>
+                </div>
+                <div className="h-1 bg-muted rounded overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${
+                      e.status === "error" ? "bg-destructive" :
+                      e.status === "done" ? "bg-emerald-500" : "bg-primary"
+                    }`}
+                    style={{ width: `${e.pct}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <div className="text-[10px] text-muted-foreground">{humanSize(e.size)}</div>
+                  {e.error && <div className="text-[10px] text-destructive truncate max-w-[200px]">{e.error}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
