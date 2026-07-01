@@ -247,32 +247,71 @@ function FilesPage() {
     setNewFolderOpen(false); setNewFolderName(""); setNewFolderCompany(""); setNewFolderColor(FOLDER_COLORS[3]);
   };
 
-  const uploadFiles = async (fl: FileList | null) => {
+  const MAX_UPLOAD_SIZE = 500 * 1024 * 1024; // 500 MB per file
+
+  const uploadFiles = async (fl: FileList | File[] | null, targetFolderIdArg?: string | null) => {
     if (!fl || !activeWorkspaceId) return;
+    const list = Array.from(fl as ArrayLike<File>);
+    if (!list.length) return;
+    const destFolderId = targetFolderIdArg !== undefined ? targetFolderIdArg : currentFolderId;
     setUploading(true);
+    const entries = list.map((f) => ({
+      key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${f.name}`,
+      name: f.name, size: f.size, status: "uploading" as const, pct: 5,
+    }));
+    setUploadProgress((cur) => [...cur, ...entries]);
+    const updateEntry = (key: string, patch: Partial<typeof entries[0]>) =>
+      setUploadProgress((cur) => cur.map((e) => (e.key === key ? { ...e, ...patch } : e)));
     try {
-      const siblingFolders = folders.filter((f) => f.parent_id === currentFolderId);
-      const siblingItems = items.filter((it) => it.folder_id === currentFolderId);
+      const siblingFolders = folders.filter((f) => f.parent_id === destFolderId);
+      const siblingItems = items.filter((it) => it.folder_id === destFolderId);
       const pending: { id: string; pos_x: number; pos_y: number }[] = [];
-      for (const file of Array.from(fl)) {
+      for (let i = 0; i < list.length; i++) {
+        const file = list[i];
+        const entry = entries[i];
+        if (file.size > MAX_UPLOAD_SIZE) {
+          updateEntry(entry.key, { status: "error", pct: 100, error: "Arquivo excede 500 MB" });
+          toast.error(`${file.name}: excede 500 MB`);
+          continue;
+        }
         const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const path = `${activeWorkspaceId}/${crypto.randomUUID()}_${safe}`;
+        updateEntry(entry.key, { pct: 25 });
         const up = await supabase.storage.from("files").upload(path, file, { upsert: false, contentType: file.type || undefined });
-        if (up.error) { toast.error(up.error.message); continue; }
+        if (up.error) {
+          updateEntry(entry.key, { status: "error", pct: 100, error: up.error.message });
+          toast.error(`${file.name}: ${up.error.message}`);
+          continue;
+        }
+        updateEntry(entry.key, { pct: 75 });
         const slot = nextFreeSlot(siblingFolders, [...siblingItems, ...pending]);
         pending.push({ id: path, pos_x: slot.x, pos_y: slot.y });
         const { error } = await supabase.from("files_items").insert({
-          workspace_id: activeWorkspaceId, folder_id: currentFolderId,
+          workspace_id: activeWorkspaceId, folder_id: destFolderId,
           name: file.name, storage_path: path, mime_type: file.type || null,
           size_bytes: file.size, created_by: user?.id,
           pos_x: slot.x, pos_y: slot.y,
         } as any);
-        if (error) toast.error(error.message);
+        if (error) {
+          await supabase.storage.from("files").remove([path]).catch(() => {});
+          updateEntry(entry.key, { status: "error", pct: 100, error: error.message });
+          toast.error(`${file.name}: ${error.message}`);
+        } else {
+          updateEntry(entry.key, { status: "done", pct: 100 });
+        }
       }
-      toast.success("Upload concluído");
+      const okCount = entries.filter((e) => {
+        const cur = (uploadProgress.find((x) => x.key === e.key) ?? e);
+        return cur.status !== "error";
+      }).length;
+      if (okCount > 0) toast.success(list.length === 1 ? "Arquivo enviado" : `${list.length} arquivos enviados`);
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      const doneKeys = entries.map((e) => e.key);
+      setTimeout(() => {
+        setUploadProgress((cur) => cur.filter((e) => !doneKeys.includes(e.key)));
+      }, 4000);
     }
   };
 
