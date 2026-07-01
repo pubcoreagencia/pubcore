@@ -886,6 +886,62 @@ function FilesPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Drop overlay */}
+      {dragOverPage && (
+        <div className="pointer-events-none absolute inset-0 z-40 grid place-items-center bg-primary/10 backdrop-blur-sm border-4 border-dashed border-primary/60 rounded-xl">
+          <div className="pointer-events-none flex flex-col items-center gap-2 rounded-2xl bg-card/90 border border-primary/40 px-6 py-5 shadow-glow">
+            <Upload className="h-8 w-8 text-primary" />
+            <div className="text-sm font-semibold">Solte os arquivos aqui para enviar</div>
+            <div className="text-xs text-muted-foreground">
+              Destino: <span className="text-foreground font-medium">{dropDestinationName}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload progress panel */}
+      {uploadProgress.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-50 w-[320px] max-w-[calc(100vw-2rem)] rounded-xl border border-border bg-card/95 backdrop-blur shadow-card overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border/60">
+            <div className="text-xs font-semibold">Uploads</div>
+            <button
+              onClick={() => setUploadProgress((cur) => cur.filter((e) => e.status === "uploading"))}
+              className="text-[10px] text-muted-foreground hover:text-foreground"
+            >
+              Limpar concluídos
+            </button>
+          </div>
+          <div className="max-h-64 overflow-y-auto divide-y divide-border/40">
+            {uploadProgress.map((e) => (
+              <div key={e.key} className="p-2.5">
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <div className="text-xs truncate flex-1">{e.name}</div>
+                  <div className={`text-[10px] font-semibold ${
+                    e.status === "done" ? "text-emerald-500" :
+                    e.status === "error" ? "text-destructive" : "text-primary"
+                  }`}>
+                    {e.status === "done" ? "Concluído" : e.status === "error" ? "Erro" : `${e.pct}%`}
+                  </div>
+                </div>
+                <div className="h-1 bg-muted rounded overflow-hidden">
+                  <div
+                    className={`h-full transition-all ${
+                      e.status === "error" ? "bg-destructive" :
+                      e.status === "done" ? "bg-emerald-500" : "bg-primary"
+                    }`}
+                    style={{ width: `${e.pct}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <div className="text-[10px] text-muted-foreground">{humanSize(e.size)}</div>
+                  {e.error && <div className="text-[10px] text-destructive truncate max-w-[200px]">{e.error}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
