@@ -255,12 +255,13 @@ function FilesPage() {
     if (!list.length) return;
     const destFolderId = targetFolderIdArg !== undefined ? targetFolderIdArg : currentFolderId;
     setUploading(true);
-    const entries = list.map((f) => ({
+    type ProgressEntry = { key: string; name: string; size: number; status: "uploading" | "done" | "error"; pct: number; error?: string };
+    const entries: ProgressEntry[] = list.map((f) => ({
       key: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${f.name}`,
-      name: f.name, size: f.size, status: "uploading" as const, pct: 5,
+      name: f.name, size: f.size, status: "uploading", pct: 5,
     }));
     setUploadProgress((cur) => [...cur, ...entries]);
-    const updateEntry = (key: string, patch: Partial<typeof entries[0]>) =>
+    const updateEntry = (key: string, patch: Partial<ProgressEntry>) =>
       setUploadProgress((cur) => cur.map((e) => (e.key === key ? { ...e, ...patch } : e)));
     try {
       const siblingFolders = folders.filter((f) => f.parent_id === destFolderId);
