@@ -666,7 +666,16 @@ export function KanbanBoardView({ embedded = false }: { embedded?: boolean } = {
       )}
 
       {/* FUNNEL TABS */}
-      <div className="mb-5 flex items-center gap-2 overflow-x-auto pb-2 border-b border-border">
+      <div
+        className="mb-5 flex items-center gap-2 overflow-x-auto pb-2 border-b border-border overscroll-x-contain"
+        onWheel={(e) => {
+          const el = e.currentTarget;
+          if (el.scrollWidth <= el.clientWidth) return;
+          if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+            el.scrollLeft += e.deltaY;
+          }
+        }}
+      >
         {sortedFunnels.map((f) => {
           const isActive = f.id === activeFunnelId;
           const count = cards.filter(c => c.funnel_id === f.id).length;
