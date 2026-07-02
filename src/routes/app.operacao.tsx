@@ -80,6 +80,14 @@ function OperacaoPage() {
             <FileText className="h-4 w-4" />
             <span>Gerar Relatório do Dia</span>
           </button>
+          <button
+            onClick={() => setCompletionOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-gradient-to-br from-primary/15 to-primary/5 text-primary px-3 py-2 text-xs sm:text-sm font-semibold hover:bg-primary/20 hover:shadow-glow transition"
+            title="Relatório de Conclusão"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span>Relatório de Conclusão</span>
+          </button>
           {mode !== "minimized" && (
             <button
               onClick={() => setMode("minimized")}
