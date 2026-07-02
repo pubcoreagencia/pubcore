@@ -174,6 +174,7 @@ function OperacaoPage() {
       )}
 
       <DailyReportDialog open={reportOpen} onOpenChange={setReportOpen} />
+      <CompletionReportDialog open={completionOpen} onOpenChange={setCompletionOpen} />
     </div>
   );
 }
