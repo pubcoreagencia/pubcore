@@ -247,6 +247,50 @@ export type Database = {
           },
         ]
       }
+      completion_reports: {
+        Row: {
+          achievements: string
+          bottlenecks: string
+          created_at: string
+          executions: Json
+          id: string
+          report_date: string
+          updated_at: string
+          user_id: string
+          workspace_id: string
+        }
+        Insert: {
+          achievements?: string
+          bottlenecks?: string
+          created_at?: string
+          executions?: Json
+          id?: string
+          report_date?: string
+          updated_at?: string
+          user_id: string
+          workspace_id: string
+        }
+        Update: {
+          achievements?: string
+          bottlenecks?: string
+          created_at?: string
+          executions?: Json
+          id?: string
+          report_date?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "completion_reports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_leads: {
         Row: {
           archived_at: string | null
