@@ -73,10 +73,7 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
   // Draft
   const [draft, setDraft] = useState<Execution>({ id: "", title: "", description: "", company: "", origin: "manual" });
 
-  const displayName = useMemo(() => {
-    const meta = (user?.user_metadata ?? {}) as Record<string, unknown>;
-    return (meta.name as string) || (meta.display_name as string) || user?.email || "—";
-  }, [user]);
+  const displayName = useMemo(() => user?.name || user?.email || "—", [user]);
 
   const reset = () => {
     setCurrentId(null);
