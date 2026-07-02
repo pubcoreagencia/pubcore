@@ -31,6 +31,7 @@ function OperacaoPage() {
     funnels: 0, cards: 0, lastFunnel: null,
   });
   const [reportOpen, setReportOpen] = useState(false);
+  const [completionOpen, setCompletionOpen] = useState(false);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, mode); } catch { /* noop */ }
