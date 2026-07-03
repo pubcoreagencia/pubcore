@@ -230,25 +230,35 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
     // Ensure the visual tab is rendered
     if (tab !== "visual") {
       setTab("visual");
-      await new Promise((r) => setTimeout(r, 250));
+      await new Promise((r) => setTimeout(r, 300));
     }
     const el = visualRef.current;
     if (!el) { toast.error("Nada para exportar"); return; }
     try {
-      const [{ default: html2canvas }, jsPdfMod] = await Promise.all([
-        import("html2canvas"),
+      const [{ toPng }, jsPdfMod] = await Promise.all([
+        import("html-to-image"),
         import("jspdf"),
       ]);
       const jsPDF = (jsPdfMod as any).jsPDF || (jsPdfMod as any).default;
 
-      // Resolve current theme background so the capture matches the site look
+      // Resolve theme background (rgb form — html-to-image / jsPDF handle it safely, unlike oklch)
       const bodyBg = getComputedStyle(document.body).backgroundColor || "#0b0b10";
 
-      const canvas = await html2canvas(el, {
+      // Render the visual element to a PNG data URL. html-to-image supports
+      // modern CSS color functions (oklch) that html2canvas cannot parse.
+      const dataUrl = await toPng(el, {
         backgroundColor: bodyBg,
-        scale: 2,
-        useCORS: true,
-        windowWidth: el.scrollWidth,
+        pixelRatio: 2,
+        cacheBust: true,
+        style: { transform: "none" },
+      });
+
+      // Load the produced image to get its natural dimensions
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = reject;
+        image.src = dataUrl;
       });
 
       const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
@@ -256,39 +266,36 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
       const pageH = pdf.internal.pageSize.getHeight();
       const margin = 24;
       const contentW = pageW - margin * 2;
-      const ratio = contentW / canvas.width;
-      const fullH = canvas.height * ratio;
+      const ratio = contentW / img.width;
+      const fullH = img.height * ratio;
 
-      // Fill page background to match theme
       pdf.setFillColor(bodyBg);
       pdf.rect(0, 0, pageW, pageH, "F");
 
       if (fullH <= pageH - margin * 2) {
-        const imgData = canvas.toDataURL("image/png");
-        pdf.addImage(imgData, "PNG", margin, margin, contentW, fullH);
+        pdf.addImage(dataUrl, "PNG", margin, margin, contentW, fullH);
       } else {
-        // Slice canvas into page-sized chunks
         const pageContentH = pageH - margin * 2;
         const sliceHpx = Math.floor(pageContentH / ratio);
         let y = 0;
         let first = true;
-        while (y < canvas.height) {
-          const h = Math.min(sliceHpx, canvas.height - y);
+        while (y < img.height) {
+          const h = Math.min(sliceHpx, img.height - y);
           const pageCanvas = document.createElement("canvas");
-          pageCanvas.width = canvas.width;
+          pageCanvas.width = img.width;
           pageCanvas.height = h;
           const ctx = pageCanvas.getContext("2d");
           if (!ctx) break;
           ctx.fillStyle = bodyBg;
           ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
-          const imgData = pageCanvas.toDataURL("image/png");
+          ctx.drawImage(img, 0, y, img.width, h, 0, 0, img.width, h);
+          const sliceUrl = pageCanvas.toDataURL("image/png");
           if (!first) {
             pdf.addPage();
             pdf.setFillColor(bodyBg);
             pdf.rect(0, 0, pageW, pageH, "F");
           }
-          pdf.addImage(imgData, "PNG", margin, margin, contentW, h * ratio);
+          pdf.addImage(sliceUrl, "PNG", margin, margin, contentW, h * ratio);
           first = false;
           y += h;
         }
@@ -296,8 +303,8 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
       pdf.save(`relatorio-conclusao-${date}.pdf`);
       toast.success("PDF exportado");
     } catch (err) {
-      console.error(err);
-      toast.error("Falha ao gerar PDF");
+      console.error("PDF export failed:", err);
+      toast.error("Falha ao gerar PDF. Veja o console para detalhes.");
     }
   }
 
