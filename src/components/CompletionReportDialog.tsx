@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
 import { useAuth } from "@/lib/auth";
+import { useChecklistCompanies } from "@/lib/checklist-companies";
 
 interface Props {
   open: boolean;
@@ -69,6 +70,8 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
   const [history, setHistory] = useState<ReportRow[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const visualRef = useRef<HTMLDivElement | null>(null);
+  const { companies } = useChecklistCompanies();
+  const companyListId = "completion-report-company-options";
 
   // Draft
   const [draft, setDraft] = useState<Execution>({ id: "", title: "", description: "", company: "", origin: "manual" });
@@ -328,8 +331,14 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
                   <Input placeholder="Título da execução"
                     value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addExecution(); } }} />
-                  <Input placeholder="Empresa (opcional)"
+                  <Input placeholder="Empresa (opcional) — escolha ou digite"
+                    list={companyListId}
                     value={draft.company ?? ""} onChange={(e) => setDraft({ ...draft, company: e.target.value })} />
+                  <datalist id={companyListId}>
+                    {companies.map((c) => (
+                      <option key={c.id} value={c.name} />
+                    ))}
+                  </datalist>
                   <Input className="md:col-span-1" placeholder="Descrição curta (opcional)"
                     value={draft.description ?? ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
                   <div className="flex gap-2">
