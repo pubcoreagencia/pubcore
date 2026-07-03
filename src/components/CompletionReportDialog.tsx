@@ -70,6 +70,8 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
   const [history, setHistory] = useState<ReportRow[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const visualRef = useRef<HTMLDivElement | null>(null);
+  const { companies } = useChecklistCompanies();
+  const companyListId = "completion-report-company-options";
 
   // Draft
   const [draft, setDraft] = useState<Execution>({ id: "", title: "", description: "", company: "", origin: "manual" });
