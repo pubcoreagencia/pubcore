@@ -374,10 +374,16 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
                       </SelectContent>
                     </Select>
                     <Button onClick={addExecution} size="sm" className="whitespace-nowrap">
-                      <Plus className="h-4 w-4 mr-1" /> Adicionar
+                      <Plus className="h-4 w-4 mr-1" /> {editingId ? "Salvar" : "Adicionar"}
                     </Button>
+                    {editingId && (
+                      <Button onClick={cancelEditExecution} size="sm" variant="outline" className="whitespace-nowrap">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
+
 
                 <ul className="mt-4 space-y-2">
                   {executions.map((e) => (
