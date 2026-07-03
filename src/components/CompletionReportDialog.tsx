@@ -75,6 +75,7 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
 
   // Draft
   const [draft, setDraft] = useState<Execution>({ id: "", title: "", description: "", company: "", origin: "manual" });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const displayName = useMemo(() => user?.name || user?.email || "—", [user]);
 
@@ -85,8 +86,10 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
     setBottlenecks("");
     setAchievements("");
     setDraft({ id: "", title: "", description: "", company: "", origin: "manual" });
+    setEditingId(null);
     setTab("editor");
   };
+
 
   useEffect(() => {
     if (open) {
