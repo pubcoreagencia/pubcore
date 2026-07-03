@@ -331,8 +331,14 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
                   <Input placeholder="Título da execução"
                     value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })}
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addExecution(); } }} />
-                  <Input placeholder="Empresa (opcional)"
+                  <Input placeholder="Empresa (opcional) — escolha ou digite"
+                    list={companyListId}
                     value={draft.company ?? ""} onChange={(e) => setDraft({ ...draft, company: e.target.value })} />
+                  <datalist id={companyListId}>
+                    {companies.map((c) => (
+                      <option key={c.id} value={c.name} />
+                    ))}
+                  </datalist>
                   <Input className="md:col-span-1" placeholder="Descrição curta (opcional)"
                     value={draft.description ?? ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
                   <div className="flex gap-2">
