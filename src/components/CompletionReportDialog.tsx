@@ -75,6 +75,7 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
 
   // Draft
   const [draft, setDraft] = useState<Execution>({ id: "", title: "", description: "", company: "", origin: "manual" });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const displayName = useMemo(() => user?.name || user?.email || "—", [user]);
 
@@ -85,8 +86,10 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
     setBottlenecks("");
     setAchievements("");
     setDraft({ id: "", title: "", description: "", company: "", origin: "manual" });
+    setEditingId(null);
     setTab("editor");
   };
+
 
   useEffect(() => {
     if (open) {
@@ -116,10 +119,30 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
 
   const addExecution = () => {
     if (!draft.title.trim()) { toast.error("Informe um título para a execução"); return; }
-    setExecutions((prev) => [...prev, { ...draft, id: uid() }]);
+    if (editingId) {
+      setExecutions((prev) => prev.map((e) => (e.id === editingId ? { ...draft, id: editingId } : e)));
+      setEditingId(null);
+    } else {
+      setExecutions((prev) => [...prev, { ...draft, id: uid() }]);
+    }
     setDraft({ id: "", title: "", description: "", company: "", origin: "manual" });
   };
-  const removeExecution = (id: string) => setExecutions((prev) => prev.filter((e) => e.id !== id));
+  const removeExecution = (id: string) => {
+    setExecutions((prev) => prev.filter((e) => e.id !== id));
+    if (editingId === id) {
+      setEditingId(null);
+      setDraft({ id: "", title: "", description: "", company: "", origin: "manual" });
+    }
+  };
+  const startEditExecution = (e: Execution) => {
+    setEditingId(e.id);
+    setDraft({ id: e.id, title: e.title, description: e.description ?? "", company: e.company ?? "", origin: e.origin ?? "manual" });
+  };
+  const cancelEditExecution = () => {
+    setEditingId(null);
+    setDraft({ id: "", title: "", description: "", company: "", origin: "manual" });
+  };
+
 
   async function save() {
     if (!user?.id || !activeWorkspaceId) { toast.error("Sem sessão ativa"); return; }
@@ -351,14 +374,20 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
                       </SelectContent>
                     </Select>
                     <Button onClick={addExecution} size="sm" className="whitespace-nowrap">
-                      <Plus className="h-4 w-4 mr-1" /> Adicionar
+                      <Plus className="h-4 w-4 mr-1" /> {editingId ? "Salvar" : "Adicionar"}
                     </Button>
+                    {editingId && (
+                      <Button onClick={cancelEditExecution} size="sm" variant="outline" className="whitespace-nowrap">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
+
                 <ul className="mt-4 space-y-2">
                   {executions.map((e) => (
-                    <li key={e.id} className="rounded-lg border border-border bg-surface/60 p-3 flex items-start gap-3">
+                    <li key={e.id} className={`rounded-lg border p-3 flex items-start gap-3 ${editingId === e.id ? "border-primary bg-primary/10" : "border-border bg-surface/60"}`}>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">
                           {e.title}
@@ -371,11 +400,16 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
                         </div>
                         {e.description && <div className="text-xs text-muted-foreground mt-0.5">{e.description}</div>}
                       </div>
+                      <button onClick={() => startEditExecution(e)}
+                        className="text-muted-foreground hover:text-primary p-1" title="Editar">
+                        <Pencil className="h-4 w-4" />
+                      </button>
                       <button onClick={() => removeExecution(e.id)}
                         className="text-muted-foreground hover:text-destructive p-1" title="Remover">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </li>
+
                   ))}
                   {executions.length === 0 && (
                     <li className="text-xs text-muted-foreground italic">Nenhuma execução adicionada ainda.</li>
