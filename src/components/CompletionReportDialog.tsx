@@ -387,7 +387,7 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
 
                 <ul className="mt-4 space-y-2">
                   {executions.map((e) => (
-                    <li key={e.id} className="rounded-lg border border-border bg-surface/60 p-3 flex items-start gap-3">
+                    <li key={e.id} className={`rounded-lg border p-3 flex items-start gap-3 ${editingId === e.id ? "border-primary bg-primary/10" : "border-border bg-surface/60"}`}>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">
                           {e.title}
@@ -400,11 +400,16 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
                         </div>
                         {e.description && <div className="text-xs text-muted-foreground mt-0.5">{e.description}</div>}
                       </div>
+                      <button onClick={() => startEditExecution(e)}
+                        className="text-muted-foreground hover:text-primary p-1" title="Editar">
+                        <Pencil className="h-4 w-4" />
+                      </button>
                       <button onClick={() => removeExecution(e.id)}
                         className="text-muted-foreground hover:text-destructive p-1" title="Remover">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </li>
+
                   ))}
                   {executions.length === 0 && (
                     <li className="text-xs text-muted-foreground italic">Nenhuma execução adicionada ainda.</li>
