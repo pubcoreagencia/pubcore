@@ -200,27 +200,79 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
     document.body.removeChild(a); URL.revokeObjectURL(url);
   }
 
-  function printPDF() {
+  async function printPDF() {
+    // Ensure the visual tab is rendered
+    if (tab !== "visual") {
+      setTab("visual");
+      await new Promise((r) => setTimeout(r, 250));
+    }
     const el = visualRef.current;
-    if (!el) return;
-    const w = window.open("", "_blank", "width=900,height=1000");
-    if (!w) { toast.error("Popup bloqueado"); return; }
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Relatório de Conclusão — ${date}</title>
-      <style>
-        body{font-family:ui-sans-serif,system-ui,sans-serif;background:#0b0b10;color:#e7e7ee;padding:24px;margin:0}
-        @media print{body{background:#fff;color:#111}}
-        .r{max-width:820px;margin:0 auto}
-        h1{font-size:24px;margin:0 0 4px}
-        .muted{color:#888;font-size:12px}
-        .card{border:1px solid #2a2a35;border-radius:16px;padding:18px;margin-top:16px;background:#111119}
-        @media print{.card{background:#fafafa;border-color:#e5e7eb}}
-        .exec{border-left:3px solid #6366f1;padding:8px 12px;margin:8px 0;background:rgba(99,102,241,.06);border-radius:8px}
-        .badge{display:inline-block;font-size:10px;padding:2px 6px;border-radius:6px;background:#333;margin-left:6px}
-        pre{white-space:pre-wrap;font-family:inherit;margin:0}
-      </style></head><body>${el.innerHTML}
-      <script>setTimeout(()=>window.print(),300)</script>
-      </body></html>`);
-    w.document.close();
+    if (!el) { toast.error("Nada para exportar"); return; }
+    try {
+      const [{ default: html2canvas }, jsPdfMod] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const jsPDF = (jsPdfMod as any).jsPDF || (jsPdfMod as any).default;
+
+      // Resolve current theme background so the capture matches the site look
+      const bodyBg = getComputedStyle(document.body).backgroundColor || "#0b0b10";
+
+      const canvas = await html2canvas(el, {
+        backgroundColor: bodyBg,
+        scale: 2,
+        useCORS: true,
+        windowWidth: el.scrollWidth,
+      });
+
+      const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const margin = 24;
+      const contentW = pageW - margin * 2;
+      const ratio = contentW / canvas.width;
+      const fullH = canvas.height * ratio;
+
+      // Fill page background to match theme
+      pdf.setFillColor(bodyBg);
+      pdf.rect(0, 0, pageW, pageH, "F");
+
+      if (fullH <= pageH - margin * 2) {
+        const imgData = canvas.toDataURL("image/png");
+        pdf.addImage(imgData, "PNG", margin, margin, contentW, fullH);
+      } else {
+        // Slice canvas into page-sized chunks
+        const pageContentH = pageH - margin * 2;
+        const sliceHpx = Math.floor(pageContentH / ratio);
+        let y = 0;
+        let first = true;
+        while (y < canvas.height) {
+          const h = Math.min(sliceHpx, canvas.height - y);
+          const pageCanvas = document.createElement("canvas");
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = h;
+          const ctx = pageCanvas.getContext("2d");
+          if (!ctx) break;
+          ctx.fillStyle = bodyBg;
+          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+          ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+          const imgData = pageCanvas.toDataURL("image/png");
+          if (!first) {
+            pdf.addPage();
+            pdf.setFillColor(bodyBg);
+            pdf.rect(0, 0, pageW, pageH, "F");
+          }
+          pdf.addImage(imgData, "PNG", margin, margin, contentW, h * ratio);
+          first = false;
+          y += h;
+        }
+      }
+      pdf.save(`relatorio-conclusao-${date}.pdf`);
+      toast.success("PDF exportado");
+    } catch (err) {
+      console.error(err);
+      toast.error("Falha ao gerar PDF");
+    }
   }
 
   return (
