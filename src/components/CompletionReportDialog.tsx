@@ -119,10 +119,30 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
 
   const addExecution = () => {
     if (!draft.title.trim()) { toast.error("Informe um título para a execução"); return; }
-    setExecutions((prev) => [...prev, { ...draft, id: uid() }]);
+    if (editingId) {
+      setExecutions((prev) => prev.map((e) => (e.id === editingId ? { ...draft, id: editingId } : e)));
+      setEditingId(null);
+    } else {
+      setExecutions((prev) => [...prev, { ...draft, id: uid() }]);
+    }
     setDraft({ id: "", title: "", description: "", company: "", origin: "manual" });
   };
-  const removeExecution = (id: string) => setExecutions((prev) => prev.filter((e) => e.id !== id));
+  const removeExecution = (id: string) => {
+    setExecutions((prev) => prev.filter((e) => e.id !== id));
+    if (editingId === id) {
+      setEditingId(null);
+      setDraft({ id: "", title: "", description: "", company: "", origin: "manual" });
+    }
+  };
+  const startEditExecution = (e: Execution) => {
+    setEditingId(e.id);
+    setDraft({ id: e.id, title: e.title, description: e.description ?? "", company: e.company ?? "", origin: e.origin ?? "manual" });
+  };
+  const cancelEditExecution = () => {
+    setEditingId(null);
+    setDraft({ id: "", title: "", description: "", company: "", origin: "manual" });
+  };
+
 
   async function save() {
     if (!user?.id || !activeWorkspaceId) { toast.error("Sem sessão ativa"); return; }
