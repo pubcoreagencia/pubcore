@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +69,6 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
   const [saving, setSaving] = useState(false);
   const [history, setHistory] = useState<ReportRow[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const visualRef = useRef<HTMLDivElement | null>(null);
   const { companies } = useChecklistCompanies();
   const companyListId = "completion-report-company-options";
 
@@ -227,79 +226,121 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
   }
 
   async function printPDF() {
-    // Ensure the visual tab is rendered
-    if (tab !== "visual") {
-      setTab("visual");
-      await new Promise((r) => setTimeout(r, 300));
-    }
-    const el = visualRef.current;
-    if (!el) { toast.error("Nada para exportar"); return; }
     try {
-      const [{ toPng }, jsPdfMod] = await Promise.all([
-        import("html-to-image"),
-        import("jspdf"),
-      ]);
+      const jsPdfMod = await import("jspdf");
       const jsPDF = (jsPdfMod as any).jsPDF || (jsPdfMod as any).default;
-
-      // Resolve theme background (rgb form — html-to-image / jsPDF handle it safely, unlike oklch)
-      const bodyBg = getComputedStyle(document.body).backgroundColor || "#0b0b10";
-
-      // Render the visual element to a PNG data URL. html-to-image supports
-      // modern CSS color functions (oklch) that html2canvas cannot parse.
-      const dataUrl = await toPng(el, {
-        backgroundColor: bodyBg,
-        pixelRatio: 2,
-        cacheBust: true,
-        style: { transform: "none" },
-      });
-
-      // Load the produced image to get its natural dimensions
-      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = reject;
-        image.src = dataUrl;
-      });
 
       const pdf = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 24;
+      const margin = 44;
       const contentW = pageW - margin * 2;
-      const ratio = contentW / img.width;
-      const fullH = img.height * ratio;
+      const bg: [number, number, number] = [15, 15, 18];
+      const card: [number, number, number] = [28, 28, 32];
+      const border: [number, number, number] = [58, 58, 64];
+      const fg: [number, number, number] = [244, 244, 245];
+      const muted: [number, number, number] = [166, 166, 174];
+      const primary: [number, number, number] = [221, 48, 48];
+      let y = margin;
 
-      pdf.setFillColor(bodyBg);
-      pdf.rect(0, 0, pageW, pageH, "F");
+      const setText = (color: [number, number, number]) => pdf.setTextColor(color[0], color[1], color[2]);
+      const fillPage = () => {
+        pdf.setFillColor(bg[0], bg[1], bg[2]);
+        pdf.rect(0, 0, pageW, pageH, "F");
+      };
+      const ensureSpace = (height: number) => {
+        if (y + height <= pageH - margin) return;
+        pdf.addPage();
+        fillPage();
+        y = margin;
+      };
+      const writeWrapped = (text: string, x: number, width: number, size = 10, lineHeight = 15, color = fg) => {
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(size);
+        setText(color);
+        const lines = pdf.splitTextToSize(text || "—", width) as string[];
+        lines.forEach((line) => {
+          ensureSpace(lineHeight + 2);
+          pdf.text(line, x, y);
+          y += lineHeight;
+        });
+      };
+      const sectionTitle = (title: string, color: [number, number, number]) => {
+        ensureSpace(30);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(11);
+        setText(color);
+        pdf.text(title.toUpperCase(), margin, y);
+        y += 18;
+      };
 
-      if (fullH <= pageH - margin * 2) {
-        pdf.addImage(dataUrl, "PNG", margin, margin, contentW, fullH);
+      fillPage();
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(9);
+      setText(primary);
+      pdf.text("PUB CORE", pageW / 2, y, { align: "center" });
+      y += 24;
+      pdf.setFontSize(24);
+      setText(fg);
+      pdf.text("Relatório de Conclusão", pageW / 2, y, { align: "center" });
+      y += 20;
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      setText(muted);
+      pdf.text(`${fmtDatePT(date)} · ${displayName}`, pageW / 2, y, { align: "center" });
+      y += 36;
+
+      sectionTitle("Execuções do Dia", [74, 222, 128]);
+      if (executions.length === 0) {
+        writeWrapped("Nenhuma execução registrada.", margin, contentW, 10, 15, muted);
       } else {
-        const pageContentH = pageH - margin * 2;
-        const sliceHpx = Math.floor(pageContentH / ratio);
-        let y = 0;
-        let first = true;
-        while (y < img.height) {
-          const h = Math.min(sliceHpx, img.height - y);
-          const pageCanvas = document.createElement("canvas");
-          pageCanvas.width = img.width;
-          pageCanvas.height = h;
-          const ctx = pageCanvas.getContext("2d");
-          if (!ctx) break;
-          ctx.fillStyle = bodyBg;
-          ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          ctx.drawImage(img, 0, y, img.width, h, 0, 0, img.width, h);
-          const sliceUrl = pageCanvas.toDataURL("image/png");
-          if (!first) {
-            pdf.addPage();
-            pdf.setFillColor(bodyBg);
-            pdf.rect(0, 0, pageW, pageH, "F");
+        executions.forEach((execution, index) => {
+          const meta = [execution.company, execution.origin && execution.origin !== "manual" ? ORIGIN_LABEL[execution.origin] : ""]
+            .filter(Boolean)
+            .join(" · ");
+          const titleLines = pdf.splitTextToSize(`${index + 1}. ${execution.title}`, contentW - 24) as string[];
+          const descLines = execution.description ? (pdf.splitTextToSize(execution.description, contentW - 24) as string[]) : [];
+          const cardH = 22 + titleLines.length * 14 + (meta ? 14 : 0) + descLines.length * 13;
+          ensureSpace(cardH + 10);
+          pdf.setFillColor(card[0], card[1], card[2]);
+          pdf.setDrawColor(border[0], border[1], border[2]);
+          pdf.roundedRect(margin, y - 12, contentW, cardH, 6, 6, "FD");
+          let innerY = y + 4;
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(10.5);
+          setText(fg);
+          titleLines.forEach((line) => {
+            pdf.text(line, margin + 12, innerY);
+            innerY += 14;
+          });
+          if (meta) {
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(8.5);
+            setText(primary);
+            pdf.text(meta, margin + 12, innerY);
+            innerY += 14;
           }
-          pdf.addImage(sliceUrl, "PNG", margin, margin, contentW, h * ratio);
-          first = false;
-          y += h;
-        }
+          if (descLines.length) {
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(9);
+            setText(muted);
+            descLines.forEach((line) => {
+              pdf.text(line, margin + 12, innerY);
+              innerY += 13;
+            });
+          }
+          y += cardH + 10;
+        });
       }
+
+      y += 10;
+      sectionTitle("Gargalos", [251, 191, 36]);
+      writeWrapped(bottlenecks.trim() || "—", margin, contentW, 10, 15, fg);
+
+      y += 18;
+      sectionTitle("Conquistas", [250, 204, 21]);
+      writeWrapped(achievements.trim() || "—", margin, contentW, 10, 15, fg);
+
       pdf.save(`relatorio-conclusao-${date}.pdf`);
       toast.success("PDF exportado");
     } catch (err) {
@@ -447,7 +488,7 @@ export function CompletionReportDialog({ open, onOpenChange }: Props) {
           )}
 
           {tab === "visual" && (
-            <div ref={visualRef} className="r">
+            <div className="r">
               <div className="text-center mb-6">
                 <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">PUB CORE</div>
                 <h1 className="font-display text-2xl sm:text-3xl mt-1">Relatório de Conclusão</h1>
