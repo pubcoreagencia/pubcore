@@ -722,24 +722,21 @@ function DailyHistoryCard() {
           .from("ponto_sessions")
           .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company, workspace_id, pauses, notes, description, edited_at")
           .eq("workspace_id", activeWorkspaceId)
-          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
           .eq("status", "ended")
           .order("started_at", { ascending: false })
-          .limit(2000),
+          .limit(5000),
         supabase
           .from("ponto_session_tasks")
           .select("id, session_id, company, title, completed_at, user_name")
           .eq("workspace_id", activeWorkspaceId)
-          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
           .order("completed_at", { ascending: false })
-          .limit(5000),
+          .limit(10000),
         supabase
           .from("checklist_daily_completions")
           .select("id, company, task_title, completed_on, completed_at, user_name")
           .eq("workspace_id", activeWorkspaceId)
-          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
           .order("completed_at", { ascending: false })
-          .limit(5000),
+          .limit(10000),
       ]);
       if (hRes.error) console.error("[ponto] history error", hRes.error);
       if (tRes.error) console.error("[ponto] session tasks error", tRes.error);

@@ -71,22 +71,19 @@ export function useOperationalData() {
       const [s, st, ch] = await Promise.all([
         supabase.from("ponto_sessions")
           .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, owner_email, company, workspace_id, pauses, notes, description, edited_at")
-          .eq("user_id", userId)
           .eq("workspace_id", activeWorkspaceId)
           .order("started_at", { ascending: false })
-          .limit(500),
+          .limit(5000),
         supabase.from("ponto_session_tasks")
           .select("id, session_id, company, title, completed_at, user_name")
-          .eq("user_id", userId)
           .eq("workspace_id", activeWorkspaceId)
           .order("completed_at", { ascending: false })
-          .limit(1000),
+          .limit(10000),
         supabase.from("checklist_tasks")
           .select("id, company, title, status, done_at, created_at, updated_at")
-          .eq("user_id", userId)
           .eq("workspace_id", activeWorkspaceId)
           .is("funnel_id", null)
-          .limit(1000),
+          .limit(10000),
       ]);
       if (cancelled) return;
       setSessions((s.data ?? []) as SessionRow[]);
