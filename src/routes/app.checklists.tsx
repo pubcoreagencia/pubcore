@@ -18,6 +18,7 @@ import {
 
 import {
   useOperationalData, buildDailySeries, tasksByCompany, tasksByUser,
+  operationalDayKey,
   type SessionRow, type SessionTaskRow,
 } from "@/lib/operations";
 import { CompanyTag } from "@/components/CompanyTag";
@@ -697,11 +698,18 @@ interface DaySessionRowLite {
 }
 
 function localDayStr(iso: string) {
-  const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+  return operationalDayKey(iso);
+}
+
+function recentOperationalDaySet(days: number) {
+  const out = new Set<string>();
+  const cursor = new Date();
+  for (let i = 0; i < days; i++) {
+    const d = new Date(cursor);
+    d.setDate(cursor.getDate() - i);
+    out.add(operationalDayKey(d));
+  }
+  return out;
 }
 
 function DailyHistoryCard() {
@@ -722,24 +730,21 @@ function DailyHistoryCard() {
           .from("ponto_sessions")
           .select("id, started_at, ended_at, status, total_ms, productive_ms, pause_ms, user_name, company, workspace_id, pauses, notes, description, edited_at")
           .eq("workspace_id", activeWorkspaceId)
-          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
           .eq("status", "ended")
           .order("started_at", { ascending: false })
-          .limit(2000),
+          .limit(5000),
         supabase
           .from("ponto_session_tasks")
           .select("id, session_id, company, title, completed_at, user_name")
           .eq("workspace_id", activeWorkspaceId)
-          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
           .order("completed_at", { ascending: false })
-          .limit(5000),
+          .limit(10000),
         supabase
           .from("checklist_daily_completions")
           .select("id, company, task_title, completed_on, completed_at, user_name")
           .eq("workspace_id", activeWorkspaceId)
-          .or(`user_id.eq.${user.id},owner_email.eq.${user.email}`)
           .order("completed_at", { ascending: false })
-          .limit(5000),
+          .limit(10000),
       ]);
       if (hRes.error) console.error("[ponto] history error", hRes.error);
       if (tRes.error) console.error("[ponto] session tasks error", tRes.error);
@@ -937,18 +942,15 @@ function EndedSessionsCard() {
   const PAGE_SIZE = 10;
 
   const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
-  const cutoff = useMemo(() => {
-    const d = new Date(); d.setHours(0,0,0,0);
-    return d.getTime() - (days - 1) * 86400000;
-  }, [days]);
+  const periodDays = useMemo(() => recentOperationalDaySet(days), [days]);
 
   const periodSessions = useMemo(
-    () => sessions.filter((s) => s.status === "ended" && new Date(s.started_at).getTime() >= cutoff),
-    [sessions, cutoff]
+    () => sessions.filter((s) => s.status === "ended" && periodDays.has(operationalDayKey(s.started_at))),
+    [sessions, periodDays]
   );
   const periodTasks = useMemo(
-    () => sessionTasks.filter((t) => new Date(t.completed_at).getTime() >= cutoff),
-    [sessionTasks, cutoff]
+    () => sessionTasks.filter((t) => periodDays.has(operationalDayKey(t.completed_at))),
+    [sessionTasks, periodDays]
   );
 
   const userOptions = useMemo(() => {
@@ -1128,18 +1130,15 @@ function HistoryTab() {
 
 
   const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
-  const cutoff = useMemo(() => {
-    const d = new Date(); d.setHours(0,0,0,0);
-    return d.getTime() - (days - 1) * 86400000;
-  }, [days]);
+  const periodDays = useMemo(() => recentOperationalDaySet(days), [days]);
 
   const periodSessions = useMemo(
-    () => sessions.filter((s) => s.status === "ended" && new Date(s.started_at).getTime() >= cutoff),
-    [sessions, cutoff]
+    () => sessions.filter((s) => s.status === "ended" && periodDays.has(operationalDayKey(s.started_at))),
+    [sessions, periodDays]
   );
   const periodTasks = useMemo(
-    () => sessionTasks.filter((t) => new Date(t.completed_at).getTime() >= cutoff),
-    [sessionTasks, cutoff]
+    () => sessionTasks.filter((t) => periodDays.has(operationalDayKey(t.completed_at))),
+    [sessionTasks, periodDays]
   );
 
   const userOptions = useMemo(() => {
@@ -1519,19 +1518,15 @@ function MetricsTab() {
   const { companies: checklistCompanies } = useChecklistCompanies();
   const [period, setPeriod] = useState<"diario" | "semanal" | "mensal">("semanal");
   const days = period === "diario" ? 1 : period === "semanal" ? 7 : 30;
-
-  const cutoff = useMemo(() => {
-    const d = new Date(); d.setHours(0,0,0,0);
-    return d.getTime() - (days - 1) * 86400000;
-  }, [days]);
+  const periodDays = useMemo(() => recentOperationalDaySet(days), [days]);
 
   const periodSessions = useMemo(
-    () => sessions.filter((s) => new Date(s.started_at).getTime() >= cutoff),
-    [sessions, cutoff]
+    () => sessions.filter((s) => periodDays.has(operationalDayKey(s.started_at))),
+    [sessions, periodDays]
   );
   const periodTasks = useMemo(
-    () => sessionTasks.filter((t) => new Date(t.completed_at).getTime() >= cutoff),
-    [sessionTasks, cutoff]
+    () => sessionTasks.filter((t) => periodDays.has(operationalDayKey(t.completed_at))),
+    [sessionTasks, periodDays]
   );
 
   const totalMs = periodSessions.reduce((a, s) => a + (s.total_ms ?? 0), 0);
@@ -1566,16 +1561,15 @@ function MetricsTab() {
   const activeCompanies = byCompany.filter((b) => b.completed > 0).length;
 
   // Hours by day / week / month (always computed from all sessions, independent of period filter)
-  const now = new Date();
-  const startToday = new Date(now); startToday.setHours(0,0,0,0);
-  const startWeek = new Date(startToday); startWeek.setDate(startToday.getDate() - 6);
-  const startMonth = new Date(startToday); startMonth.setDate(startToday.getDate() - 29);
-  const sumMs = (from: Date) => sessions
-    .filter((s) => new Date(s.started_at).getTime() >= from.getTime())
+  const todayDays = useMemo(() => recentOperationalDaySet(1), []);
+  const weekDays = useMemo(() => recentOperationalDaySet(7), []);
+  const monthDays = useMemo(() => recentOperationalDaySet(30), []);
+  const sumMs = (daysSet: Set<string>) => sessions
+    .filter((s) => daysSet.has(operationalDayKey(s.started_at)))
     .reduce((a, s) => a + (s.total_ms ?? 0), 0);
-  const msToday = sumMs(startToday);
-  const msWeek = sumMs(startWeek);
-  const msMonth = sumMs(startMonth);
+  const msToday = sumMs(todayDays);
+  const msWeek = sumMs(weekDays);
+  const msMonth = sumMs(monthDays);
 
   // Time per company (productive_ms) in the active period
   const timeByCompany = useMemo(() => {
