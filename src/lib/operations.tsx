@@ -110,28 +110,47 @@ export function useOperationalData() {
 export function startOfDay(d: Date) { const x = new Date(d); x.setHours(0,0,0,0); return x; }
 export function endOfDay(d: Date) { const x = new Date(d); x.setHours(23,59,59,999); return x; }
 
+const OPERATIONAL_TIMEZONE = "America/Sao_Paulo";
+const operationalDayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: OPERATIONAL_TIMEZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+export function operationalDayKey(input: string | Date) {
+  const date = typeof input === "string" ? new Date(input) : input;
+  return operationalDayFormatter.format(date);
+}
+
+function operationalDateFromKey(day: string) {
+  const [year, month, date] = day.split("-").map(Number);
+  return new Date(year, month - 1, date);
+}
+
+function recentOperationalDays(days: number) {
+  const out: string[] = [];
+  const cursor = new Date();
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(cursor);
+    d.setDate(cursor.getDate() - i);
+    out.push(operationalDayKey(d));
+  }
+  return out;
+}
+
 export function buildDailySeries(sessions: SessionRow[], tasks: SessionTaskRow[], days: number) {
   const wd = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
-  const today = startOfDay(new Date());
   const out: { date: string; label: string; completed: number; productiveMs: number; totalMs: number; productivity: number }[] = [];
-  for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    const dayStart = d.getTime();
-    const dayEnd = dayStart + 86400000;
-    const daySessions = sessions.filter((s) => {
-      const t = new Date(s.started_at).getTime();
-      return t >= dayStart && t < dayEnd;
-    });
-    const dayTasks = tasks.filter((t) => {
-      const ts = new Date(t.completed_at).getTime();
-      return ts >= dayStart && ts < dayEnd;
-    });
+  for (const day of recentOperationalDays(days)) {
+    const d = operationalDateFromKey(day);
+    const daySessions = sessions.filter((s) => operationalDayKey(s.started_at) === day);
+    const dayTasks = tasks.filter((t) => operationalDayKey(t.completed_at) === day);
     const totalMs = daySessions.reduce((a, s) => a + (s.total_ms ?? 0), 0);
     const productiveMs = daySessions.reduce((a, s) => a + (s.productive_ms ?? 0), 0);
     const productivity = totalMs > 0 ? Math.round((productiveMs / totalMs) * 100) : 0;
     out.push({
-      date: d.toISOString().slice(0,10),
+      date: day,
       label: `${wd[d.getDay()]} ${String(d.getDate()).padStart(2,"0")}`,
       completed: dayTasks.length,
       totalMs,
@@ -165,17 +184,10 @@ export function tasksByUser(tasks: SessionTaskRow[]) {
 export function useTodaySummary() {
   const { sessions, sessionTasks, checklist, loading } = useOperationalData();
   return useMemo(() => {
-    const ts0 = startOfDay(new Date()).getTime();
-    const ts1 = ts0 + 86400000;
+    const today = operationalDayKey(new Date());
 
-    const todayTasks = sessionTasks.filter((t) => {
-      const ts = new Date(t.completed_at).getTime();
-      return ts >= ts0 && ts < ts1;
-    });
-    const todaySessions = sessions.filter((s) => {
-      const ts = new Date(s.started_at).getTime();
-      return ts >= ts0 && ts < ts1;
-    });
+    const todayTasks = sessionTasks.filter((t) => operationalDayKey(t.completed_at) === today);
+    const todaySessions = sessions.filter((s) => operationalDayKey(s.started_at) === today);
     const totalMs = todaySessions.reduce((a, s) => a + (s.total_ms ?? 0), 0);
     const productiveMs = todaySessions.reduce((a, s) => a + (s.productive_ms ?? 0), 0);
     const completedToday = checklist.filter((t) => t.status === "done").length;
