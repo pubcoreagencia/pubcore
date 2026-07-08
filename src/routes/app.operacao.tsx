@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Maximize2, Minimize2, KanbanSquare, ListChecks, ChevronDown, ChevronUp, FileText, Sparkles } from "lucide-react";
 import { KanbanBoardView } from "./app.kanban";
@@ -6,7 +6,6 @@ import { ChecklistsPage } from "./app.checklists";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
 import { DailyReportDialog } from "@/components/DailyReportDialog";
-import { CompletionReportDialog } from "@/components/CompletionReportDialog";
 
 export const Route = createFileRoute("/app/operacao")({
   component: OperacaoPage,
@@ -31,7 +30,6 @@ function OperacaoPage() {
     funnels: 0, cards: 0, lastFunnel: null,
   });
   const [reportOpen, setReportOpen] = useState(false);
-  const [completionOpen, setCompletionOpen] = useState(false);
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, mode); } catch { /* noop */ }
@@ -80,14 +78,14 @@ function OperacaoPage() {
             <FileText className="h-4 w-4" />
             <span>Gerar Relatório do Dia</span>
           </button>
-          <button
-            onClick={() => setCompletionOpen(true)}
+          <Link
+            to="/app/completion-reports"
             className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-gradient-to-br from-primary/15 to-primary/5 text-primary px-3 py-2 text-xs sm:text-sm font-semibold hover:bg-primary/20 hover:shadow-glow transition"
-            title="Relatório de Conclusão"
+            title="Relatórios de Conclusão"
           >
             <Sparkles className="h-4 w-4" />
             <span>Relatório de Conclusão</span>
-          </button>
+          </Link>
           {mode !== "minimized" && (
             <button
               onClick={() => setMode("minimized")}
@@ -174,7 +172,6 @@ function OperacaoPage() {
       )}
 
       <DailyReportDialog open={reportOpen} onOpenChange={setReportOpen} />
-      <CompletionReportDialog open={completionOpen} onOpenChange={setCompletionOpen} />
     </div>
   );
 }
