@@ -15,6 +15,7 @@ type Tab = { to: string; label: string; icon: typeof LayoutDashboard; exact?: bo
 const TABS: Tab[] = [
   { to: "/app", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/app/operacao", label: "Operação", icon: KanbanSquare },
+  { to: "/app/completion-reports", label: "Relatórios", icon: Sparkles },
   { to: "/app/notes", label: "Notas", icon: StickyNote },
   { to: "/app/finance", label: "Finanças", icon: Wallet },
   { to: "/app/personal-finance", label: "Pessoal", icon: PiggyBank },
