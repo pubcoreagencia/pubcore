@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Maximize2, Minimize2, KanbanSquare, ListChecks, ChevronDown, ChevronUp, FileText, Sparkles } from "lucide-react";
 import { KanbanBoardView } from "./app.kanban";
@@ -6,7 +6,6 @@ import { ChecklistsPage } from "./app.checklists";
 import { supabase } from "@/integrations/supabase/client";
 import { useWorkspace } from "@/lib/workspace";
 import { DailyReportDialog } from "@/components/DailyReportDialog";
-import { CompletionReportDialog } from "@/components/CompletionReportDialog";
 
 export const Route = createFileRoute("/app/operacao")({
   component: OperacaoPage,
