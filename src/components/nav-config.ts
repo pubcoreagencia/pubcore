@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, ListChecks, Calendar, Users2, Settings,
   StickyNote, Wallet, Boxes, Calculator, MapPin, KanbanSquare, Building2, FolderOpen,
-  TrendingUp, PiggyBank, Share2,
+  TrendingUp, PiggyBank, Share2, Sparkles,
 } from "lucide-react";
 
 

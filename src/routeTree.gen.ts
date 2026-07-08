@@ -28,6 +28,7 @@ import { Route as AppFinanceRouteImport } from './routes/app.finance'
 import { Route as AppFilesRouteImport } from './routes/app.files'
 import { Route as AppDiscographyRouteImport } from './routes/app.discography'
 import { Route as AppCrmRouteImport } from './routes/app.crm'
+import { Route as AppCompletionReportsRouteImport } from './routes/app.completion-reports'
 import { Route as AppCompaniesRouteImport } from './routes/app.companies'
 import { Route as AppCityRouteImport } from './routes/app.city'
 import { Route as AppChecklistsRouteImport } from './routes/app.checklists'
@@ -131,6 +132,11 @@ const AppCrmRoute = AppCrmRouteImport.update({
   path: '/crm',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCompletionReportsRoute = AppCompletionReportsRouteImport.update({
+  id: '/completion-reports',
+  path: '/completion-reports',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppCompaniesRoute = AppCompaniesRouteImport.update({
   id: '/companies',
   path: '/companies',
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/app/checklists': typeof AppChecklistsRoute
   '/app/city': typeof AppCityRoute
   '/app/companies': typeof AppCompaniesRoute
+  '/app/completion-reports': typeof AppCompletionReportsRoute
   '/app/crm': typeof AppCrmRoute
   '/app/discography': typeof AppDiscographyRoute
   '/app/files': typeof AppFilesRoute
@@ -206,6 +213,7 @@ export interface FileRoutesByTo {
   '/app/checklists': typeof AppChecklistsRoute
   '/app/city': typeof AppCityRoute
   '/app/companies': typeof AppCompaniesRoute
+  '/app/completion-reports': typeof AppCompletionReportsRoute
   '/app/crm': typeof AppCrmRoute
   '/app/discography': typeof AppDiscographyRoute
   '/app/files': typeof AppFilesRoute
@@ -235,6 +243,7 @@ export interface FileRoutesById {
   '/app/checklists': typeof AppChecklistsRoute
   '/app/city': typeof AppCityRoute
   '/app/companies': typeof AppCompaniesRoute
+  '/app/completion-reports': typeof AppCompletionReportsRoute
   '/app/crm': typeof AppCrmRoute
   '/app/discography': typeof AppDiscographyRoute
   '/app/files': typeof AppFilesRoute
@@ -265,6 +274,7 @@ export interface FileRouteTypes {
     | '/app/checklists'
     | '/app/city'
     | '/app/companies'
+    | '/app/completion-reports'
     | '/app/crm'
     | '/app/discography'
     | '/app/files'
@@ -292,6 +302,7 @@ export interface FileRouteTypes {
     | '/app/checklists'
     | '/app/city'
     | '/app/companies'
+    | '/app/completion-reports'
     | '/app/crm'
     | '/app/discography'
     | '/app/files'
@@ -320,6 +331,7 @@ export interface FileRouteTypes {
     | '/app/checklists'
     | '/app/city'
     | '/app/companies'
+    | '/app/completion-reports'
     | '/app/crm'
     | '/app/discography'
     | '/app/files'
@@ -479,6 +491,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCrmRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/completion-reports': {
+      id: '/app/completion-reports'
+      path: '/completion-reports'
+      fullPath: '/app/completion-reports'
+      preLoaderRoute: typeof AppCompletionReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/companies': {
       id: '/app/companies'
       path: '/companies'
@@ -539,6 +558,7 @@ interface AppRouteChildren {
   AppChecklistsRoute: typeof AppChecklistsRoute
   AppCityRoute: typeof AppCityRoute
   AppCompaniesRoute: typeof AppCompaniesRoute
+  AppCompletionReportsRoute: typeof AppCompletionReportsRoute
   AppCrmRoute: typeof AppCrmRoute
   AppDiscographyRoute: typeof AppDiscographyRoute
   AppFilesRoute: typeof AppFilesRoute
@@ -564,6 +584,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppChecklistsRoute: AppChecklistsRoute,
   AppCityRoute: AppCityRoute,
   AppCompaniesRoute: AppCompaniesRoute,
+  AppCompletionReportsRoute: AppCompletionReportsRoute,
   AppCrmRoute: AppCrmRoute,
   AppDiscographyRoute: AppDiscographyRoute,
   AppFilesRoute: AppFilesRoute,
@@ -592,12 +613,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
