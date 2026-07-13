@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AuditoriaPubcoreRouteImport } from './routes/auditoria-pubcore'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app.index'
@@ -45,6 +46,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditoriaPubcoreRoute = AuditoriaPubcoreRouteImport.update({
+  id: '/auditoria-pubcore',
+  path: '/auditoria-pubcore',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -176,6 +182,7 @@ const AppAdminAccountsRoute = AppAdminAccountsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/auditoria-pubcore': typeof AuditoriaPubcoreRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/app/admin-accounts': typeof AppAdminAccountsRoute
@@ -204,6 +211,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auditoria-pubcore': typeof AuditoriaPubcoreRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/app/admin-accounts': typeof AppAdminAccountsRoute
@@ -234,6 +242,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/auditoria-pubcore': typeof AuditoriaPubcoreRoute
   '/login': typeof LoginRoute
   '/reset-password': typeof ResetPasswordRoute
   '/app/admin-accounts': typeof AppAdminAccountsRoute
@@ -265,6 +274,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/app'
+    | '/auditoria-pubcore'
     | '/login'
     | '/reset-password'
     | '/app/admin-accounts'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auditoria-pubcore'
     | '/login'
     | '/reset-password'
     | '/app/admin-accounts'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/app'
+    | '/auditoria-pubcore'
     | '/login'
     | '/reset-password'
     | '/app/admin-accounts'
@@ -352,6 +364,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  AuditoriaPubcoreRoute: typeof AuditoriaPubcoreRoute
   LoginRoute: typeof LoginRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
 }
@@ -370,6 +383,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auditoria-pubcore': {
+      id: '/auditoria-pubcore'
+      path: '/auditoria-pubcore'
+      fullPath: '/auditoria-pubcore'
+      preLoaderRoute: typeof AuditoriaPubcoreRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -607,6 +627,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  AuditoriaPubcoreRoute: AuditoriaPubcoreRoute,
   LoginRoute: LoginRoute,
   ResetPasswordRoute: ResetPasswordRoute,
 }
