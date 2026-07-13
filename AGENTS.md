@@ -1,76 +1,39 @@
-\# PUB CORE — AGENTS.md
+# PUB CORE — AGENTS.md
 
+## Projeto
+PUB CORE é uma central de operação empresarial da holding PUB, criada originalmente no Lovable e agora migrada para desenvolvimento com Codex.
 
+## Stack
+- Vite
+- React
+- TypeScript
+- TanStack Router/Start
+- Supabase
+- Supabase Storage
+- Cloudflare/Nitro
+- Tailwind/shadcn quando aplicável
 
-\## Projeto
+## Comandos
+- Instalar dependências: `npm install`
+- Rodar localmente: `npm run dev`
+- Build de produção: `npm run build`
 
-PUB CORE é uma central de operação empresarial da holding PUB.
+## Regras de desenvolvimento
+- Não recriar módulos do zero sem necessidade.
+- Não apagar dados reais.
+- Não alterar `.env` nem expor secrets.
+- Não quebrar integrações com Supabase.
+- Preservar workspaces, usuários, permissões, histórico, pontos e arquivos.
+- Fazer mudanças pequenas, seguras e testáveis.
+- Após mudanças relevantes, rodar `npm run build`.
 
+## Prioridades gerais
+- Melhorar estabilidade.
+- Melhorar responsividade mobile.
+- Reduzir gargalos de performance.
+- Garantir atualização instantânea da interface.
+- Melhorar UX das ferramentas principais.
+- Manter a PUB CORE com aparência profissional de central operacional empresarial.
 
-
-\## Stack
-
-\- Vite
-
-\- React
-
-\- TypeScript
-
-\- Supabase
-
-\- Supabase Storage
-
-\- Tailwind/shadcn, se presente
-
-
-
-\## Regras críticas
-
-\- Não recriar módulos do zero sem necessidade.
-
-\- Não apagar dados reais.
-
-\- Não alterar `.env` ou expor secrets.
-
-\- Não quebrar integrações com Supabase.
-
-\- Preservar workspaces, histórico, pontos e arquivos.
-
-\- Corrigir bugs com mudanças pequenas e seguras.
-
-\- Qualquer CRUD deve atualizar a interface sem refresh.
-
-\- Kanban e Checklist podem estar na mesma aba, mas os dados devem continuar separados.
-
-\- Histórico deve ser agrupado por dia operacional, não por ponto individual.
-
-\- Empresas principais geram ponto; subempresas não geram ponto.
-
-\- Central de Arquivos deve gerar signed URL no momento da abertura.
-
-
-
-\## Comandos
-
-\- Instalar: `npm install`
-
-\- Rodar local: `npm run dev`
-
-\- Build: `npm run build`
-
-
-
-\## Prioridades atuais
-
-1\. Corrigir Histórico, Bater Ponto e Checklist.
-
-2\. Corrigir Central de Arquivos.
-
-3\. Corrigir card órfão do Kanban com coluna inexistente.
-
-4\. Melhorar atualização instantânea da UI.
-
-5\. Melhorar responsividade mobile.
-
-6\. Otimizar performance geral.
-
+## Observações técnicas
+O build atual passa, mas há warnings de chunks grandes. Futuramente otimizar code-splitting, lazy loading e carregamento de bibliotecas pesadas como jspdf, html2canvas e recharts.
