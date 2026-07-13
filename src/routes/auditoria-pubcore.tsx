@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { getAuditReport } from "@/lib/audit.functions";
+
+type AuditData = Awaited<ReturnType<typeof getAuditReport>>;
 
 export const Route = createFileRoute("/auditoria-pubcore")({
   head: () => ({
@@ -18,12 +19,28 @@ export const Route = createFileRoute("/auditoria-pubcore")({
 
 function AuditPage() {
   const fn = useServerFn(getAuditReport);
-  const { data, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ["audit-report"],
-    queryFn: () => fn(),
-    staleTime: 60_000,
-  });
+  const [data, setData] = useState<AuditData | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const load = useCallback(async () => {
+    setIsFetching(true);
+    setError(null);
+    try {
+      const res = await fn();
+      setData(res);
+    } catch (e) {
+      setError(e as Error);
+    } finally {
+      setIsFetching(false);
+    }
+  }, [fn]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const isLoading = !data && isFetching;
+  const refetch = load;
 
   const report = useMemo(() => (data ? buildTextReport(data) : ""), [data]);
 
