@@ -443,7 +443,8 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       // Marca mesmo se não disparou (permissão negada) para não tentar repetidas vezes
       localStorage.setItem(key, fired ? "1" : "blocked");
     }
-  });
+  }, [sessions, dailyProductiveMs]);
+
 
   const updateCompany = useCallback(
     (company: Company, updater: (s: PontoSession) => PontoSession) => {
