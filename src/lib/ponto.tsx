@@ -443,7 +443,8 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       // Marca mesmo se não disparou (permissão negada) para não tentar repetidas vezes
       localStorage.setItem(key, fired ? "1" : "blocked");
     }
-  });
+  }, [sessions, dailyProductiveMs]);
+
 
   const updateCompany = useCallback(
     (company: Company, updater: (s: PontoSession) => PontoSession) => {
@@ -483,6 +484,29 @@ export function PontoProvider({ children }: { children: ReactNode }) {
       const startedAt = Date.now();
       markActivity(startedAt);
 
+      // OTIMISTA: atualiza a UI ANTES de qualquer chamada de rede.
+      // Isso garante que, mesmo se a rede estiver lenta ou falhar,
+      // o usuário nunca fique "travado" após encerrar/iniciar.
+      setSessions((prev) => {
+        const next: SessionsMap = { ...prev };
+        for (const c of Object.keys(next) as Company[]) {
+          const s = next[c];
+          if (!s || (s.status !== "working" && s.status !== "paused")) continue;
+          next[c] = closeSessionSnapshot(s, startedAt).session;
+        }
+        next[company] = {
+          status: "working",
+          startedAt,
+          endedAt: null,
+          pauses: [],
+          user,
+          ownerEmail: owner,
+          sessionId: null, // preenchido após INSERT
+          company,
+        };
+        return next;
+      });
+
       // Solicitar permissão de notificação no primeiro start (gesto do usuário)
       if (typeof window !== "undefined" && "Notification" in window) {
         if (Notification.permission === "default") {
@@ -512,39 +536,29 @@ export function PontoProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Encerra qualquer expediente aberto antes de iniciar outro. Isso impede
-      // sobreposição entre empresas, abas, dispositivos e sessões presas antigas.
-      const { data: openRows, error: openError } = await supabase
-        .from("ponto_sessions")
-        .select(
-          "id, started_at, ended_at, status, pauses, user_name, owner_email, company, productive_ms, total_ms, pause_ms, updated_at",
-        )
-        .eq("workspace_id", workspaceId)
-        .eq("user_id", resolvedUserId)
-        .in("status", ["working", "paused"]);
-      if (openError) console.error("[ponto] open sessions lookup error", openError);
-      await Promise.all(
-        (openRows ?? []).map((row) =>
-          supabase
-            .from("ponto_sessions")
-            .update(buildClosedRemotePayload(row as PontoRemoteRow, startedAt))
-            .eq("id", row.id)
-            .in("status", ["working", "paused"]),
-        ),
-      );
-
-      setSessions((prev) => {
-        const next: SessionsMap = { ...prev };
-        for (const c of Object.keys(next) as Company[]) {
-          const s = next[c];
-          if (!s || (s.status !== "working" && s.status !== "paused")) continue;
-          if (c !== company || s.sessionId) {
-            next[c] = closeSessionSnapshot(s, startedAt).session;
-          }
-        }
-        return next;
-      });
-      if ((openRows ?? []).length > 0) reloadDailyTotals();
+      // Encerra qualquer expediente aberto no servidor em paralelo com o INSERT
+      // (não bloqueia a criação da nova sessão para não travar a UI).
+      const cleanupPromise = (async () => {
+        const { data: openRows, error: openError } = await supabase
+          .from("ponto_sessions")
+          .select(
+            "id, started_at, ended_at, status, pauses, user_name, owner_email, company, productive_ms, total_ms, pause_ms, updated_at",
+          )
+          .eq("workspace_id", workspaceId)
+          .eq("user_id", resolvedUserId)
+          .in("status", ["working", "paused"]);
+        if (openError) console.error("[ponto] open sessions lookup error", openError);
+        await Promise.all(
+          (openRows ?? []).map((row) =>
+            supabase
+              .from("ponto_sessions")
+              .update(buildClosedRemotePayload(row as PontoRemoteRow, startedAt))
+              .eq("id", row.id)
+              .in("status", ["working", "paused"]),
+          ),
+        );
+        if ((openRows ?? []).length > 0) reloadDailyTotals();
+      })();
 
       const payload: Record<string, unknown> = {
         workspace_id: workspaceId,
@@ -556,6 +570,9 @@ export function PontoProvider({ children }: { children: ReactNode }) {
         status: "working",
         pauses: [],
       };
+      // Aguarda cleanup antes do INSERT para evitar violações de constraints,
+      // mas a UI já foi atualizada otimisticamente.
+      await cleanupPromise.catch(() => undefined);
       const { data, error } = await supabase
         .from("ponto_sessions")
         .insert(payload as never)
@@ -563,39 +580,17 @@ export function PontoProvider({ children }: { children: ReactNode }) {
         .single();
       if (error) {
         console.error("[ponto] start error", error);
-        const { data: current } = await supabase
-          .from("ponto_sessions")
-          .select(
-            "id, started_at, ended_at, status, pauses, user_name, owner_email, company, productive_ms, total_ms, pause_ms, updated_at",
-          )
-          .eq("workspace_id", workspaceId)
-          .eq("user_id", resolvedUserId)
-          .in("status", ["working", "paused"])
-          .order("started_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const row = current as PontoRemoteRow | null;
-        const currentCompany = row?.company as Company | null;
-        if (row && currentCompany) {
-          updateCompany(currentCompany, () => ({
-            status: row.status === "paused" ? "paused" : "working",
-            startedAt: new Date(row.started_at).getTime(),
-            endedAt: row.ended_at ? new Date(row.ended_at).getTime() : null,
-            pauses: normalizePauses(row.pauses),
-            user: row.user_name ?? undefined,
-            ownerEmail: row.owner_email,
-            sessionId: row.id,
-            company: currentCompany,
-          }));
-        }
+        // Não reverte a UI — mantém a sessão local ativa para o usuário
+        // continuar trabalhando. Uma nova tentativa pode ser feita ao pausar/encerrar.
         return;
       }
       const sessionId = (data?.id as string | undefined) ?? null;
-      updateCompany(company, () => ({
+      updateCompany(company, (cur) => ({
+        ...cur,
         status: "working",
-        startedAt,
+        startedAt: cur.startedAt ?? startedAt,
         endedAt: null,
-        pauses: [],
+        pauses: cur.pauses ?? [],
         user,
         ownerEmail: owner,
         sessionId,
@@ -605,6 +600,7 @@ export function PontoProvider({ children }: { children: ReactNode }) {
     },
     [reloadDailyTotals, updateCompany],
   );
+
 
   const pauseCompany = useCallback<PontoCtx["pauseCompany"]>(
     (company) => {
