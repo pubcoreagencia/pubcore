@@ -9,48 +9,38 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as AuditoriaPubcoreRouteImport } from './routes/auditoria-pubcore'
-import { Route as AppRouteImport } from './routes/app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as AuditoriaPubcoreRouteImport } from './routes/auditoria-pubcore'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AppIndexRouteImport } from './routes/app.index'
-import { Route as AppTrendsRouteImport } from './routes/app.trends'
-import { Route as AppStockRouteImport } from './routes/app.stock'
-import { Route as AppStickyNotesRouteImport } from './routes/app.sticky-notes'
-import { Route as AppSharedRouteImport } from './routes/app.shared'
-import { Route as AppSettingsRouteImport } from './routes/app.settings'
-import { Route as AppPersonalFinanceRouteImport } from './routes/app.personal-finance'
-import { Route as AppOperacaoRouteImport } from './routes/app.operacao'
-import { Route as AppNotesRouteImport } from './routes/app.notes'
-import { Route as AppKanbanRouteImport } from './routes/app.kanban'
-import { Route as AppGratitudeRouteImport } from './routes/app.gratitude'
-import { Route as AppFinanceRouteImport } from './routes/app.finance'
-import { Route as AppFilesRouteImport } from './routes/app.files'
-import { Route as AppDiscographyRouteImport } from './routes/app.discography'
-import { Route as AppCrmRouteImport } from './routes/app.crm'
-import { Route as AppCompletionReportsRouteImport } from './routes/app.completion-reports'
-import { Route as AppCompaniesRouteImport } from './routes/app.companies'
-import { Route as AppCityRouteImport } from './routes/app.city'
-import { Route as AppChecklistsRouteImport } from './routes/app.checklists'
-import { Route as AppCalendarRouteImport } from './routes/app.calendar'
-import { Route as AppCalculatorRouteImport } from './routes/app.calculator'
-import { Route as AppCalc3dRouteImport } from './routes/app.calc3d'
 import { Route as AppAdminAccountsRouteImport } from './routes/app.admin-accounts'
+import { Route as AppCalc3dRouteImport } from './routes/app.calc3d'
+import { Route as AppCalculatorRouteImport } from './routes/app.calculator'
+import { Route as AppCalendarRouteImport } from './routes/app.calendar'
+import { Route as AppChecklistsRouteImport } from './routes/app.checklists'
+import { Route as AppCityRouteImport } from './routes/app.city'
+import { Route as AppCompaniesRouteImport } from './routes/app.companies'
+import { Route as AppCompletionReportsRouteImport } from './routes/app.completion-reports'
+import { Route as AppCrmRouteImport } from './routes/app.crm'
+import { Route as AppDiscographyRouteImport } from './routes/app.discography'
+import { Route as AppFilesRouteImport } from './routes/app.files'
+import { Route as AppFinanceRouteImport } from './routes/app.finance'
+import { Route as AppGratitudeRouteImport } from './routes/app.gratitude'
+import { Route as AppKanbanRouteImport } from './routes/app.kanban'
+import { Route as AppNotesRouteImport } from './routes/app.notes'
+import { Route as AppOperacaoRouteImport } from './routes/app.operacao'
+import { Route as AppPersonalFinanceRouteImport } from './routes/app.personal-finance'
+import { Route as AppSettingsRouteImport } from './routes/app.settings'
+import { Route as AppSharedRouteImport } from './routes/app.shared'
+import { Route as AppStickyNotesRouteImport } from './routes/app.sticky-notes'
+import { Route as AppStockRouteImport } from './routes/app.stock'
+import { Route as AppTrendsRouteImport } from './routes/app.trends'
 
-const ResetPasswordRoute = ResetPasswordRouteImport.update({
-  id: '/reset-password',
-  path: '/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuditoriaPubcoreRoute = AuditoriaPubcoreRouteImport.update({
-  id: '/auditoria-pubcore',
-  path: '/auditoria-pubcore',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -58,9 +48,19 @@ const AppRoute = AppRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuditoriaPubcoreRoute = AuditoriaPubcoreRouteImport.update({
+  id: '/auditoria-pubcore',
+  path: '/auditoria-pubcore',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppIndexRoute = AppIndexRouteImport.update({
@@ -68,104 +68,9 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
-const AppTrendsRoute = AppTrendsRouteImport.update({
-  id: '/trends',
-  path: '/trends',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppStockRoute = AppStockRouteImport.update({
-  id: '/stock',
-  path: '/stock',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppStickyNotesRoute = AppStickyNotesRouteImport.update({
-  id: '/sticky-notes',
-  path: '/sticky-notes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSharedRoute = AppSharedRouteImport.update({
-  id: '/shared',
-  path: '/shared',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPersonalFinanceRoute = AppPersonalFinanceRouteImport.update({
-  id: '/personal-finance',
-  path: '/personal-finance',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppOperacaoRoute = AppOperacaoRouteImport.update({
-  id: '/operacao',
-  path: '/operacao',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppNotesRoute = AppNotesRouteImport.update({
-  id: '/notes',
-  path: '/notes',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppKanbanRoute = AppKanbanRouteImport.update({
-  id: '/kanban',
-  path: '/kanban',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppGratitudeRoute = AppGratitudeRouteImport.update({
-  id: '/gratitude',
-  path: '/gratitude',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFinanceRoute = AppFinanceRouteImport.update({
-  id: '/finance',
-  path: '/finance',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFilesRoute = AppFilesRouteImport.update({
-  id: '/files',
-  path: '/files',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppDiscographyRoute = AppDiscographyRouteImport.update({
-  id: '/discography',
-  path: '/discography',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCrmRoute = AppCrmRouteImport.update({
-  id: '/crm',
-  path: '/crm',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCompletionReportsRoute = AppCompletionReportsRouteImport.update({
-  id: '/completion-reports',
-  path: '/completion-reports',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCompaniesRoute = AppCompaniesRouteImport.update({
-  id: '/companies',
-  path: '/companies',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCityRoute = AppCityRouteImport.update({
-  id: '/city',
-  path: '/city',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppChecklistsRoute = AppChecklistsRouteImport.update({
-  id: '/checklists',
-  path: '/checklists',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCalendarRoute = AppCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppCalculatorRoute = AppCalculatorRouteImport.update({
-  id: '/calculator',
-  path: '/calculator',
+const AppAdminAccountsRoute = AppAdminAccountsRouteImport.update({
+  id: '/admin-accounts',
+  path: '/admin-accounts',
   getParentRoute: () => AppRoute,
 } as any)
 const AppCalc3dRoute = AppCalc3dRouteImport.update({
@@ -173,9 +78,104 @@ const AppCalc3dRoute = AppCalc3dRouteImport.update({
   path: '/calc3d',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAdminAccountsRoute = AppAdminAccountsRouteImport.update({
-  id: '/admin-accounts',
-  path: '/admin-accounts',
+const AppCalculatorRoute = AppCalculatorRouteImport.update({
+  id: '/calculator',
+  path: '/calculator',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCalendarRoute = AppCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppChecklistsRoute = AppChecklistsRouteImport.update({
+  id: '/checklists',
+  path: '/checklists',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCityRoute = AppCityRouteImport.update({
+  id: '/city',
+  path: '/city',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCompaniesRoute = AppCompaniesRouteImport.update({
+  id: '/companies',
+  path: '/companies',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCompletionReportsRoute = AppCompletionReportsRouteImport.update({
+  id: '/completion-reports',
+  path: '/completion-reports',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCrmRoute = AppCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDiscographyRoute = AppDiscographyRouteImport.update({
+  id: '/discography',
+  path: '/discography',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFilesRoute = AppFilesRouteImport.update({
+  id: '/files',
+  path: '/files',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFinanceRoute = AppFinanceRouteImport.update({
+  id: '/finance',
+  path: '/finance',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGratitudeRoute = AppGratitudeRouteImport.update({
+  id: '/gratitude',
+  path: '/gratitude',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppKanbanRoute = AppKanbanRouteImport.update({
+  id: '/kanban',
+  path: '/kanban',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNotesRoute = AppNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOperacaoRoute = AppOperacaoRouteImport.update({
+  id: '/operacao',
+  path: '/operacao',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPersonalFinanceRoute = AppPersonalFinanceRouteImport.update({
+  id: '/personal-finance',
+  path: '/personal-finance',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSharedRoute = AppSharedRouteImport.update({
+  id: '/shared',
+  path: '/shared',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStickyNotesRoute = AppStickyNotesRouteImport.update({
+  id: '/sticky-notes',
+  path: '/sticky-notes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppStockRoute = AppStockRouteImport.update({
+  id: '/stock',
+  path: '/stock',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTrendsRoute = AppTrendsRouteImport.update({
+  id: '/trends',
+  path: '/trends',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -371,25 +371,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/reset-password': {
-      id: '/reset-password'
-      path: '/reset-password'
-      fullPath: '/reset-password'
-      preLoaderRoute: typeof ResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auditoria-pubcore': {
-      id: '/auditoria-pubcore'
-      path: '/auditoria-pubcore'
-      fullPath: '/auditoria-pubcore'
-      preLoaderRoute: typeof AuditoriaPubcoreRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app': {
@@ -399,11 +385,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auditoria-pubcore': {
+      id: '/auditoria-pubcore'
+      path: '/auditoria-pubcore'
+      fullPath: '/auditoria-pubcore'
+      preLoaderRoute: typeof AuditoriaPubcoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/app/': {
@@ -413,144 +413,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/trends': {
-      id: '/app/trends'
-      path: '/trends'
-      fullPath: '/app/trends'
-      preLoaderRoute: typeof AppTrendsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/stock': {
-      id: '/app/stock'
-      path: '/stock'
-      fullPath: '/app/stock'
-      preLoaderRoute: typeof AppStockRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/sticky-notes': {
-      id: '/app/sticky-notes'
-      path: '/sticky-notes'
-      fullPath: '/app/sticky-notes'
-      preLoaderRoute: typeof AppStickyNotesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/shared': {
-      id: '/app/shared'
-      path: '/shared'
-      fullPath: '/app/shared'
-      preLoaderRoute: typeof AppSharedRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/settings': {
-      id: '/app/settings'
-      path: '/settings'
-      fullPath: '/app/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/personal-finance': {
-      id: '/app/personal-finance'
-      path: '/personal-finance'
-      fullPath: '/app/personal-finance'
-      preLoaderRoute: typeof AppPersonalFinanceRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/operacao': {
-      id: '/app/operacao'
-      path: '/operacao'
-      fullPath: '/app/operacao'
-      preLoaderRoute: typeof AppOperacaoRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/notes': {
-      id: '/app/notes'
-      path: '/notes'
-      fullPath: '/app/notes'
-      preLoaderRoute: typeof AppNotesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/kanban': {
-      id: '/app/kanban'
-      path: '/kanban'
-      fullPath: '/app/kanban'
-      preLoaderRoute: typeof AppKanbanRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/gratitude': {
-      id: '/app/gratitude'
-      path: '/gratitude'
-      fullPath: '/app/gratitude'
-      preLoaderRoute: typeof AppGratitudeRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/finance': {
-      id: '/app/finance'
-      path: '/finance'
-      fullPath: '/app/finance'
-      preLoaderRoute: typeof AppFinanceRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/files': {
-      id: '/app/files'
-      path: '/files'
-      fullPath: '/app/files'
-      preLoaderRoute: typeof AppFilesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/discography': {
-      id: '/app/discography'
-      path: '/discography'
-      fullPath: '/app/discography'
-      preLoaderRoute: typeof AppDiscographyRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/crm': {
-      id: '/app/crm'
-      path: '/crm'
-      fullPath: '/app/crm'
-      preLoaderRoute: typeof AppCrmRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/completion-reports': {
-      id: '/app/completion-reports'
-      path: '/completion-reports'
-      fullPath: '/app/completion-reports'
-      preLoaderRoute: typeof AppCompletionReportsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/companies': {
-      id: '/app/companies'
-      path: '/companies'
-      fullPath: '/app/companies'
-      preLoaderRoute: typeof AppCompaniesRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/city': {
-      id: '/app/city'
-      path: '/city'
-      fullPath: '/app/city'
-      preLoaderRoute: typeof AppCityRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/checklists': {
-      id: '/app/checklists'
-      path: '/checklists'
-      fullPath: '/app/checklists'
-      preLoaderRoute: typeof AppChecklistsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/calendar': {
-      id: '/app/calendar'
-      path: '/calendar'
-      fullPath: '/app/calendar'
-      preLoaderRoute: typeof AppCalendarRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/app/calculator': {
-      id: '/app/calculator'
-      path: '/calculator'
-      fullPath: '/app/calculator'
-      preLoaderRoute: typeof AppCalculatorRouteImport
+    '/app/admin-accounts': {
+      id: '/app/admin-accounts'
+      path: '/admin-accounts'
+      fullPath: '/app/admin-accounts'
+      preLoaderRoute: typeof AppAdminAccountsRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/calc3d': {
@@ -560,11 +427,144 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCalc3dRouteImport
       parentRoute: typeof AppRoute
     }
-    '/app/admin-accounts': {
-      id: '/app/admin-accounts'
-      path: '/admin-accounts'
-      fullPath: '/app/admin-accounts'
-      preLoaderRoute: typeof AppAdminAccountsRouteImport
+    '/app/calculator': {
+      id: '/app/calculator'
+      path: '/calculator'
+      fullPath: '/app/calculator'
+      preLoaderRoute: typeof AppCalculatorRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/calendar': {
+      id: '/app/calendar'
+      path: '/calendar'
+      fullPath: '/app/calendar'
+      preLoaderRoute: typeof AppCalendarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/checklists': {
+      id: '/app/checklists'
+      path: '/checklists'
+      fullPath: '/app/checklists'
+      preLoaderRoute: typeof AppChecklistsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/city': {
+      id: '/app/city'
+      path: '/city'
+      fullPath: '/app/city'
+      preLoaderRoute: typeof AppCityRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/companies': {
+      id: '/app/companies'
+      path: '/companies'
+      fullPath: '/app/companies'
+      preLoaderRoute: typeof AppCompaniesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/completion-reports': {
+      id: '/app/completion-reports'
+      path: '/completion-reports'
+      fullPath: '/app/completion-reports'
+      preLoaderRoute: typeof AppCompletionReportsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/crm': {
+      id: '/app/crm'
+      path: '/crm'
+      fullPath: '/app/crm'
+      preLoaderRoute: typeof AppCrmRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/discography': {
+      id: '/app/discography'
+      path: '/discography'
+      fullPath: '/app/discography'
+      preLoaderRoute: typeof AppDiscographyRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/files': {
+      id: '/app/files'
+      path: '/files'
+      fullPath: '/app/files'
+      preLoaderRoute: typeof AppFilesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/finance': {
+      id: '/app/finance'
+      path: '/finance'
+      fullPath: '/app/finance'
+      preLoaderRoute: typeof AppFinanceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/gratitude': {
+      id: '/app/gratitude'
+      path: '/gratitude'
+      fullPath: '/app/gratitude'
+      preLoaderRoute: typeof AppGratitudeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/kanban': {
+      id: '/app/kanban'
+      path: '/kanban'
+      fullPath: '/app/kanban'
+      preLoaderRoute: typeof AppKanbanRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/notes': {
+      id: '/app/notes'
+      path: '/notes'
+      fullPath: '/app/notes'
+      preLoaderRoute: typeof AppNotesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/operacao': {
+      id: '/app/operacao'
+      path: '/operacao'
+      fullPath: '/app/operacao'
+      preLoaderRoute: typeof AppOperacaoRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/personal-finance': {
+      id: '/app/personal-finance'
+      path: '/personal-finance'
+      fullPath: '/app/personal-finance'
+      preLoaderRoute: typeof AppPersonalFinanceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/settings': {
+      id: '/app/settings'
+      path: '/settings'
+      fullPath: '/app/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/shared': {
+      id: '/app/shared'
+      path: '/shared'
+      fullPath: '/app/shared'
+      preLoaderRoute: typeof AppSharedRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/sticky-notes': {
+      id: '/app/sticky-notes'
+      path: '/sticky-notes'
+      fullPath: '/app/sticky-notes'
+      preLoaderRoute: typeof AppStickyNotesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/stock': {
+      id: '/app/stock'
+      path: '/stock'
+      fullPath: '/app/stock'
+      preLoaderRoute: typeof AppStockRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/trends': {
+      id: '/app/trends'
+      path: '/trends'
+      fullPath: '/app/trends'
+      preLoaderRoute: typeof AppTrendsRouteImport
       parentRoute: typeof AppRoute
     }
   }
