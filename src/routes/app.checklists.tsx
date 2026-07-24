@@ -1298,10 +1298,15 @@ function PontoTab() {
   );
 
   const [, setTick] = useState(0);
+  const anyLive = Object.values(pontoSessions).some(
+    (s) => s?.status === "working" || s?.status === "paused",
+  );
   useEffect(() => {
+    if (!anyLive) return;
     const id = window.setInterval(() => setTick((t) => t + 1), 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [anyLive]);
+
 
   const requestNotif = async () => {
     if (typeof window === "undefined" || !("Notification" in window)) return;
