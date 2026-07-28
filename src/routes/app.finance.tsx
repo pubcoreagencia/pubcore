@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type Dispatch, type SetStateAction, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useWorkspace } from "@/lib/workspace";
@@ -18,10 +18,8 @@ import {
   Wallet, ArrowUpRight, ArrowDownRight, TrendingUp, AlertTriangle, Target, Plus,
   Trash2, Pencil, Search, PackageOpen, Receipt, Building2, Download, Activity,
 } from "lucide-react";
-import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
-  BarChart, Bar, Legend,
-} from "recharts";
+
+const FinanceCharts = lazy(() => import("@/components/finance/FinanceCharts"));
 
 export const Route = createFileRoute("/app/finance")({ component: FinancePage });
 
@@ -352,27 +350,9 @@ function DashboardTab({ kpis, tx, products }: { kpis: ReturnType<typeof calcKPIs
             <p className="text-xs text-muted-foreground">Últimos 12 meses</p>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={series}>
-            <defs>
-              <linearGradient id="gIncome" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--success)" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="var(--success)" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="gExpense" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--destructive)" stopOpacity={0.4} />
-                <stop offset="100%" stopColor="var(--destructive)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
-            <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} />
-            <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
-            <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }}
-              formatter={(v: number) => BRL(v)} />
-            <Area type="monotone" dataKey="income" name="Entradas" stroke="var(--success)" strokeWidth={2} fill="url(#gIncome)" />
-            <Area type="monotone" dataKey="expense" name="Saídas" stroke="var(--destructive)" strokeWidth={2} fill="url(#gExpense)" />
-          </AreaChart>
-        </ResponsiveContainer>
+        <Suspense fallback={<FinanceChartFallback height={300} />}>
+          <FinanceCharts kind="dashboard" series={series} formatCurrency={BRL} />
+        </Suspense>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
@@ -415,6 +395,17 @@ function DashboardTab({ kpis, tx, products }: { kpis: ReturnType<typeof calcKPIs
 
 function EmptyHint({ label }: { label: string }) {
   return <div className="text-xs text-muted-foreground py-6 text-center">{label}</div>;
+}
+
+function FinanceChartFallback({ height = 260 }: { height?: number }) {
+  return (
+    <div
+      className="grid w-full place-items-center rounded-xl border border-border/30 bg-secondary/20 text-xs text-muted-foreground"
+      style={{ height }}
+    >
+      Carregando gráfico...
+    </div>
+  );
 }
 
 // ---------------- Transactions Tab ----------------
@@ -706,15 +697,9 @@ function CostsTab({ costs }: { costs: Cost[] }) {
       <div className="rounded-2xl border border-border/40 bg-card/60 p-6">
         <h3 className="font-display text-lg font-semibold mb-4">Comparativo por empresa</h3>
         {byCompany.length === 0 ? <EmptyHint label="Sem custos cadastrados." /> : (
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={byCompany}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
-              <XAxis dataKey="company" stroke="var(--muted-foreground)" fontSize={11} />
-              <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => BRL(v)} />
-              <Bar dataKey="total" name="Custo mensal" fill="var(--primary)" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <Suspense fallback={<FinanceChartFallback height={240} />}>
+            <FinanceCharts kind="costs-by-company" byCompany={byCompany} formatCurrency={BRL} />
+          </Suspense>
         )}
       </div>
     </div>
@@ -1111,18 +1096,9 @@ function ReportsTab({ tx, products }: { tx: Tx[]; products: Product[] }) {
 
       <div className="rounded-2xl border border-border/40 bg-card/60 p-6">
         <h3 className="font-display text-base font-semibold mb-4">Lucro mensal — 12 meses</h3>
-        <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={series}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" opacity={0.3} />
-            <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} />
-            <YAxis stroke="var(--muted-foreground)" fontSize={11} tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
-            <Tooltip contentStyle={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }} formatter={(v: number) => BRL(v)} />
-            <Legend wrapperStyle={{ fontSize: 11 }} />
-            <Bar dataKey="income" name="Entradas" fill="var(--success)" radius={[4,4,0,0]} />
-            <Bar dataKey="expense" name="Saídas" fill="var(--destructive)" radius={[4,4,0,0]} />
-            <Bar dataKey="profit" name="Lucro" fill="var(--primary)" radius={[4,4,0,0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <Suspense fallback={<FinanceChartFallback height={260} />}>
+          <FinanceCharts kind="monthly-profit" series={series} formatCurrency={BRL} />
+        </Suspense>
       </div>
 
       <div className="rounded-2xl border border-border/40 bg-card/60 overflow-hidden">

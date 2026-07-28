@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Check, Filter, Plus, Trash2, Pencil, GripVertical, X,
@@ -8,10 +8,6 @@ import {
   Sparkles, History, Timer, BarChart3, Users, Settings2, Infinity as InfinityIcon,
 } from "lucide-react";
 
-import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  BarChart, Bar, RadialBarChart, RadialBar, PolarAngleAxis,
-} from "recharts";
 import {
   COMPANY_COLORS, DEFAULT_COMPANY_COLOR, type Company,
 } from "@/lib/mock-data";
@@ -30,6 +26,8 @@ import { useWorkspace } from "@/lib/workspace";
 import { useChecklistCompanies, type ChecklistCompany } from "@/lib/checklist-companies";
 import { EditPontoSessionDialog, type EditablePontoSession } from "@/components/EditPontoSessionDialog";
 import { ShareButton } from "@/components/ShareButton";
+
+const ChecklistCharts = lazy(() => import("@/components/checklists/ChecklistCharts"));
 
 
 export const Route = createFileRoute("/app/checklists")({
@@ -678,6 +676,14 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ChecklistChartFallback() {
+  return (
+    <div className="grid h-full w-full place-items-center rounded-lg border border-border/40 bg-surface/30 text-xs text-muted-foreground">
+      Carregando gráfico...
+    </div>
+  );
+}
+
 /* =================== Shared cards (swappable between Bater Ponto and Histórico) =================== */
 
 interface DaySessionRowLite {
@@ -1218,21 +1224,9 @@ function HistoryTab() {
           <span className="text-xs text-muted-foreground">{series.length} dias</span>
         </div>
         <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={series}>
-              <defs>
-                <linearGradient id="histG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="oklch(0.78 0.16 65)" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="oklch(0.78 0.16 65)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="label" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }} />
-              <Area type="monotone" dataKey="productivity" stroke="oklch(0.78 0.16 65)" strokeWidth={2} fill="url(#histG)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          <Suspense fallback={<ChecklistChartFallback />}>
+            <ChecklistCharts kind="history-productivity" series={series} />
+          </Suspense>
         </div>
       </div>
 
@@ -1645,18 +1639,9 @@ function MetricsTab() {
         <div className="rounded-xl border border-border bg-card p-5 shadow-card">
           <h3 className="font-display font-semibold mb-4">Tempo por empresa (período)</h3>
           <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={timeByCompany} layout="vertical" margin={{ left: 20 }}>
-                <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} unit="h" />
-                <YAxis dataKey="company" type="category" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} width={100} />
-                <Tooltip
-                  contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }}
-                  formatter={(v: number) => [`${v.toFixed(2)} h`, "Tempo ativo"]}
-                />
-                <Bar dataKey="hours" fill="oklch(0.78 0.16 65)" radius={[0, 4, 4, 0]} name="Horas" />
-              </BarChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<ChecklistChartFallback />}>
+              <ChecklistCharts kind="time-by-company" timeByCompany={timeByCompany} />
+            </Suspense>
           </div>
         </div>
       )}
@@ -1667,39 +1652,18 @@ function MetricsTab() {
         <div className="lg:col-span-2 rounded-xl border border-border bg-card p-5 shadow-card">
           <h3 className="font-display font-semibold mb-4">Produtividade ao longo do período</h3>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={series}>
-                <defs>
-                  <linearGradient id="metG" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="oklch(0.78 0.16 65)" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="oklch(0.78 0.16 65)" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="label" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} />
-                <YAxis stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} />
-                <Tooltip contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }} />
-                <Area type="monotone" dataKey="productivity" stroke="oklch(0.78 0.16 65)" strokeWidth={2} fill="url(#metG)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<ChecklistChartFallback />}>
+              <ChecklistCharts kind="metrics-productivity" series={series} />
+            </Suspense>
           </div>
         </div>
 
         <div className="rounded-xl border border-border bg-card p-5 shadow-card">
           <h3 className="font-display font-semibold mb-4">Eficiência geral</h3>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <RadialBarChart innerRadius="60%" outerRadius="100%" data={[{ name: "ef", value: productivity, fill: "oklch(0.78 0.16 65)" }]} startAngle={90} endAngle={-270}>
-                <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                <RadialBar background={{ fill: "oklch(0.28 0.014 240)" }} dataKey="value" cornerRadius={10} />
-                <text x="50%" y="48%" textAnchor="middle" fontSize="32" fontWeight="700" fill="oklch(0.97 0.005 240)" fontFamily="Space Grotesk">
-                  {productivity}%
-                </text>
-                <text x="50%" y="62%" textAnchor="middle" fontSize="11" fill="oklch(0.68 0.02 240)">
-                  EFICIÊNCIA
-                </text>
-              </RadialBarChart>
-            </ResponsiveContainer>
+            <Suspense fallback={<ChecklistChartFallback />}>
+              <ChecklistCharts kind="efficiency" productivity={productivity} />
+            </Suspense>
           </div>
         </div>
       </div>
@@ -1713,15 +1677,9 @@ function MetricsTab() {
             </div>
           ) : (
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byCompany} layout="vertical" margin={{ left: 20 }}>
-                  <CartesianGrid stroke="oklch(0.28 0.014 240)" strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <YAxis dataKey="company" type="category" stroke="oklch(0.6 0.02 240)" fontSize={11} tickLine={false} axisLine={false} width={90} />
-                  <Tooltip contentStyle={{ background: "oklch(0.22 0.014 240)", border: "1px solid oklch(0.3 0.015 240)", borderRadius: 12, fontSize: 12 }} />
-                  <Bar dataKey="completed" fill="oklch(0.78 0.16 65)" radius={[0, 4, 4, 0]} name="Concluídas" />
-                </BarChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<ChecklistChartFallback />}>
+                <ChecklistCharts kind="tasks-by-company" byCompany={byCompany} />
+              </Suspense>
             </div>
           )}
         </div>
