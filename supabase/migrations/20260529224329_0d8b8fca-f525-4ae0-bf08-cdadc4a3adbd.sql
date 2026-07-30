@@ -16,5 +16,8 @@ BEGIN
 END; $function$;
 
 INSERT INTO public.user_roles (user_id, role)
-VALUES ('9f79e8f9-9965-4bdc-8b75-85140c333354', 'master')
+SELECT id, 'master'::public.app_role
+FROM auth.users
+WHERE id = '9f79e8f9-9965-4bdc-8b75-85140c333354'
+  AND lower(email) IN ('contato.pubcore@gmail.com','m4cktheus@gmail.com')
 ON CONFLICT DO NOTHING;

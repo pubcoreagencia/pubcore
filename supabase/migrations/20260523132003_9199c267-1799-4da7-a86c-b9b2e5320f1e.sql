@@ -14,29 +14,6 @@ WITH CHECK (
 );
 
 -- 2) Realtime channel authorization
--- Require channel topics formatted as 'ws:<workspace_uuid>[:...]' and verify membership.
-ALTER TABLE realtime.messages ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Workspace members can read realtime messages"
-ON realtime.messages
-FOR SELECT
-TO authenticated
-USING (
-  realtime.topic() LIKE 'ws:%'
-  AND public.is_workspace_member(
-    NULLIF(split_part(split_part(realtime.topic(), ':', 2), ':', 1), '')::uuid,
-    auth.uid()
-  )
-);
-
-CREATE POLICY "Workspace members can send realtime messages"
-ON realtime.messages
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  realtime.topic() LIKE 'ws:%'
-  AND public.is_workspace_member(
-    NULLIF(split_part(split_part(realtime.topic(), ':', 2), ':', 1), '')::uuid,
-    auth.uid()
-  )
-);
+-- Disabled for local/new Supabase compatibility.
+-- The app currently uses Realtime only via postgres_changes on public tables,
+-- not private Broadcast/Presence channels that require realtime.messages RLS.

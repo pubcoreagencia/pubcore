@@ -15,6 +15,11 @@ BEGIN
   RETURN NEW;
 END; $function$;
 
-INSERT INTO public.user_roles (user_id, role) VALUES ('b767ab8e-815b-44a7-b275-292ea5475d45', 'master') ON CONFLICT DO NOTHING;
+INSERT INTO public.user_roles (user_id, role)
+SELECT id, 'master'::public.app_role
+FROM auth.users
+WHERE id = 'b767ab8e-815b-44a7-b275-292ea5475d45'
+  AND lower(email) IN ('contato.pubcore@gmail.com','m4cktheus@gmail.com','luana.deapaes@gmail.com')
+ON CONFLICT DO NOTHING;
 
 UPDATE public.profiles SET status = 'approved' WHERE id = 'b767ab8e-815b-44a7-b275-292ea5475d45';
