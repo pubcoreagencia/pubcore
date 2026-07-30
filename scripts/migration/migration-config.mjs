@@ -17,7 +17,7 @@ export const publicTables = [
 
   { table: "ponto_sessions", group: "ponto/historico", order: 30, sensitiveColumns: ["workspace_id", "user_id"] },
   { table: "ponto_session_tasks", group: "ponto/historico", order: 31, sensitiveColumns: ["workspace_id", "user_id"] },
-  { table: "ponto_session_edits", group: "ponto/historico", order: 32, sensitiveColumns: ["workspace_id", "user_id"] },
+  { table: "ponto_session_edits", group: "ponto/historico", order: 32, sensitiveColumns: ["session_id", "workspace_id", "edited_by"] },
 
   { table: "kanban_funnels", group: "kanban", order: 40, sensitiveColumns: ["workspace_id", "user_id"] },
   { table: "kanban_columns", group: "kanban", order: 41, sensitiveColumns: ["workspace_id", "user_id"] },
@@ -73,4 +73,3 @@ export const allCountTargets = [
   { schema: "storage", table: "buckets", group: "storage", order: 120, sensitiveColumns: [] },
   { schema: "storage", table: "objects", group: "storage", order: 121, sensitiveColumns: ["bucket_id", "name", "owner"] },
 ].sort((a, b) => a.order - b.order);
-
