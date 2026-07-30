@@ -13,16 +13,28 @@ export function getDatabaseUrl(kind) {
 }
 
 export function runPsql(databaseUrl, sql) {
-  const result = spawnSync(
-    "psql",
-    [databaseUrl, "--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--tuples-only", "--no-align", "--command", sql],
-    { encoding: "utf8", windowsHide: true },
-  );
+  const args = [databaseUrl, "--no-psqlrc", "--set", "ON_ERROR_STOP=1", "--tuples-only", "--no-align", "--command", sql];
+  const localPsql = spawnSync("psql", ["--version"], { encoding: "utf8", windowsHide: true });
+  const useDocker = Boolean(localPsql.error && localPsql.error.code === "ENOENT" && process.env.MIGRATION_PSQL_DOCKER_CONTAINER);
+  const result = useDocker
+    ? spawnSync(
+      "docker",
+      ["exec", process.env.MIGRATION_PSQL_DOCKER_CONTAINER, "psql", ...args],
+      { encoding: "utf8", windowsHide: true },
+    )
+    : spawnSync(
+      "psql",
+      args,
+      { encoding: "utf8", windowsHide: true },
+    );
   if (result.error) {
-    throw new Error(`Failed to run psql. Is PostgreSQL client installed? ${result.error.message}`);
+    if (localPsql.error?.code === "ENOENT" && !process.env.MIGRATION_PSQL_DOCKER_CONTAINER) {
+      throw new Error("Failed to run psql. Local psql was not found. Install PostgreSQL client or set MIGRATION_PSQL_DOCKER_CONTAINER to a running postgres container.");
+    }
+    throw new Error(`Failed to run ${useDocker ? "docker exec psql" : "psql"}. ${result.error.message}`);
   }
   if (result.status !== 0) {
-    throw new Error((result.stderr || result.stdout || "psql failed").trim());
+    throw new Error((result.stderr || result.stdout || `${useDocker ? "docker exec psql" : "psql"} failed`).trim());
   }
   return result.stdout.trim();
 }
@@ -41,4 +53,3 @@ export function quoteIdent(value) {
 export function relation(schema, table) {
   return `${quoteIdent(schema)}.${quoteIdent(table)}`;
 }
-
