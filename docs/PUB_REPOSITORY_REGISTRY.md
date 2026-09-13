@@ -1,16 +1,13 @@
 # PUB Repository Registry
 
-**Audit date:** 2026-09-12
+**Audit date:** 2026-09-12 23:08 BRT
 **Organization:** `pubcoreagencia`
-**Purpose:** canonical inventory, provenance, consolidation and lifecycle control for PUB repositories.
+**Inventory:** 53 repositories
+**Status:** second-pass provenance audit in progress
 
-## Governance rule
+## Canonical rule
 
-GitHub is the versioned source of truth for repository identity and code provenance. Repository names alone are never sufficient evidence for merging or deletion. A repository may be classified as legacy, duplicate, product, infrastructure or experiment only after its contents/history/deployment relationships are considered.
-
-**No repository is deleted by this registry.** Archive/delete decisions require a separate provenance and dependency check.
-
-## Canonical architecture
+GitHub is the versioned source of truth for repository identity and code provenance. Repository names alone are never sufficient evidence for merging or deletion. No repository is deleted by this registry.
 
 ```text
 PUB MASTER MEGA BLASTER CONTEXT
@@ -20,111 +17,119 @@ PUB CORE MASTER CONTEXT
         |
         v
 PUB CORE (`pubcore`)
-        |
-        +-- PUB Neural (`pub-neural`)       memory/evidence
-        +-- PDL (`pub-dev-loop`)             governance/orchestration
-        +-- PUB Ecom (`pub-ecom`)             commerce vertical + consolidated ecom apps
-        +-- PUB Leads (`pub-leads`)           lead/CRM vertical
-        +-- other verticals/products
+   |       |        |        |
+   v       v        v        v
+Neural    PDL      Ecom     Leads
+memory   govern   commerce   CRM
 ```
 
-## Full organization inventory
+## Organization inventory
 
-| # | Repository | Classification | Canonical target | Lifecycle action | Confidence |
-|---:|---|---|---|---|---|
-| 1 | `PUB-CORE` | LEGACY / REDIRECT | `pubcore` | Keep as historical identity; no new code | HIGH |
-| 2 | `pubcore` | CANONICAL | `pubcore` | Active central platform | HIGH |
-| 3 | `pub-core-holding-portal` | PRODUCT / HOLDING PORTAL | self | Keep distinct; inspect future integration with `pubcore` | MEDIUM |
-| 4 | `pubcoreagencia.github.io` | SITE / LANDING | self | Keep if public site is used; otherwise archive later | MEDIUM |
-| 5 | `PUB-BEATS` | ARCHIVE | self | Already archived; preserve provenance | HIGH |
-| 6 | `pub-ecom-landing` | LEGACY / CONSOLIDATED | `pub-ecom/apps/landing` | Archive after deployment/reference verification | HIGH |
-| 7 | `pub-films-landing` | LANDING | `pub-films` | Keep as presentation layer unless later consolidated | MEDIUM |
-| 8 | `pub-agencia-landing` | LANDING | `pub-agencia` | Keep as presentation layer | MEDIUM |
-| 9 | `pub-leads` | CANONICAL PRODUCT | `pub-leads` | Active | HIGH |
-| 10 | `pub3d-landing` | LANDING | `pub-3d` / product TBD | Keep; resolve relationship before archive | MEDIUM |
-| 11 | `neural-os` | LEGACY / ALIAS CANDIDATE | `pub-neural` | Do not develop; verify history/deployments before archive | MEDIUM |
-| 12 | `pubfood-control-growth` | PRODUCT / VERTICAL | `pub-food` | Inspect before consolidation | MEDIUM |
-| 13 | `pubgrowthai` | PRODUCT / VERTICAL | self | Keep until relationship with evolution repo is proven | MEDIUM |
-| 14 | `pubgrowth-ai-evolution` | EXPERIMENT / EVOLUTION | `pubgrowthai` or future product | Preserve as experiment; no automatic merge | MEDIUM |
-| 15 | `pub-dev-loop` | CANONICAL GOVERNANCE | `pub-dev-loop` | Active PDL | HIGH |
-| 16 | `pub-ecom` | CANONICAL PRODUCT / MONOREPO | `pub-ecom` | Active; already consolidates ecom apps | HIGH |
-| 17 | `pub-dev-loop-template` | TEMPLATE / INFRA | `pub-dev-loop` | Keep only if used to bootstrap PDL; otherwise archive | MEDIUM |
-| 18 | `pub-ops-hub` | PRODUCT / OPERATIONS | `pubcore` / PDL integration TBD | Inspect; do not merge by name | LOW |
-| 19 | `pubecomhub` | LEGACY / CONSOLIDATED | `pub-ecom/apps/hub` | Archive after reference verification | HIGH |
-| 20 | `pub-ecom-catalog-worker` | LEGACY / CONSOLIDATED | `pub-ecom/apps/catalog-worker` | Archive after deployment/reference verification | HIGH |
-| 21 | `pub-shopee-scraper` | INFRA / DATA INGESTION | `pub-ecom` or infra future | Keep separate until worker architecture absorbs it | MEDIUM |
-| 22 | `pub-github-mcp` | INFRA / DEVELOPER TOOLING | PDL / shared infra | Keep separate unless formally consolidated | MEDIUM |
-| 23 | `pub-dev-loop-prototypes` | PROTOTYPE / PDL SUBSYSTEM | `pub-dev-loop` | Preserve as prototype evidence; consolidate only after dependency check | HIGH |
-| 24 | `pub-9router-cloud` | INFRA / MODEL GATEWAY | shared infra / PDL | Keep as infrastructure component | HIGH |
-| 25 | `pub-machine` | EXPERIMENT / PLACEHOLDER | TBD | Inspect contents before lifecycle decision | MEDIUM |
-| 26 | `pub-machine-saas` | EXPERIMENT / PLACEHOLDER | TBD | Inspect contents before lifecycle decision | MEDIUM |
-| 27 | `pub-machine-2` | PROTOTYPE / DUPLICATE CANDIDATE | `pub-machine` | Inspect; likely archive candidate if empty | HIGH |
-| 28 | `leadcore` | LEGACY / ALIAS | `pub-leads` | Do not develop; preserve identity until deployment/reference audit | HIGH |
-| 29 | `pub-ia` | PLACEHOLDER / EXPERIMENT | PUB Neural / PDL if revived | Inspect; no canonical product status | MEDIUM |
-| 30 | `pub-start` | PLACEHOLDER / PROTOTYPE | TBD | Inspect; archive candidate if unused | HIGH |
-| 31 | `pub-scrapping` | PLACEHOLDER / EXPERIMENT | shared data infra | Inspect; no active canonical role established | MEDIUM |
-| 32 | `pub-prototype` | PROTOTYPE | PDL prototype system | Preserve as historical/prototype evidence | HIGH |
-| 33 | `pub-neural` | CANONICAL COGNITIVE SYSTEM | `pub-neural` | Active | HIGH |
-| 34 | `pub-core-os` | LEGACY / GOVERNANCE ALIAS | `pubcore` | No new code; preserve provenance | HIGH |
-| 35 | `pub-media` | VERTICAL / MEDIA | self | Keep as vertical placeholder/product | MEDIUM |
-| 36 | `pub-films` | VERTICAL / PRODUCT | `pub-films` | Keep distinct from landing | HIGH |
-| 37 | `pub-lancamentos` | VERTICAL / PRODUCT | `pub-lancamentos` | Keep distinct | HIGH |
-| 38 | `pub-3d` | PRODUCT / 3D | `pub-3d` | Keep; inspect relationship to landing | HIGH |
-| 39 | `pub-imoveis` | VERTICAL / REAL ESTATE | `pub-imoveis` | Keep distinct | HIGH |
-| 40 | `pub-bnb` | VERTICAL / HOSPITALITY | `pub-bnb` | Keep distinct | HIGH |
-| 41 | `buzios-de-cima` | LOCAL / MEDIA / PRODUCT | self | Keep until product intent is verified | LOW |
-| 42 | `pub-records` | VERTICAL / MUSIC | `pub-records` | Keep distinct | HIGH |
-| 43 | `xp-audio-lab` | EXPERIMENT / AUDIO R&D | PUB Records / future audio lab | Preserve as experiment | HIGH |
-| 44 | `pub-games-studio` | VERTICAL / STUDIO | `pub-games-studio` | Keep distinct | HIGH |
-| 45 | `pubet` | VERTICAL / PET | `pubet` | Keep distinct | MEDIUM |
-| 46 | `pub-food` | VERTICAL / FOOD | `pub-food` | Keep; investigate relationship with `pubfood-control-growth` | HIGH |
-| 47 | `pub-crypto` | VERTICAL / CRYPTO | `pub-crypto` | Keep as product identity; inspect relation to `ia-pubcrypto` | HIGH |
-| 48 | `ia-pubcrypto` | EXPERIMENT / AI CRYPTO | `pub-crypto` or shared AI infra | Consolidation candidate after provenance review | MEDIUM |
-| 49 | `pub-trade` | VERTICAL / TRADING | `pub-trade` | Keep distinct | HIGH |
-| 50 | `pub-textil` | VERTICAL / TEXTILE | `pub-textil` | Keep distinct | HIGH |
-| 51 | `eternize-seu-pinscher` | PRODUCT / CAMPAIGN | `pubet` or independent product | Verify product ownership/relationship before merge | MEDIUM |
-| 52 | `pub-co` | LEGACY / PORTAL ALIAS | `pubcore` / holding portal | Preserve as historical identity; no new core code | HIGH |
-| 53 | `pub-rate-calculator` | UTILITY / PRODUCT | shared utility or standalone | Keep until product ownership is decided | HIGH |
+| # | Repository | Classification | Canonical target | Current action |
+|---:|---|---|---|---|
+| 1 | `PUB-CORE` | LEGACY / REDIRECT | `pubcore` | No new code |
+| 2 | `pubcore` | CANONICAL | `pubcore` | ACTIVE |
+| 3 | `pub-core-holding-portal` | HOLDING PORTAL | self | Keep distinct |
+| 4 | `pubcoreagencia.github.io` | SITE | self | Verify usage |
+| 5 | `PUB-BEATS` | ARCHIVE | self | Already archived |
+| 6 | `pub-ecom-landing` | CONSOLIDATED COMPONENT | `pub-ecom/apps/landing` | Verify deployment before archive |
+| 7 | `pub-films-landing` | LANDING | `pub-films` | Keep |
+| 8 | `pub-agencia-landing` | LANDING | future `pub-agencia` | Keep |
+| 9 | `pub-leads` | CANONICAL PRODUCT | `pub-leads` | ACTIVE |
+| 10 | `pub3d-landing` | LANDING | `pub-3d` | Verify relationship |
+| 11 | `neural-os` | LEGACY / ALIAS CANDIDATE | `pub-neural` | History/deploy audit required |
+| 12 | `pubfood-control-growth` | VERTICAL SUBSYSTEM | `pub-food` | Inspect relationship |
+| 13 | `pubgrowthai` | RELATED PRODUCT IDENTITY | `pubgrowth-ai-evolution` | Compare history |
+| 14 | `pubgrowth-ai-evolution` | PRODUCTION PRODUCT | `pubgrowthai` identity | ACTIVE |
+| 15 | `pub-dev-loop` | CANONICAL GOVERNANCE | `pub-dev-loop` | ACTIVE |
+| 16 | `pub-ecom` | CANONICAL PRODUCT / MONOREPO | `pub-ecom` | ACTIVE |
+| 17 | `pub-dev-loop-template` | TEMPLATE | `pub-dev-loop` | Verify usage |
+| 18 | `pub-ops-hub` | OPERATIONS PRODUCT | TBD | Inspect |
+| 19 | `pubecomhub` | CONSOLIDATED COMPONENT | `pub-ecom/apps/hub` | Verify deployment before archive |
+| 20 | `pub-ecom-catalog-worker` | CONSOLIDATED COMPONENT | `pub-ecom/apps/catalog-worker` | Verify deployment before archive |
+| 21 | `pub-shopee-scraper` | INFRA / INGESTION | PUB Ecom ecosystem | Keep separate |
+| 22 | `pub-github-mcp` | INFRA / TOOLING | shared infra | Keep separate |
+| 23 | `pub-dev-loop-prototypes` | PDL PROTOTYPE | `pub-dev-loop` | Preserve evidence |
+| 24 | `pub-9router-cloud` | INFRA / MODEL GATEWAY | shared infra | Keep |
+| 25 | `pub-machine` | AUTOMATION ENGINE | Machine family | Inspect |
+| 26 | `pub-machine-saas` | MULTI-TENANT VARIANT | Machine family | Inspect |
+| 27 | `pub-machine-2` | GENERATION-2 PROTOTYPE | Machine family | Inspect |
+| 28 | `leadcore` | LEGACY / ALIAS | `pub-leads` | No new code |
+| 29 | `pub-ia` | PLACEHOLDER / EXPERIMENT | Neural/PDL if revived | Inspect |
+| 30 | `pub-start` | PLACEHOLDER | TBD | Inspect |
+| 31 | `pub-scrapping` | PLACEHOLDER / DATA EXPERIMENT | shared infra | Inspect |
+| 32 | `pub-prototype` | PROTOTYPE | PDL/general prototype | Preserve |
+| 33 | `pub-neural` | CANONICAL COGNITIVE SYSTEM | `pub-neural` | ACTIVE |
+| 34 | `pub-core-os` | LEGACY / GOVERNANCE ALIAS | `pubcore` | No new code |
+| 35 | `pub-media` | VERTICAL / MEDIA | self | Keep |
+| 36 | `pub-films` | VERTICAL / PRODUCT | `pub-films` | Keep |
+| 37 | `pub-lancamentos` | VERTICAL / PRODUCT | `pub-lancamentos` | Keep |
+| 38 | `pub-3d` | PRODUCT / 3D | `pub-3d` | Keep |
+| 39 | `pub-imoveis` | VERTICAL / REAL ESTATE | `pub-imoveis` | Keep |
+| 40 | `pub-bnb` | VERTICAL / HOSPITALITY | `pub-bnb` | Keep |
+| 41 | `buzios-de-cima` | LOCAL PRODUCT / MEDIA | self | Verify intent |
+| 42 | `pub-records` | VERTICAL / MUSIC | `pub-records` | Keep |
+| 43 | `xp-audio-lab` | AUDIO R&D | PUB Records/future lab | Preserve |
+| 44 | `pub-games-studio` | VERTICAL / STUDIO | `pub-games-studio` | Keep |
+| 45 | `pubet` | VERTICAL / PET | `pubet` | Keep |
+| 46 | `pub-food` | VERTICAL / FOOD | `pub-food` | Keep |
+| 47 | `pub-crypto` | VERTICAL / CRYPTO | `pub-crypto` | Keep |
+| 48 | `ia-pubcrypto` | AI SUBSYSTEM | `pub-crypto` / shared AI | Inspect |
+| 49 | `pub-trade` | VERTICAL / TRADING | `pub-trade` | Keep |
+| 50 | `pub-textil` | VERTICAL / TEXTILE | `pub-textil` | Keep |
+| 51 | `eternize-seu-pinscher` | PRODUCT / CAMPAIGN | `pubet` or independent | Verify |
+| 52 | `pub-co` | LEGACY / PORTAL ALIAS | `pubcore` / holding portal | No new core code |
+| 53 | `pub-rate-calculator` | UTILITY | shared utility or standalone | Verify ownership |
 
-## Confirmed consolidation evidence
+## Provenance findings, second pass
 
 ### PUB Ecom
-`pub-ecom` explicitly states that it consolidates the E-commerce ecosystem and includes the Hub, Catalog Worker and Landing under `apps/`. Therefore `pubecomhub`, `pub-ecom-catalog-worker` and `pub-ecom-landing` are legacy/consolidated repositories, not independent canonical products. Verify external deployment references before archiving them.
+`pub-ecom` explicitly declares a unified monorepo with `apps/hub`, `apps/catalog-worker` and `apps/landing`, naming `pubecomhub`, `pub-ecom-catalog-worker` and `pub-ecom-landing` as the former projects. The component READMEs independently describe the same Ecom Hub, Catalog Worker and Landing roles. This establishes the intended canonical code boundary as `pub-ecom`.
 
-### PUB Leads
-`pub-leads` is the current B2B prospecting/CRM SaaS. `leadcore` is a legacy identity and must not become a second active implementation. Existing deployment evidence has already linked the historical LeadCore/leadcore naming to PUB Leads.
+**Important:** the old Ecom repositories are still receiving commits as of 2026-09-12. Those commits include autonomous-cycle backup snapshots. Therefore they are **not archive-approved yet**. We must verify whether those commits contain live code, only snapshots, or deployment-critical state before archival.
 
-### PUB Core
-`pubcore` is the canonical central platform. `PUB-CORE` explicitly redirects to it. `pub-core-os` and `pub-co` are historical governance/portal identities and should remain provenance records until all external references are checked.
+### PUB Growth
+`pubgrowth-ai-evolution` contains explicit production metadata including a Cloudflare Workers production URL, Supabase project reference and Banco Inter PIX infrastructure. Its latest commits are from 2026-09-12. `pubgrowthai` also has commits as recent as 2026-09-06. Therefore these cannot be treated as a simple dead-repo duplicate. The next decision must compare ancestry, deployments and production ownership.
 
-### PUB Neural
-`pub-neural` is the canonical cognitive/memory system. `neural-os` is a legacy naming candidate and must not be treated as a second active Neural implementation without evidence.
+### PUB Machine
+The READMEs define three different roles: base automation engine, multi-tenant SaaS variant, and second-generation evolution. This is a product family, not proof of three duplicate repositories. No blind merge.
 
-## Duplicate / consolidation clusters requiring dependency checks
+### PUB Core / Leads / Neural aliases
+`PUB-CORE` explicitly points to `pubcore` as canonical. `leadcore` is the legacy LeadCore identity while `pub-leads` is the current implementation. `pub-neural` is canonical; `neural-os` remains a provenance candidate because its current default branch has no README.
 
-1. `PUB-CORE` + `pub-core-os` + `pub-co` -> `pubcore`
+### Product + presentation pairs
+Keep product and presentation layers separate until deployment references are verified:
+- `pub-3d` + `pub3d-landing`
+- `pub-films` + `pub-films-landing`
+- `pub-food` + `pubfood-control-growth`
+- `pub-crypto` + `ia-pubcrypto`
+
+## Consolidation clusters
+
+1. `PUB-CORE` + `pub-core-os` + `pub-co` -> central/portal boundary
 2. `leadcore` -> `pub-leads`
 3. `neural-os` -> `pub-neural`
-4. `pub-ecom-landing` + `pubecomhub` + `pub-ecom-catalog-worker` -> `pub-ecom/apps/*`
-5. `pub3d-landing` + `pub-3d` -> determine product vs presentation layer
-6. `pub-food` + `pubfood-control-growth` -> determine product vs growth/control subsystem
-7. `pub-crypto` + `ia-pubcrypto` -> determine product vs AI subsystem
-8. `pub-machine` + `pub-machine-saas` + `pub-machine-2` -> inspect before any merge/archive
-9. `pubgrowthai` + `pubgrowth-ai-evolution` -> product vs experimental evolution
-10. `pub-films` + `pub-films-landing` -> product vs presentation layer
-11. `pub-agencia-landing` + future `pub-agencia` identity -> presentation layer, if/when canonical app exists
+4. Ecom old repos -> `pub-ecom/apps/*`
+5. Machine family -> architecture decision required
+6. Growth family -> production identity decision required
+7. 3D, Films, Food and Crypto product/subsystem pairs -> dependency checks required
 
-## Next audit pass
+## Archive candidates, NOT approved
 
-Before any archive/delete action, inspect for each consolidation cluster:
-- README / MASTER_CONTEXT
-- git history and latest meaningful commit
-- deployment references
+`PUB-CORE`, `pub-core-os`, `pub-co`, `leadcore`, `neural-os`, `pubecomhub`, `pub-ecom-catalog-worker`, `pub-ecom-landing`, `pub-machine-2`, `pub-start`, `pub-ia`, `pub-scrapping`, `pub-dev-loop-template`.
+
+No item above may be deleted solely because it appears in this list.
+
+## Required checks before archive/delete
+
+- Git history and ancestry
+- latest meaningful commit
+- deployment/domain references
 - environment variables and external services
 - database/schema ownership
-- imports/references from other PUB repositories
-- domain/URL usage
+- cross-repository imports/references
 - active production dependency
-- unique assets/data that must be preserved
+- unique assets/data
+- whether the supposed canonical repo is actually newer/current
 
-Only then move a repository to `ARCHIVE APPROVED`.
+**Rule: never delete first and investigate later.**
